@@ -373,3 +373,12 @@ Davao City and Mindanao region as beachhead market, with expansion to Visayas an
 
 *Last updated: April 2026*  
 *Research compiled from: eventchy.com, helixpay.ph, ticketnation.ph, smtickets.com, ticketnet.com.ph, xperto.ph, IMARC Group PH Event Management Software Market Report, Mobility Foresights PH Events Industry Report, The Ticketing Business, Esquire Philippines, TechNode Global*
+
+---
+
+## Implementation Authority Notes (April 2026)
+
+- Runtime navigation and shell authority: `UnifiedNav` + `AppShell` in the React app.
+- Legacy split runtime shells (`TopNav`/`BottomNav`) are kept as reference components only and are not the implementation baseline.
+- Deferred to Phase 2 (explicit): live PayMongo + Firebase Functions webhooks, Firestore rules hardening, and advanced offline/push/haptics stack.
+- Current phase remains mock-billing functional MVP while expanding organizer console and platform page behavior depth.

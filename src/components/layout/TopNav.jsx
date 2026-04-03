@@ -112,7 +112,7 @@ function BellIcon() {
 
 export default function TopNav() {
   const [scrolled, setScrolled] = useState(false)
-  const { user, logout, authBusy } = useAuth()
+  const { user, profile, hasActiveSubscription, logout, authBusy } = useAuth()
   const location = useLocation()
   const tone = useMemo(() => resolveTone(location.pathname), [location.pathname])
   const styles = toneStyles[tone]
@@ -132,10 +132,21 @@ export default function TopNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const createEventsLink = useMemo(
-    () => (user ? '/manage' : '/register'),
-    [user],
-  )
+  const createEventsLink = useMemo(() => {
+    if (!user) return '/register'
+    if (profile?.role === 'organizer') {
+      return hasActiveSubscription ? '/manage/dashboard' : '/subscribe'
+    }
+    return '/register'
+  }, [user, profile?.role, hasActiveSubscription])
+
+  const createEventsLabel = useMemo(() => {
+    if (!user) return 'Create Events'
+    if (profile?.role === 'organizer') {
+      return hasActiveSubscription ? 'Organizer Console' : 'Upgrade'
+    }
+    return 'Create Events'
+  }, [user, profile?.role, hasActiveSubscription])
 
   async function onLogout() {
     try {
@@ -175,10 +186,10 @@ export default function TopNav() {
             <Link
               to={createEventsLink}
               className={`rounded-full px-space-3 py-space-2 font-display transition-colors duration-fast ${navTextClass} ${
-                location.pathname === '/manage' ? styles.navActive : styles.navIdle
+                location.pathname.startsWith('/manage') ? styles.navActive : styles.navIdle
               }`}
             >
-              Create Events
+              {createEventsLabel}
             </Link>
           </nav>
 

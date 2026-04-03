@@ -40,6 +40,18 @@ function toLocalSession(localUser) {
   }
 }
 
+function hasActiveOrganizerSubscription(profile) {
+  if (!profile || profile.role !== 'organizer') return false
+  const subscription = profile.subscription
+  if (!subscription || subscription.status !== 'active') return false
+  if (!subscription.expiresAt) return true
+  const expiryValue = subscription.expiresAt?.toDate
+    ? subscription.expiresAt.toDate()
+    : subscription.expiresAt
+  const expiry = new Date(expiryValue).getTime()
+  return Number.isFinite(expiry) && expiry > Date.now()
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -51,7 +63,12 @@ export function AuthProvider({ children }) {
       const session = readLocalJSON(LOCAL_AUTH_KEY, null)
       if (session) {
         setUser(toLocalSession(session))
-        setProfile({ role: session.role, displayName: session.displayName, email: session.email })
+        setProfile({
+          role: session.role,
+          displayName: session.displayName,
+          email: session.email,
+          subscription: session.subscription ?? null,
+        })
       } else {
         setUser(null)
         setProfile(null)
@@ -91,7 +108,12 @@ export function AuthProvider({ children }) {
 
         writeLocalJSON(LOCAL_AUTH_KEY, matched)
         setUser(toLocalSession(matched))
-        setProfile({ role: matched.role, displayName: matched.displayName, email: matched.email })
+        setProfile({
+          role: matched.role,
+          displayName: matched.displayName,
+          email: matched.email,
+          subscription: matched.subscription ?? null,
+        })
         return toLocalSession(matched)
       }
 
@@ -120,13 +142,21 @@ export function AuthProvider({ children }) {
           password,
           displayName: displayName ?? '',
           role: role ?? 'attendee',
+          subscription: role === 'organizer'
+            ? { status: 'inactive', planId: null, expiresAt: null }
+            : null,
         }
 
         writeLocalJSON(LOCAL_USERS_KEY, [...users, localUser])
         writeLocalJSON(LOCAL_AUTH_KEY, localUser)
 
         setUser(toLocalSession(localUser))
-        setProfile({ role: localUser.role, displayName: localUser.displayName, email: localUser.email })
+        setProfile({
+          role: localUser.role,
+          displayName: localUser.displayName,
+          email: localUser.email,
+          subscription: localUser.subscription,
+        })
         return toLocalSession(localUser)
       }
 
@@ -140,6 +170,9 @@ export function AuthProvider({ children }) {
         role: role ?? 'attendee',
         displayName: displayName ?? '',
         email,
+        subscription: role === 'organizer'
+          ? { status: 'inactive', planId: null, expiresAt: null }
+          : null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
@@ -150,9 +183,72 @@ export function AuthProvider({ children }) {
         role: profilePayload.role,
         displayName: profilePayload.displayName,
         email: profilePayload.email,
+        subscription: profilePayload.subscription,
       })
 
       return credentials.user
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  async function activateSubscription({ planId = 'pro', durationDays = 30 } = {}) {
+    if (!user) {
+      throw new Error('Please sign in first.')
+    }
+    if (profile?.role !== 'organizer') {
+      throw new Error('Only organizers can activate this feature.')
+    }
+
+    setAuthBusy(true)
+
+    try {
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
+      const subscription = {
+        status: 'active',
+        planId,
+        activatedAt: now.toISOString(),
+        expiresAt,
+      }
+
+      if (!firebaseEnabled || !db) {
+        const users = readLocalJSON(LOCAL_USERS_KEY, [])
+        const nextUsers = users.map((candidate) =>
+          candidate.uid === user.uid
+            ? { ...candidate, subscription }
+            : candidate,
+        )
+        writeLocalJSON(LOCAL_USERS_KEY, nextUsers)
+
+        const currentSession = readLocalJSON(LOCAL_AUTH_KEY, null)
+        if (currentSession?.uid === user.uid) {
+          writeLocalJSON(LOCAL_AUTH_KEY, { ...currentSession, subscription })
+        }
+
+        setProfile((current) => ({
+          ...(current ?? {}),
+          role: 'organizer',
+          displayName: current?.displayName ?? '',
+          email: current?.email ?? user.email ?? '',
+          subscription,
+        }))
+        return subscription
+      }
+
+      await setDoc(doc(db, 'users', user.uid), {
+        subscription,
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+
+      setProfile((current) => ({
+        ...(current ?? {}),
+        role: current?.role ?? 'organizer',
+        displayName: current?.displayName ?? user.displayName ?? '',
+        email: current?.email ?? user.email ?? '',
+        subscription,
+      }))
+      return subscription
     } finally {
       setAuthBusy(false)
     }
@@ -186,7 +282,9 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      activateSubscription,
       isOrganizer: profile?.role === 'organizer',
+      hasActiveSubscription: hasActiveOrganizerSubscription(profile),
       authMode: firebaseEnabled ? 'firebase' : 'local',
     }),
     [user, profile, loading, authBusy],
