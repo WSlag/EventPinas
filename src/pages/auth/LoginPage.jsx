@@ -31,53 +31,65 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-base flex flex-col items-center justify-center px-space-4">
-      <form onSubmit={onSubmit} className="w-full max-w-sm bg-white border border-neutral-200 rounded-xl p-space-6 space-y-space-4">
-        <div>
-          <h1 className="font-display text-display-lg text-neutral-900">EventPinas</h1>
-          <p className="font-body text-body-sm text-neutral-500 mt-space-1">Sign in to continue</p>
+    <div className="min-h-screen bg-neutral-100">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1180px] items-center justify-center px-space-4 py-space-8 md:px-space-6">
+        <div className="grid w-full gap-space-4 rounded-3xl border border-neutral-200 bg-white p-space-4 shadow-lg md:grid-cols-2 md:p-space-6">
+          <section className="rounded-2xl bg-gradient-to-br from-info via-info to-primary-700 p-space-6 text-white">
+            <p className="font-display text-overline uppercase tracking-wide text-blue-100">EventPH Marketplace</p>
+            <h1 className="mt-space-2 font-display text-display-lg leading-tight">Welcome back.</h1>
+            <p className="mt-space-2 font-body text-body-sm text-blue-50">
+              Sign in to manage saved events, connect with suppliers, and access organizer tools.
+            </p>
+          </section>
+
+          <form onSubmit={onSubmit} className="space-y-space-3 rounded-2xl border border-neutral-200 bg-white p-space-4">
+            <div>
+              <h2 className="font-display text-heading-xl text-neutral-900">Sign in</h2>
+              <p className="mt-space-1 font-body text-body-sm text-neutral-500">Continue to your account.</p>
+            </div>
+
+            <label className="block space-y-space-1">
+              <span className="font-body text-label-sm text-neutral-700">Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                className="h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                placeholder="you@example.com"
+              />
+            </label>
+
+            <label className="block space-y-space-1">
+              <span className="font-body text-label-sm text-neutral-700">Password</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                minLength={6}
+                className="h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                placeholder="Enter your password"
+              />
+            </label>
+
+            {error && <p className="font-body text-body-sm text-error">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={authBusy}
+              className="h-10 w-full rounded-full bg-primary-400 font-display text-label-md text-white disabled:opacity-60"
+            >
+              {authBusy ? 'Signing in...' : 'Sign in'}
+            </button>
+
+            <p className="text-center font-body text-body-sm text-neutral-600">
+              No account yet?{' '}
+              <Link to="/register" className="font-medium text-primary-500">Create one</Link>
+            </p>
+          </form>
         </div>
-
-        <label className="block space-y-space-1">
-          <span className="font-body text-label-sm text-neutral-700">Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            className="w-full h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
-            placeholder="you@example.com"
-          />
-        </label>
-
-        <label className="block space-y-space-1">
-          <span className="font-body text-label-sm text-neutral-700">Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            minLength={6}
-            className="w-full h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
-            placeholder="Enter your password"
-          />
-        </label>
-
-        {error && <p className="font-body text-body-sm text-error">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={authBusy}
-          className="w-full h-10 rounded-md bg-primary-400 text-white font-display text-label-md disabled:opacity-60"
-        >
-          {authBusy ? 'Signing in...' : 'Sign in'}
-        </button>
-
-        <p className="font-body text-body-sm text-neutral-600 text-center">
-          No account yet?{' '}
-          <Link to="/register" className="text-primary-500 font-medium">Create one</Link>
-        </p>
-      </form>
+      </div>
     </div>
   )
 }

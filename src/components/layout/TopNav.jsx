@@ -1,23 +1,63 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
-const roleLinks = [
-  { label: 'Attendee', to: '/' },
-  { label: 'Organizer', to: '/manage' },
-  { label: 'Supplier', to: '/suppliers' },
+const primaryNavItems = [
+  { label: 'My Tickets', to: '/saved' },
+  { label: 'Discover Events', to: '/events' },
+  { label: 'Suppliers', to: '/suppliers' },
+  { label: 'Organizers', to: '/organizers' },
 ]
+
+function AppsIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="5" r="2.2" />
+      <circle cx="12" cy="5" r="2.2" />
+      <circle cx="19" cy="5" r="2.2" />
+      <circle cx="5" cy="12" r="2.2" />
+      <circle cx="12" cy="12" r="2.2" />
+      <circle cx="19" cy="12" r="2.2" />
+      <circle cx="5" cy="19" r="2.2" />
+      <circle cx="12" cy="19" r="2.2" />
+      <circle cx="19" cy="19" r="2.2" />
+    </svg>
+  )
+}
+
+function BellIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
+      <path d="M9 17a3 3 0 0 0 6 0" />
+    </svg>
+  )
+}
 
 export default function TopNav() {
   const [scrolled, setScrolled] = useState(false)
-  const { user, profile, logout, authBusy } = useAuth()
+  const { user, logout, authBusy } = useAuth()
   const location = useLocation()
+  const isHomepage = location.pathname === '/'
+  const showSearchBar = location.pathname !== '/'
+  const topRowHeightClass = isHomepage ? 'h-20' : 'h-16'
+  const logoTextClass = isHomepage ? 'text-display-lg md:text-display-xl' : 'text-heading-xl'
+  const navTextClass = isHomepage ? 'text-heading-sm' : 'text-label-md'
+  const authTextClass = isHomepage ? 'text-heading-sm' : 'text-label-md'
+  const joinButtonClass = isHomepage
+    ? 'rounded-full bg-primary-400 px-space-4 py-space-2 font-display text-label-md text-white'
+    : 'rounded-full bg-primary-400 px-space-3 py-space-1 font-display text-label-sm text-white'
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  const createEventsLink = useMemo(
+    () => (user ? '/manage' : '/register'),
+    [user],
+  )
 
   async function onLogout() {
     try {
@@ -28,66 +68,92 @@ export default function TopNav() {
   }
 
   return (
-    <header className={`sticky top-0 z-50 transition-all duration-normal ${scrolled ? 'glass shadow-sm' : 'bg-surface-base'}`}>
-      <div className="bg-neutral-900">
-        <div className="w-full px-space-4 py-space-1 flex items-center justify-between">
-          <div className="flex items-center gap-space-2">
-            {roleLinks.map((roleLink) => {
-              const active = location.pathname === roleLink.to || (roleLink.to !== '/' && location.pathname.startsWith(roleLink.to))
+    <header className={`sticky top-0 z-50 text-white transition-all duration-normal ${scrolled ? 'glass shadow-sm' : 'bg-info'}`}>
+      <div className="bg-info">
+        <div className={`mx-auto flex w-full max-w-[1680px] items-center justify-between px-space-4 md:px-space-6 ${topRowHeightClass}`}>
+          <Link to="/" className="shrink-0">
+            <span className={`font-display font-extrabold tracking-tight text-white ${logoTextClass}`}>
+              eventpinas
+              <span className="text-secondary-300">.</span>
+              com
+            </span>
+          </Link>
+
+          <nav className="hidden items-center gap-space-2 lg:flex">
+            {primaryNavItems.map((item) => {
+              const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))
               return (
                 <Link
-                  key={roleLink.to}
-                  to={roleLink.to}
-                  className={`text-overline uppercase px-space-2 py-space-1 rounded-full ${
-                    active ? 'text-white bg-primary-400' : 'text-neutral-400'
+                  key={item.to}
+                  to={item.to}
+                  className={`rounded-full px-space-3 py-space-2 font-display transition-colors duration-fast ${navTextClass} ${
+                    active ? 'bg-white/20 text-white' : 'text-white/90 hover:text-white'
                   }`}
                 >
-                  {roleLink.label}
+                  {item.label}
                 </Link>
               )
             })}
-          </div>
+            <Link
+              to={createEventsLink}
+              className={`rounded-full px-space-3 py-space-2 font-display transition-colors duration-fast ${navTextClass} ${
+                location.pathname === '/manage' ? 'bg-white/20 text-white' : 'text-white/90 hover:text-white'
+              }`}
+            >
+              Create Events
+            </Link>
+          </nav>
 
-          {!user && (
-            <div className="flex items-center gap-space-2">
-              <Link to="/login" className="text-label-sm font-display text-neutral-300">Sign in</Link>
-              <Link to="/register" className="text-label-sm font-display text-white bg-primary-400 px-space-2 py-space-1 rounded-full">Join</Link>
-            </div>
-          )}
+          <div className="flex items-center gap-space-2">
+            {!user && (
+              <>
+                <Link to="/login" className={`font-display text-neutral-100 ${authTextClass}`}>
+                  Sign in
+                </Link>
+                <Link to="/register" className={joinButtonClass}>
+                  Join
+                </Link>
+              </>
+            )}
 
-          {user && (
-            <div className="flex items-center gap-space-2">
-              <span className="text-label-sm text-neutral-300 hidden sm:inline">{profile?.displayName || user.email}</span>
+            {user && (
               <button
                 type="button"
                 onClick={onLogout}
                 disabled={authBusy}
-                className="text-label-sm font-display text-neutral-300 disabled:opacity-60"
+                className={`font-display text-neutral-100 disabled:opacity-60 ${authTextClass}`}
               >
                 {authBusy ? 'Signing out...' : 'Sign out'}
               </button>
-            </div>
-          )}
-        </div>
-      </div>
+            )}
 
-      <div className="px-space-4 h-14 flex items-center gap-space-3 border-b border-neutral-200">
-        <div className="w-full flex items-center gap-space-3">
-          <Link to="/" className="font-display font-bold text-heading-md text-primary-400 shrink-0">
-            EventPinas
-          </Link>
-          <div className="flex-1 relative">
-            <input
-              type="search"
-              placeholder="Search events, suppliers..."
-              className="w-full h-9 pl-9 pr-space-3 bg-surface-overlay rounded-md text-body-sm font-body text-neutral-800 placeholder:text-neutral-400 border border-neutral-200 focus:outline-none focus:border-primary-400 focus:shadow-sm transition-all duration-fast"
-            />
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
+            <button type="button" className="hidden rounded-full p-2 text-white/95 hover:bg-white/10 md:inline-flex" aria-label="Open menu">
+              <AppsIcon />
+            </button>
           </div>
         </div>
       </div>
+
+      {showSearchBar && (
+        <div className={`border-t border-white/20 ${scrolled ? 'bg-info/90' : 'bg-info/95'}`}>
+          <div className="mx-auto flex h-12 w-full max-w-[1680px] items-center gap-space-3 px-space-4 md:px-space-6">
+            <div className="relative flex-1">
+              <input
+                type="search"
+                placeholder="Search events, suppliers..."
+                className="h-9 w-full rounded-full border border-white/20 bg-white/95 pl-9 pr-space-3 font-body text-body-sm text-neutral-700 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              />
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+            </div>
+            <button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20" aria-label="Open notifications">
+              <BellIcon />
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

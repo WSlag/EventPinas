@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
+import { HeroBanner, PageShell, SectionHeader, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
 import { clearSavedItems, getSavedItems, getSavedMarketplaceItems, toggleSavedItem } from '@/services'
 
 export default function SavedPage() {
@@ -39,7 +40,7 @@ export default function SavedPage() {
     setSavedCatalog(payload)
   }
 
-  async function onClearAll() {
+  function onClearAll() {
     clearSavedItems()
     setSavedCatalog({ events: [], suppliers: [], organizers: [] })
   }
@@ -48,81 +49,95 @@ export default function SavedPage() {
     savedCatalog.events.length > 0 || savedCatalog.suppliers.length > 0 || savedCatalog.organizers.length > 0
 
   return (
-    <div className="px-space-4 py-space-6 space-y-space-4">
-      <header className="flex items-center justify-between gap-space-3">
-        <div>
-          <h1 className="font-display text-heading-lg text-neutral-800">Saved</h1>
-          <p className="font-body text-body-sm text-neutral-500 mt-space-1">Your bookmarked events, suppliers, and organizers.</p>
-        </div>
-        {hasItems && (
-          <button type="button" onClick={onClearAll} className="text-label-sm text-primary-500">
+    <PageShell className="space-y-space-6">
+      <HeroBanner
+        eyebrow="Saved Collection"
+        title="Your bookmarked events, suppliers, and organizers."
+        description="Keep planning momentum by pinning your top options and revisiting them anytime."
+        tone="blue"
+        actions={hasItems ? (
+          <button type="button" onClick={onClearAll} className="rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-info">
             Clear all
           </button>
-        )}
-      </header>
+        ) : null}
+      />
 
       {loading && <LoadingState label="Loading saved items..." />}
       {error && <ErrorState message={error} />}
-
       {!loading && !error && !hasItems && <EmptyState message="You have no saved items yet." />}
 
       {!loading && !error && hasItems && (
-        <div className="space-y-space-4">
+        <div className="space-y-space-5">
           {savedCatalog.events.length > 0 && (
             <section className="space-y-space-2">
-              <h2 className="font-display text-heading-md text-neutral-800">Events</h2>
-              {savedCatalog.events.map((event) => (
-                <article key={event.id} className="rounded-lg border border-neutral-200 bg-white p-space-4">
-                  <div className="flex items-center justify-between gap-space-3">
-                    <Link to={`/events/${event.id}`} className="font-display text-heading-sm text-neutral-900 hover:text-primary-500">
-                      {event.title}
-                    </Link>
-                    <button type="button" onClick={() => removeSaved('events', event.id)} className="text-label-sm text-primary-500">
-                      Remove
-                    </button>
-                  </div>
-                </article>
-              ))}
+              <SectionHeader title="Saved Events" />
+              <div className="grid gap-space-3 md:grid-cols-2">
+                {savedCatalog.events.map((event) => (
+                  <SurfaceCard key={event.id}>
+                    <div className="flex items-start justify-between gap-space-3">
+                      <div>
+                        <Link to={`/events/${event.id}`} className="font-display text-heading-md text-neutral-900 hover:text-info">
+                          {event.title}
+                        </Link>
+                        <p className="mt-space-1 font-body text-body-sm text-neutral-500">{event.city} - {event.date}</p>
+                      </div>
+                      <button type="button" onClick={() => removeSaved('events', event.id)} className="text-label-sm text-primary-500">
+                        Remove
+                      </button>
+                    </div>
+                  </SurfaceCard>
+                ))}
+              </div>
             </section>
           )}
 
           {savedCatalog.suppliers.length > 0 && (
             <section className="space-y-space-2">
-              <h2 className="font-display text-heading-md text-neutral-800">Suppliers</h2>
-              {savedCatalog.suppliers.map((supplier) => (
-                <article key={supplier.id} className="rounded-lg border border-neutral-200 bg-white p-space-4">
-                  <div className="flex items-center justify-between gap-space-3">
-                    <Link to={`/suppliers/${supplier.id}`} className="font-display text-heading-sm text-neutral-900 hover:text-primary-500">
-                      {supplier.name}
-                    </Link>
-                    <button type="button" onClick={() => removeSaved('suppliers', supplier.id)} className="text-label-sm text-primary-500">
-                      Remove
-                    </button>
-                  </div>
-                </article>
-              ))}
+              <SectionHeader title="Saved Suppliers" />
+              <div className="grid gap-space-3 md:grid-cols-2">
+                {savedCatalog.suppliers.map((supplier) => (
+                  <SurfaceCard key={supplier.id}>
+                    <div className="flex items-start justify-between gap-space-3">
+                      <div>
+                        <Link to={`/suppliers/${supplier.id}`} className="font-display text-heading-md text-neutral-900 hover:text-info">
+                          {supplier.name}
+                        </Link>
+                        <p className="mt-space-1 font-body text-body-sm text-neutral-500">{supplier.category} - {supplier.city}</p>
+                      </div>
+                      <button type="button" onClick={() => removeSaved('suppliers', supplier.id)} className="text-label-sm text-primary-500">
+                        Remove
+                      </button>
+                    </div>
+                  </SurfaceCard>
+                ))}
+              </div>
             </section>
           )}
 
           {savedCatalog.organizers.length > 0 && (
             <section className="space-y-space-2">
-              <h2 className="font-display text-heading-md text-neutral-800">Organizers</h2>
-              {savedCatalog.organizers.map((organizer) => (
-                <article key={organizer.id} className="rounded-lg border border-neutral-200 bg-white p-space-4">
-                  <div className="flex items-center justify-between gap-space-3">
-                    <Link to={`/organizers/${organizer.id}`} className="font-display text-heading-sm text-neutral-900 hover:text-primary-500">
-                      {organizer.name}
-                    </Link>
-                    <button type="button" onClick={() => removeSaved('organizers', organizer.id)} className="text-label-sm text-primary-500">
-                      Remove
-                    </button>
-                  </div>
-                </article>
-              ))}
+              <SectionHeader title="Saved Organizers" />
+              <div className="grid gap-space-3 md:grid-cols-2">
+                {savedCatalog.organizers.map((organizer) => (
+                  <SurfaceCard key={organizer.id}>
+                    <div className="flex items-start justify-between gap-space-3">
+                      <div>
+                        <Link to={`/organizers/${organizer.id}`} className="font-display text-heading-md text-neutral-900 hover:text-info">
+                          {organizer.name}
+                        </Link>
+                        <p className="mt-space-1 font-body text-body-sm text-neutral-500">{organizer.city}</p>
+                      </div>
+                      <button type="button" onClick={() => removeSaved('organizers', organizer.id)} className="text-label-sm text-primary-500">
+                        Remove
+                      </button>
+                    </div>
+                  </SurfaceCard>
+                ))}
+              </div>
             </section>
           )}
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

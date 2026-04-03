@@ -59,7 +59,7 @@ export default function BottomNav() {
   const location = useLocation()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface-raised shadow-xl border-t border-neutral-200 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-info/40 bg-info text-white shadow-xl md:hidden">
       <div className="flex">
         {tabs.map((tab) => {
           const active = location.pathname === tab.to || (tab.to !== '/' && location.pathname.startsWith(tab.to))
@@ -70,12 +70,12 @@ export default function BottomNav() {
               className="flex-1 flex flex-col items-center justify-center h-16 gap-1 relative group"
             >
               {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-primary-400" />
+                <span className="absolute top-0 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-secondary-300" />
               )}
-              <span className={`transition-colors duration-fast ${active ? 'text-primary-400' : 'text-neutral-400 group-hover:text-neutral-600'}`}>
+              <span className={`transition-colors duration-fast ${active ? 'text-secondary-300' : 'text-white/70 group-hover:text-white'}`}>
                 {tab.icon}
               </span>
-              <span className={`text-overline uppercase font-display transition-colors duration-fast ${active ? 'text-primary-400' : 'text-neutral-400 group-hover:text-neutral-600'}`}>
+              <span className={`text-overline uppercase font-display transition-colors duration-fast ${active ? 'text-secondary-300' : 'text-white/70 group-hover:text-white'}`}>
                 {tab.label}
               </span>
             </Link>

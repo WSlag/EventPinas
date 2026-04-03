@@ -1,11 +1,21 @@
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import HomePage from './HomePage'
 
-describe('HomePage', () => {
-  it('renders the page heading and discovery copy', () => {
-    render(<HomePage />)
+const routerFuture = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+}
 
-    expect(screen.getByRole('heading', { name: /home/i })).toBeInTheDocument()
-    expect(screen.getByText(/discover events and trusted suppliers near you/i)).toBeInTheDocument()
+describe('HomePage', () => {
+  it('renders the events-style hero heading and supporting copy', () => {
+    render(
+      <MemoryRouter future={routerFuture}>
+        <HomePage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: /great events start here/i })).toBeInTheDocument()
+    expect(screen.getByText(/empowering event creators through every stage of the journey/i)).toBeInTheDocument()
   })
 })
