@@ -9,6 +9,82 @@ const primaryNavItems = [
   { label: 'Organizers', to: '/organizers' },
 ]
 
+const toneStyles = {
+  home: {
+    topRow: 'bg-[#204CA3]',
+    topRowBorder: '',
+    headerScrolled: 'shadow-sm',
+    logo: 'text-white',
+    navActive: 'bg-white/20 text-white',
+    navIdle: 'text-white/90 hover:text-white',
+    auth: 'text-neutral-100',
+    menuButton: 'text-white/95 hover:bg-white/10',
+    searchRowIdle: 'border-t border-white/20 bg-[#204CA3]',
+    searchRowScrolled: 'border-t border-white/20 bg-[#204CA3]',
+    searchButton: 'border-white/20 bg-white/10 text-white hover:bg-white/20',
+  },
+  discover: {
+    topRow: 'bg-white',
+    topRowBorder: 'border-b border-neutral-200',
+    headerScrolled: 'shadow-sm',
+    logo: 'text-neutral-900',
+    navActive: 'bg-neutral-100 text-neutral-900',
+    navIdle: 'text-neutral-700 hover:text-neutral-900',
+    auth: 'text-neutral-700',
+    menuButton: 'text-neutral-700 hover:bg-neutral-100',
+    searchRowIdle: 'border-t border-[#204CA3] bg-[#204CA3]',
+    searchRowScrolled: 'border-t border-[#204CA3] bg-[#204CA3]',
+    searchButton: 'border-white/20 bg-white/10 text-white hover:bg-white/20',
+  },
+  suppliers: {
+    topRow: 'bg-[#146C70]',
+    topRowBorder: '',
+    headerScrolled: 'shadow-sm',
+    logo: 'text-white',
+    navActive: 'bg-white/20 text-white',
+    navIdle: 'text-white/90 hover:text-white',
+    auth: 'text-neutral-100',
+    menuButton: 'text-white/95 hover:bg-white/10',
+    searchRowIdle: 'border-t border-white/20 bg-[#0F575A]',
+    searchRowScrolled: 'border-t border-white/20 bg-[#0F575A]',
+    searchButton: 'border-white/20 bg-white/10 text-white hover:bg-white/20',
+  },
+  organizers: {
+    topRow: 'bg-[#C44D2D]',
+    topRowBorder: '',
+    headerScrolled: 'shadow-sm',
+    logo: 'text-white',
+    navActive: 'bg-white/20 text-white',
+    navIdle: 'text-white/90 hover:text-white',
+    auth: 'text-neutral-100',
+    menuButton: 'text-white/95 hover:bg-white/10',
+    searchRowIdle: 'border-t border-white/20 bg-[#9F3F26]',
+    searchRowScrolled: 'border-t border-white/20 bg-[#9F3F26]',
+    searchButton: 'border-white/20 bg-white/10 text-white hover:bg-white/20',
+  },
+  saved: {
+    topRow: 'bg-[#2E323A]',
+    topRowBorder: '',
+    headerScrolled: 'shadow-sm',
+    logo: 'text-white',
+    navActive: 'bg-white/20 text-white',
+    navIdle: 'text-white/90 hover:text-white',
+    auth: 'text-neutral-100',
+    menuButton: 'text-white/95 hover:bg-white/10',
+    searchRowIdle: 'border-t border-white/20 bg-[#1F232A]',
+    searchRowScrolled: 'border-t border-white/20 bg-[#1F232A]',
+    searchButton: 'border-white/20 bg-white/10 text-white hover:bg-white/20',
+  },
+}
+
+function resolveTone(pathname) {
+  if (pathname === '/') return 'home'
+  if (pathname.startsWith('/suppliers')) return 'suppliers'
+  if (pathname.startsWith('/organizers') || pathname.startsWith('/manage')) return 'organizers'
+  if (pathname.startsWith('/saved')) return 'saved'
+  return 'discover'
+}
+
 function AppsIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -38,7 +114,9 @@ export default function TopNav() {
   const [scrolled, setScrolled] = useState(false)
   const { user, logout, authBusy } = useAuth()
   const location = useLocation()
-  const isHomepage = location.pathname === '/'
+  const tone = useMemo(() => resolveTone(location.pathname), [location.pathname])
+  const styles = toneStyles[tone]
+  const isHomepage = tone === 'home'
   const showSearchBar = location.pathname !== '/'
   const topRowHeightClass = isHomepage ? 'h-20' : 'h-16'
   const logoTextClass = isHomepage ? 'text-display-lg md:text-display-xl' : 'text-heading-xl'
@@ -68,11 +146,11 @@ export default function TopNav() {
   }
 
   return (
-    <header className={`sticky top-0 z-50 text-white transition-all duration-normal ${scrolled ? 'glass shadow-sm' : 'bg-info'}`}>
-      <div className="bg-info">
+    <header className={`sticky top-0 z-50 transition-all duration-normal ${scrolled ? styles.headerScrolled : ''}`}>
+      <div className={`${styles.topRow} ${styles.topRowBorder}`}>
         <div className={`mx-auto flex w-full max-w-[1680px] items-center justify-between px-space-4 md:px-space-6 ${topRowHeightClass}`}>
           <Link to="/" className="shrink-0">
-            <span className={`font-display font-extrabold tracking-tight text-white ${logoTextClass}`}>
+            <span className={`font-display font-extrabold tracking-tight ${styles.logo} ${logoTextClass}`}>
               eventpinas
               <span className="text-secondary-300">.</span>
               com
@@ -87,7 +165,7 @@ export default function TopNav() {
                   key={item.to}
                   to={item.to}
                   className={`rounded-full px-space-3 py-space-2 font-display transition-colors duration-fast ${navTextClass} ${
-                    active ? 'bg-white/20 text-white' : 'text-white/90 hover:text-white'
+                    active ? styles.navActive : styles.navIdle
                   }`}
                 >
                   {item.label}
@@ -97,7 +175,7 @@ export default function TopNav() {
             <Link
               to={createEventsLink}
               className={`rounded-full px-space-3 py-space-2 font-display transition-colors duration-fast ${navTextClass} ${
-                location.pathname === '/manage' ? 'bg-white/20 text-white' : 'text-white/90 hover:text-white'
+                location.pathname === '/manage' ? styles.navActive : styles.navIdle
               }`}
             >
               Create Events
@@ -107,7 +185,7 @@ export default function TopNav() {
           <div className="flex items-center gap-space-2">
             {!user && (
               <>
-                <Link to="/login" className={`font-display text-neutral-100 ${authTextClass}`}>
+                <Link to="/login" className={`font-display ${styles.auth} ${authTextClass}`}>
                   Sign in
                 </Link>
                 <Link to="/register" className={joinButtonClass}>
@@ -121,13 +199,13 @@ export default function TopNav() {
                 type="button"
                 onClick={onLogout}
                 disabled={authBusy}
-                className={`font-display text-neutral-100 disabled:opacity-60 ${authTextClass}`}
+                className={`font-display ${styles.auth} disabled:opacity-60 ${authTextClass}`}
               >
                 {authBusy ? 'Signing out...' : 'Sign out'}
               </button>
             )}
 
-            <button type="button" className="hidden rounded-full p-2 text-white/95 hover:bg-white/10 md:inline-flex" aria-label="Open menu">
+            <button type="button" className={`hidden rounded-full p-2 md:inline-flex ${styles.menuButton}`} aria-label="Open menu">
               <AppsIcon />
             </button>
           </div>
@@ -135,7 +213,7 @@ export default function TopNav() {
       </div>
 
       {showSearchBar && (
-        <div className={`border-t border-white/20 ${scrolled ? 'bg-info/90' : 'bg-info/95'}`}>
+        <div className={scrolled ? styles.searchRowScrolled : styles.searchRowIdle}>
           <div className="mx-auto flex h-12 w-full max-w-[1680px] items-center gap-space-3 px-space-4 md:px-space-6">
             <div className="relative flex-1">
               <input
@@ -148,7 +226,7 @@ export default function TopNav() {
                 <path d="m21 21-4.35-4.35" />
               </svg>
             </div>
-            <button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20" aria-label="Open notifications">
+            <button type="button" className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${styles.searchButton}`} aria-label="Open notifications">
               <BellIcon />
             </button>
           </div>
