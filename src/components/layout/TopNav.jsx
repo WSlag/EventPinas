@@ -19,9 +19,8 @@ const toneStyles = {
     navIdle: 'text-white/90 hover:text-white',
     auth: 'text-neutral-100',
     menuButton: 'text-white/95 hover:bg-white/10',
-    searchRowIdle: 'border-t border-white/20 bg-[#204CA3]',
-    searchRowScrolled: 'border-t border-white/20 bg-[#204CA3]',
-    searchButton: 'border-white/20 bg-white/10 text-white hover:bg-white/20',
+    mobilePanel: 'border-t border-white/20 bg-[#204CA3]',
+    mobileDivider: 'border-white/20',
   },
   discover: {
     topRow: 'bg-white',
@@ -32,9 +31,8 @@ const toneStyles = {
     navIdle: 'text-neutral-700 hover:text-neutral-900',
     auth: 'text-neutral-700',
     menuButton: 'text-neutral-700 hover:bg-neutral-100',
-    searchRowIdle: 'border-t border-[#204CA3] bg-[#204CA3]',
-    searchRowScrolled: 'border-t border-[#204CA3] bg-[#204CA3]',
-    searchButton: 'border-white/20 bg-white/10 text-white hover:bg-white/20',
+    mobilePanel: 'border-t border-neutral-200 bg-white',
+    mobileDivider: 'border-neutral-200',
   },
   suppliers: {
     topRow: 'bg-[#146C70]',
@@ -45,9 +43,8 @@ const toneStyles = {
     navIdle: 'text-white/90 hover:text-white',
     auth: 'text-neutral-100',
     menuButton: 'text-white/95 hover:bg-white/10',
-    searchRowIdle: 'border-t border-white/20 bg-[#0F575A]',
-    searchRowScrolled: 'border-t border-white/20 bg-[#0F575A]',
-    searchButton: 'border-white/20 bg-white/10 text-white hover:bg-white/20',
+    mobilePanel: 'border-t border-white/20 bg-[#146C70]',
+    mobileDivider: 'border-white/20',
   },
   organizers: {
     topRow: 'bg-[#C44D2D]',
@@ -58,9 +55,8 @@ const toneStyles = {
     navIdle: 'text-white/90 hover:text-white',
     auth: 'text-neutral-100',
     menuButton: 'text-white/95 hover:bg-white/10',
-    searchRowIdle: 'border-t border-white/20 bg-[#9F3F26]',
-    searchRowScrolled: 'border-t border-white/20 bg-[#9F3F26]',
-    searchButton: 'border-white/20 bg-white/10 text-white hover:bg-white/20',
+    mobilePanel: 'border-t border-white/20 bg-[#C44D2D]',
+    mobileDivider: 'border-white/20',
   },
   saved: {
     topRow: 'bg-[#2E323A]',
@@ -71,9 +67,8 @@ const toneStyles = {
     navIdle: 'text-white/90 hover:text-white',
     auth: 'text-neutral-100',
     menuButton: 'text-white/95 hover:bg-white/10',
-    searchRowIdle: 'border-t border-white/20 bg-[#1F232A]',
-    searchRowScrolled: 'border-t border-white/20 bg-[#1F232A]',
-    searchButton: 'border-white/20 bg-white/10 text-white hover:bg-white/20',
+    mobilePanel: 'border-t border-white/20 bg-[#2E323A]',
+    mobileDivider: 'border-white/20',
   },
 }
 
@@ -101,23 +96,33 @@ function AppsIcon() {
   )
 }
 
-function BellIcon() {
+function HamburgerIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
-      <path d="M9 17a3 3 0 0 0 6 0" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
+      <path d="M4 6h16" />
+      <path d="M4 12h16" />
+      <path d="M4 18h16" />
+    </svg>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
+      <path d="m6 6 12 12" />
+      <path d="m18 6-12 12" />
     </svg>
   )
 }
 
 export default function TopNav() {
   const [scrolled, setScrolled] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user, profile, hasActiveSubscription, logout, authBusy } = useAuth()
   const location = useLocation()
   const tone = useMemo(() => resolveTone(location.pathname), [location.pathname])
   const styles = toneStyles[tone]
   const isHomepage = tone === 'home'
-  const showSearchBar = location.pathname !== '/'
   const topRowHeightClass = isHomepage ? 'h-20' : 'h-16'
   const logoTextClass = isHomepage ? 'text-display-lg md:text-display-xl' : 'text-heading-xl'
   const navTextClass = isHomepage ? 'text-heading-sm' : 'text-label-md'
@@ -131,6 +136,23 @@ export default function TopNav() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [location.pathname, location.search])
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return undefined
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isMobileMenuOpen])
 
   const createEventsLink = useMemo(() => {
     if (!user) return '/register'
@@ -155,6 +177,19 @@ export default function TopNav() {
       // Keep nav stable even if sign out fails.
     }
   }
+
+  const onMobileMenuLinkClick = () => {
+    setIsMobileMenuOpen(false)
+  }
+
+  async function onMobileLogout() {
+    setIsMobileMenuOpen(false)
+    await onLogout()
+  }
+
+  const mobileMenuPanelStateClass = isMobileMenuOpen
+    ? 'max-h-[36rem] translate-y-0 opacity-100'
+    : 'pointer-events-none max-h-0 -translate-y-1 opacity-0'
 
   return (
     <header className={`sticky top-0 z-50 transition-all duration-normal ${scrolled ? styles.headerScrolled : ''}`}>
@@ -196,10 +231,10 @@ export default function TopNav() {
           <div className="flex items-center gap-space-2">
             {!user && (
               <>
-                <Link to="/login" className={`font-display ${styles.auth} ${authTextClass}`}>
+                <Link to="/login" className={`hidden font-display lg:inline-flex ${styles.auth} ${authTextClass}`}>
                   Sign in
                 </Link>
-                <Link to="/register" className={joinButtonClass}>
+                <Link to="/register" className={`hidden lg:inline-flex ${joinButtonClass}`}>
                   Join
                 </Link>
               </>
@@ -210,39 +245,97 @@ export default function TopNav() {
                 type="button"
                 onClick={onLogout}
                 disabled={authBusy}
-                className={`font-display ${styles.auth} disabled:opacity-60 ${authTextClass}`}
+                className={`hidden font-display lg:inline-flex ${styles.auth} disabled:opacity-60 ${authTextClass}`}
               >
                 {authBusy ? 'Signing out...' : 'Sign out'}
               </button>
             )}
 
-            <button type="button" className={`hidden rounded-full p-2 md:inline-flex ${styles.menuButton}`} aria-label="Open menu">
+            <button
+              type="button"
+              className={`inline-flex rounded-full p-2 lg:hidden ${styles.menuButton}`}
+              aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-controls="mobile-menu-panel"
+              aria-expanded={isMobileMenuOpen}
+              onClick={() => setIsMobileMenuOpen((open) => !open)}
+            >
+              {isMobileMenuOpen ? <CloseIcon /> : <HamburgerIcon />}
+            </button>
+
+            <button type="button" className={`hidden rounded-full p-2 lg:inline-flex ${styles.menuButton}`} aria-label="Open apps">
               <AppsIcon />
             </button>
           </div>
         </div>
       </div>
 
-      {showSearchBar && (
-        <div className={scrolled ? styles.searchRowScrolled : styles.searchRowIdle}>
-          <div className="mx-auto flex h-12 w-full max-w-[1680px] items-center gap-space-3 px-space-4 md:px-space-6">
-            <div className="relative flex-1">
-              <input
-                type="search"
-                placeholder="Search events, suppliers..."
-                className="h-9 w-full rounded-full border border-white/20 bg-white/95 pl-9 pr-space-3 font-body text-body-sm text-neutral-700 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
-              />
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
+      <nav
+        id="mobile-menu-panel"
+        aria-label="Mobile menu"
+        aria-hidden={!isMobileMenuOpen}
+        className={`${styles.mobilePanel} overflow-hidden transition-all duration-200 ease-out lg:hidden ${mobileMenuPanelStateClass}`}
+      >
+        <div className="mx-auto w-full max-w-[1680px] px-space-4 pb-space-3 pt-space-2 md:px-space-6">
+            <div className="flex flex-col gap-space-1">
+              {primaryNavItems.map((item) => {
+                const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))
+                return (
+                  <Link
+                    key={`mobile-${item.to}`}
+                    to={item.to}
+                    className={`rounded-full px-space-3 py-space-2 font-display text-label-md transition-colors duration-fast ${
+                      active ? styles.navActive : styles.navIdle
+                    }`}
+                    onClick={onMobileMenuLinkClick}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              })}
+              <Link
+                to={createEventsLink}
+                className={`rounded-full px-space-3 py-space-2 font-display text-label-md transition-colors duration-fast ${
+                  location.pathname.startsWith('/manage') ? styles.navActive : styles.navIdle
+                }`}
+                onClick={onMobileMenuLinkClick}
+              >
+                {createEventsLabel}
+              </Link>
             </div>
-            <button type="button" className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${styles.searchButton}`} aria-label="Open notifications">
-              <BellIcon />
-            </button>
+
+            <div className={`mt-space-3 border-t pt-space-3 ${styles.mobileDivider}`}>
+              {!user && (
+                <div className="flex flex-col gap-space-2">
+                  <Link
+                    to="/login"
+                    className={`rounded-full px-space-3 py-space-2 font-display text-label-md transition-colors duration-fast ${styles.navIdle}`}
+                    onClick={onMobileMenuLinkClick}
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    to="/register"
+                    className={`${joinButtonClass} inline-flex items-center justify-center`}
+                    onClick={onMobileMenuLinkClick}
+                  >
+                    Join
+                  </Link>
+                </div>
+              )}
+
+              {user && (
+                <button
+                  type="button"
+                  onClick={onMobileLogout}
+                  disabled={authBusy}
+                  className={`w-full rounded-full px-space-3 py-space-2 text-left font-display text-label-md ${styles.auth} disabled:opacity-60`}
+                >
+                  {authBusy ? 'Signing out...' : 'Sign out'}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+      </nav>
     </header>
   )
 }

@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { vi } from 'vitest'
+import { beforeEach, vi } from 'vitest'
 import TopNav from './TopNav'
 
 const routerFuture = {
@@ -8,16 +9,11 @@ const routerFuture = {
   v7_relativeSplatPath: true,
 }
 
+const logoutMock = vi.fn(async () => {})
+let authState
+
 vi.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({
-    user: null,
-    profile: null,
-    loading: false,
-    authBusy: false,
-    login: vi.fn(async () => {}),
-    register: vi.fn(async () => {}),
-    logout: vi.fn(async () => {}),
-  }),
+  useAuth: () => authState,
 }))
 
 function renderNav(route = '/') {
@@ -28,6 +24,20 @@ function renderNav(route = '/') {
   )
 }
 
+beforeEach(() => {
+  logoutMock.mockReset()
+  authState = {
+    user: null,
+    profile: null,
+    loading: false,
+    authBusy: false,
+    login: vi.fn(async () => {}),
+    register: vi.fn(async () => {}),
+    logout: logoutMock,
+    hasActiveSubscription: false,
+  }
+})
+
 describe('TopNav', () => {
   it('hides the search bar on homepage and uses larger homepage typography', () => {
     renderNav('/')
@@ -37,11 +47,82 @@ describe('TopNav', () => {
     expect(brandText).toHaveClass('text-display-lg')
   })
 
-  it('shows the search bar on non-homepage routes', () => {
+  it('hides the search bar on non-homepage routes', () => {
     renderNav('/events')
     const brandText = screen.getByRole('link', { name: /eventpinas/i }).querySelector('span')
 
-    expect(screen.getByPlaceholderText(/search events, suppliers/i)).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText(/search events, suppliers/i)).not.toBeInTheDocument()
     expect(brandText).toHaveClass('text-heading-xl')
+  })
+
+  it('renders an accessible mobile trigger and keeps menu closed by default', () => {
+    renderNav('/events')
+
+    const trigger = screen.getByRole('button', { name: /open menu/i })
+    expect(trigger).toHaveAttribute('aria-controls', 'mobile-menu-panel')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('navigation', { name: /mobile menu/i })).not.toBeInTheDocument()
+  })
+
+  it('opens mobile menu with nav links and guest auth actions', async () => {
+    const user = userEvent.setup()
+    renderNav('/events')
+
+    await user.click(screen.getByRole('button', { name: /open menu/i }))
+
+    const panel = screen.getByRole('navigation', { name: /mobile menu/i })
+    expect(within(panel).getByRole('link', { name: /my tickets/i })).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: /discover events/i })).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: /create events/i })).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: /^sign in$/i })).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: /^join$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /close menu/i })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('closes mobile menu when a menu link is tapped', async () => {
+    const user = userEvent.setup()
+    renderNav('/events')
+
+    await user.click(screen.getByRole('button', { name: /open menu/i }))
+    const panel = screen.getByRole('navigation', { name: /mobile menu/i })
+
+    await user.click(within(panel).getByRole('link', { name: /suppliers/i }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('navigation', { name: /mobile menu/i })).not.toBeInTheDocument()
+    })
+  })
+
+  it('closes mobile menu when escape is pressed', async () => {
+    const user = userEvent.setup()
+    renderNav('/events')
+
+    await user.click(screen.getByRole('button', { name: /open menu/i }))
+    expect(screen.getByRole('navigation', { name: /mobile menu/i })).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => {
+      expect(screen.queryByRole('navigation', { name: /mobile menu/i })).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows sign out in mobile menu for authenticated users', async () => {
+    authState = {
+      ...authState,
+      user: { uid: 'user-1' },
+      profile: { role: 'organizer' },
+      hasActiveSubscription: true,
+    }
+
+    const user = userEvent.setup()
+    renderNav('/events')
+
+    await user.click(screen.getByRole('button', { name: /open menu/i }))
+    const panel = screen.getByRole('navigation', { name: /mobile menu/i })
+
+    expect(within(panel).getByRole('button', { name: /sign out/i })).toBeInTheDocument()
+    expect(within(panel).queryByRole('link', { name: /^sign in$/i })).not.toBeInTheDocument()
+    expect(within(panel).queryByRole('link', { name: /^join$/i })).not.toBeInTheDocument()
   })
 })
