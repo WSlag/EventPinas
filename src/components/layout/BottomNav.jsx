@@ -59,8 +59,8 @@ export default function BottomNav() {
   const location = useLocation()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface-raised shadow-xl border-t border-neutral-200">
-      <div className="max-w-md mx-auto flex">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface-raised shadow-xl border-t border-neutral-200 md:left-1/2 md:-translate-x-1/2 md:max-w-md">
+      <div className="flex">
         {tabs.map((tab) => {
           const active = location.pathname === tab.to || (tab.to !== '/' && location.pathname.startsWith(tab.to))
           return (
