@@ -19,10 +19,10 @@ import OrganizerManagePage from '@/pages/marketplace/OrganizerManagePage'
 
 function MarketplaceLayout({ children }) {
   return (
-    <div className="min-h-screen bg-surface-base md:px-space-4 md:py-space-4">
-      <div className="min-h-screen bg-surface-base md:max-w-md md:mx-auto md:border md:border-neutral-200 md:rounded-xl md:shadow-sm md:overflow-hidden">
+    <div className="min-h-screen bg-surface-base md:bg-neutral-100">
+      <div className="min-h-screen bg-surface-base md:border-x md:border-neutral-200">
         <TopNav />
-        <main className="pb-safe">{children}</main>
+        <main className="pb-safe md:pb-space-8 md:px-space-4">{children}</main>
         <BottomNav />
       </div>
     </div>

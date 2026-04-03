@@ -7,13 +7,37 @@ import {
   updateProfile,
 } from 'firebase/auth'
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
-import { auth, db } from '@/lib/firebase'
+import { auth, db, firebaseEnabled } from '@/lib/firebase'
 
 const AuthContext = createContext(null)
+const LOCAL_AUTH_KEY = 'eventpinas-local-auth'
+const LOCAL_USERS_KEY = 'eventpinas-local-users'
+
+function readLocalJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function writeLocalJSON(key, value) {
+  localStorage.setItem(key, JSON.stringify(value))
+}
 
 async function fetchProfile(uid) {
+  if (!firebaseEnabled || !db) return null
   const snap = await getDoc(doc(db, 'users', uid))
   return snap.exists() ? snap.data() : null
+}
+
+function toLocalSession(localUser) {
+  return {
+    uid: localUser.uid,
+    email: localUser.email,
+    displayName: localUser.displayName,
+  }
 }
 
 export function AuthProvider({ children }) {
@@ -23,6 +47,19 @@ export function AuthProvider({ children }) {
   const [authBusy, setAuthBusy] = useState(false)
 
   useEffect(() => {
+    if (!firebaseEnabled || !auth) {
+      const session = readLocalJSON(LOCAL_AUTH_KEY, null)
+      if (session) {
+        setUser(toLocalSession(session))
+        setProfile({ role: session.role, displayName: session.displayName, email: session.email })
+      } else {
+        setUser(null)
+        setProfile(null)
+      }
+      setLoading(false)
+      return undefined
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
@@ -43,7 +80,21 @@ export function AuthProvider({ children }) {
 
   async function login(email, password) {
     setAuthBusy(true)
+
     try {
+      if (!firebaseEnabled || !auth) {
+        const users = readLocalJSON(LOCAL_USERS_KEY, [])
+        const matched = users.find((candidate) => candidate.email === email && candidate.password === password)
+        if (!matched) {
+          throw new Error('Invalid email or password.')
+        }
+
+        writeLocalJSON(LOCAL_AUTH_KEY, matched)
+        setUser(toLocalSession(matched))
+        setProfile({ role: matched.role, displayName: matched.displayName, email: matched.email })
+        return toLocalSession(matched)
+      }
+
       const credentials = await signInWithEmailAndPassword(auth, email, password)
       const data = await fetchProfile(credentials.user.uid)
       setProfile(data)
@@ -55,7 +106,30 @@ export function AuthProvider({ children }) {
 
   async function register({ email, password, displayName, role }) {
     setAuthBusy(true)
+
     try {
+      if (!firebaseEnabled || !auth || !db) {
+        const users = readLocalJSON(LOCAL_USERS_KEY, [])
+        if (users.some((candidate) => candidate.email === email)) {
+          throw new Error('An account with this email already exists.')
+        }
+
+        const localUser = {
+          uid: crypto.randomUUID(),
+          email,
+          password,
+          displayName: displayName ?? '',
+          role: role ?? 'attendee',
+        }
+
+        writeLocalJSON(LOCAL_USERS_KEY, [...users, localUser])
+        writeLocalJSON(LOCAL_AUTH_KEY, localUser)
+
+        setUser(toLocalSession(localUser))
+        setProfile({ role: localUser.role, displayName: localUser.displayName, email: localUser.email })
+        return toLocalSession(localUser)
+      }
+
       const credentials = await createUserWithEmailAndPassword(auth, email, password)
 
       if (displayName) {
@@ -86,7 +160,15 @@ export function AuthProvider({ children }) {
 
   async function logout() {
     setAuthBusy(true)
+
     try {
+      if (!firebaseEnabled || !auth) {
+        localStorage.removeItem(LOCAL_AUTH_KEY)
+        setUser(null)
+        setProfile(null)
+        return
+      }
+
       await signOut(auth)
       setUser(null)
       setProfile(null)
@@ -105,6 +187,7 @@ export function AuthProvider({ children }) {
       register,
       logout,
       isOrganizer: profile?.role === 'organizer',
+      authMode: firebaseEnabled ? 'firebase' : 'local',
     }),
     [user, profile, loading, authBusy],
   )

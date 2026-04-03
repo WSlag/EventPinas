@@ -13,10 +13,28 @@ const firebaseConfig = {
   measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
-const app = initializeApp(firebaseConfig)
+function hasRequiredFirebaseConfig(config) {
+  return Boolean(config.apiKey && config.authDomain && config.projectId && config.appId)
+}
 
-export const auth    = getAuth(app)
-export const db      = getFirestore(app)
-export const storage = getStorage(app)
+export const firebaseEnabled = hasRequiredFirebaseConfig(firebaseConfig)
 
+let app = null
+let auth = null
+let db = null
+let storage = null
+
+if (firebaseEnabled) {
+  try {
+    app = initializeApp(firebaseConfig)
+    auth = getAuth(app)
+    db = getFirestore(app)
+    storage = getStorage(app)
+  } catch (error) {
+    // Keep app usable in local mode when Firebase setup is incomplete.
+    console.warn('Firebase initialization failed. Falling back to local mode.', error)
+  }
+}
+
+export { app, auth, db, storage }
 export default app

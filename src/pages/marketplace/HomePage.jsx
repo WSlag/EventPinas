@@ -54,8 +54,8 @@ export default function HomePage() {
         <p className="font-body text-body-sm text-neutral-500 mt-space-1">Discover events and trusted suppliers near you.</p>
       </header>
 
-      <section className="overflow-x-auto scrollbar-hide">
-        <div className="flex gap-space-2 min-w-max">
+      <section className="overflow-x-auto scrollbar-hide md:overflow-visible">
+        <div className="flex gap-space-2 min-w-max md:min-w-0 md:flex-wrap">
           {marketplaceCategories.map((category) => {
             const active = category === activeCategory
             return (
@@ -85,7 +85,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <h2 className="font-display text-heading-md text-neutral-800">Featured Ads</h2>
             </div>
-            <div className="space-y-space-3">
+            <div className="space-y-space-3 md:grid md:grid-cols-2 md:gap-space-3 md:space-y-0 xl:grid-cols-3">
               {feed.adSlots.map((slot) => (
                 <article key={slot.id} className="rounded-xl p-space-4 text-white" style={{ backgroundColor: slot.accent }}>
                   <p className="text-overline uppercase">{slot.tag}</p>
@@ -103,7 +103,7 @@ export default function HomePage() {
               <Link to="/events" className="text-label-sm text-primary-500">See all</Link>
             </div>
             {feed.upcomingEvents.length === 0 && <EmptyState message="No events found for this category yet." />}
-            <div className="space-y-space-3">
+            <div className="space-y-space-3 md:grid md:grid-cols-2 md:gap-space-3 md:space-y-0">
               {feed.upcomingEvents.map((event) => (
                 <article key={event.id} className="rounded-lg border border-neutral-200 bg-white p-space-4">
                   <div className="flex items-start justify-between gap-space-3">
@@ -138,7 +138,7 @@ export default function HomePage() {
               <Link to="/suppliers" className="text-label-sm text-primary-500">See all</Link>
             </div>
             {feed.featuredSuppliers.length === 0 && <EmptyState message="No featured suppliers available right now." />}
-            <div className="space-y-space-3">
+            <div className="space-y-space-3 md:grid md:grid-cols-2 md:gap-space-3 md:space-y-0 xl:grid-cols-3">
               {feed.featuredSuppliers.map((supplier) => (
                 <article key={supplier.id} className="rounded-lg border border-neutral-200 bg-white p-space-4">
                   <div className="flex items-center justify-between gap-space-3">
@@ -173,7 +173,7 @@ export default function HomePage() {
               <Link to="/organizers" className="text-label-sm text-primary-500">See all</Link>
             </div>
             {feed.topOrganizers.length === 0 && <EmptyState message="No organizer profiles available yet." />}
-            <div className="space-y-space-3">
+            <div className="space-y-space-3 md:grid md:grid-cols-2 md:gap-space-3 md:space-y-0 xl:grid-cols-3">
               {feed.topOrganizers.map((organizer) => (
                 <article key={organizer.id} className="rounded-lg border border-neutral-200 bg-white p-space-4">
                   <Link to={`/organizers/${organizer.id}`} className="font-display text-heading-sm text-neutral-900 hover:text-primary-500">
