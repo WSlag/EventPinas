@@ -173,3 +173,22 @@ export function getMarketplaceFilterOptions() {
     supplierCategories: Array.from(new Set(suppliers.map((item) => item.category))).sort(),
   }
 }
+
+export async function getSavedMarketplaceItems(savedMap, options = {}) {
+  const source = savedMap ?? { events: [], suppliers: [], organizers: [] }
+  const eventIds = Array.isArray(source.events) ? source.events : []
+  const supplierIds = Array.isArray(source.suppliers) ? source.suppliers : []
+  const organizerIds = Array.isArray(source.organizers) ? source.organizers : []
+
+  const [savedEvents, savedSuppliers, savedOrganizers] = await Promise.all([
+    Promise.all(eventIds.map((id) => getEventById(id, options))),
+    Promise.all(supplierIds.map((id) => getSupplierById(id, options))),
+    Promise.all(organizerIds.map((id) => getOrganizerById(id, options))),
+  ])
+
+  return {
+    events: savedEvents.filter(Boolean),
+    suppliers: savedSuppliers.filter(Boolean),
+    organizers: savedOrganizers.filter(Boolean),
+  }
+}

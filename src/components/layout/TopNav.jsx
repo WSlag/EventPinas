@@ -1,8 +1,17 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '@/hooks/useAuth'
+
+const roleLinks = [
+  { label: 'Attendee', to: '/' },
+  { label: 'Organizer', to: '/manage' },
+  { label: 'Supplier', to: '/suppliers' },
+]
 
 export default function TopNav() {
   const [scrolled, setScrolled] = useState(false)
+  const { user, profile, logout, authBusy } = useAuth()
+  const location = useLocation()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -10,27 +19,56 @@ export default function TopNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  async function onLogout() {
+    try {
+      await logout()
+    } catch {
+      // Keep nav stable even if sign out fails.
+    }
+  }
+
   return (
     <header className={`sticky top-0 z-50 transition-all duration-normal ${scrolled ? 'glass shadow-sm' : 'bg-surface-base'}`}>
-      {/* Row 1 — Role switcher */}
       <div className="bg-neutral-900 px-space-4 py-space-1 flex items-center justify-between">
         <div className="flex items-center gap-space-2">
-          <button className="text-overline text-white uppercase px-space-2 py-space-1 rounded-full bg-primary-400">
-            Attendee
-          </button>
-          <button className="text-overline text-neutral-400 uppercase px-space-2 py-space-1">
-            Organizer
-          </button>
-          <button className="text-overline text-neutral-400 uppercase px-space-2 py-space-1">
-            Supplier
-          </button>
+          {roleLinks.map((roleLink) => {
+            const active = location.pathname === roleLink.to || (roleLink.to !== '/' && location.pathname.startsWith(roleLink.to))
+            return (
+              <Link
+                key={roleLink.to}
+                to={roleLink.to}
+                className={`text-overline uppercase px-space-2 py-space-1 rounded-full ${
+                  active ? 'text-white bg-primary-400' : 'text-neutral-400'
+                }`}
+              >
+                {roleLink.label}
+              </Link>
+            )
+          })}
         </div>
-        <Link to="/login" className="text-label-sm font-display text-neutral-300">
-          Sign in
-        </Link>
+
+        {!user && (
+          <div className="flex items-center gap-space-2">
+            <Link to="/login" className="text-label-sm font-display text-neutral-300">Sign in</Link>
+            <Link to="/register" className="text-label-sm font-display text-white bg-primary-400 px-space-2 py-space-1 rounded-full">Join</Link>
+          </div>
+        )}
+
+        {user && (
+          <div className="flex items-center gap-space-2">
+            <span className="text-label-sm text-neutral-300 hidden sm:inline">{profile?.displayName || user.email}</span>
+            <button
+              type="button"
+              onClick={onLogout}
+              disabled={authBusy}
+              className="text-label-sm font-display text-neutral-300 disabled:opacity-60"
+            >
+              {authBusy ? 'Signing out...' : 'Sign out'}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Row 2 — Logo + Search */}
       <div className="px-space-4 h-14 flex items-center gap-space-3">
         <Link to="/" className="font-display font-bold text-heading-md text-primary-400 shrink-0">
           EventPinas
