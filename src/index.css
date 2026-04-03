@@ -1,0 +1,116 @@
+/* Google Fonts — must be first */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design System CSS Variables */
+:root {
+  /* Typography */
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  /* Brand */
+  --color-brand:        #FF6B4A;
+  --color-brand-dark:   #D93A18;
+  --color-brand-light:  #FFE0D9;
+  --color-accent:       #1FA8A5;
+  --color-accent-light: #D5F5F4;
+
+  /* Surfaces */
+  --surface-base:    #FAFAF9;
+  --surface-raised:  #FFFFFF;
+  --surface-overlay: #F5F4F2;
+
+  /* Text */
+  --text-primary:   #1C1917;
+  --text-secondary: #57534E;
+  --text-tertiary:  #78746C;
+  --text-disabled:  #A8A49C;
+  --text-inverse:   #FFFFFF;
+
+  /* Borders */
+  --border-subtle:  #E8E6E1;
+  --border-default: #D1CEC8;
+  --border-strong:  #A8A49C;
+
+  /* Radius */
+  --radius-pill:  9999px;
+  --radius-card:  12px;
+  --radius-input: 8px;
+  --radius-modal: 20px;
+  --radius-sheet: 24px;
+
+  /* Motion */
+  --duration-fast:   150ms;
+  --duration-normal: 250ms;
+  --duration-slow:   350ms;
+  --ease-default:    cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out:        cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Base Resets */
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--surface-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior-y: none;
+  }
+
+  /* Safe area for PWA / notched phones */
+  #root {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Utilities */
+@layer utilities {
+  /* Hide scrollbar but keep scrollable */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe bottom padding (bottom nav) */
+  .pb-safe {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+
+  /* Line clamp utilities */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Frosted glass */
+  .glass {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    background-color: rgb(255 255 255 / 0.85);
+  }
+}

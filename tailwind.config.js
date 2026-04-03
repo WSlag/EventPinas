@@ -1,0 +1,130 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // Primary — Coral/Sunset
+        primary: {
+          50:  '#FFF1EE',
+          100: '#FFE0D9',
+          200: '#FFC2B4',
+          300: '#FF9A84',
+          400: '#FF6B4A',  // Primary CTA
+          500: '#F04E2A',
+          600: '#D93A18',
+          700: '#B52E12',
+          800: '#8F2410',
+          900: '#6B1A0C',
+        },
+        // Secondary — Deep Teal
+        secondary: {
+          50:  '#EDFAFA',
+          100: '#D5F5F4',
+          200: '#AAEAE9',
+          300: '#72D9D7',
+          400: '#38C2BF',
+          500: '#1FA8A5',  // Secondary CTA
+          600: '#178A88',
+          700: '#126E6C',
+          800: '#0E5452',
+          900: '#0A3E3D',
+        },
+        // Neutral — Warm Gray
+        neutral: {
+          50:  '#FAFAF9',
+          100: '#F5F4F2',
+          200: '#E8E6E1',
+          300: '#D1CEC8',
+          400: '#A8A49C',
+          500: '#78746C',
+          600: '#57534E',
+          700: '#44403C',
+          800: '#292524',
+          900: '#1C1917',
+        },
+        // Semantic
+        success: '#16A34A',
+        warning: '#D97706',
+        error:   '#DC2626',
+        info:    '#2563EB',
+        // Surfaces
+        surface: {
+          base:    '#FAFAF9',
+          raised:  '#FFFFFF',
+          overlay: '#F5F4F2',
+          invert:  '#1C1917',
+        },
+      },
+      fontFamily: {
+        display: ['"Plus Jakarta Sans"', 'sans-serif'],
+        body:    ['"DM Sans"', 'sans-serif'],
+      },
+      fontSize: {
+        'display-xl': ['2.25rem',  { lineHeight: '2.75rem',  letterSpacing: '-0.02em',  fontWeight: '800' }],
+        'display-lg': ['1.875rem', { lineHeight: '2.375rem', letterSpacing: '-0.02em',  fontWeight: '800' }],
+        'heading-xl': ['1.5rem',   { lineHeight: '2rem',     letterSpacing: '-0.015em', fontWeight: '700' }],
+        'heading-lg': ['1.25rem',  { lineHeight: '1.75rem',  letterSpacing: '-0.01em',  fontWeight: '700' }],
+        'heading-md': ['1.125rem', { lineHeight: '1.625rem', letterSpacing: '-0.01em',  fontWeight: '600' }],
+        'heading-sm': ['1rem',     { lineHeight: '1.5rem',   letterSpacing: '0',        fontWeight: '600' }],
+        'body-lg':    ['1rem',     { lineHeight: '1.625rem', letterSpacing: '0',        fontWeight: '400' }],
+        'body-md':    ['0.9375rem',{ lineHeight: '1.5rem',   letterSpacing: '0',        fontWeight: '400' }],
+        'body-sm':    ['0.875rem', { lineHeight: '1.375rem', letterSpacing: '0',        fontWeight: '400' }],
+        'label-lg':   ['0.9375rem',{ lineHeight: '1.25rem',  letterSpacing: '0.01em',   fontWeight: '600' }],
+        'label-md':   ['0.875rem', { lineHeight: '1.25rem',  letterSpacing: '0.01em',   fontWeight: '600' }],
+        'label-sm':   ['0.8125rem',{ lineHeight: '1.125rem', letterSpacing: '0.02em',   fontWeight: '500' }],
+        'caption-lg': ['0.8125rem',{ lineHeight: '1.25rem',  letterSpacing: '0',        fontWeight: '400' }],
+        'caption-sm': ['0.75rem',  { lineHeight: '1.125rem', letterSpacing: '0',        fontWeight: '400' }],
+        'overline':   ['0.6875rem',{ lineHeight: '1rem',     letterSpacing: '0.08em',   fontWeight: '600' }],
+      },
+      spacing: {
+        'space-1':  '4px',
+        'space-2':  '8px',
+        'space-3':  '12px',
+        'space-4':  '16px',
+        'space-5':  '20px',
+        'space-6':  '24px',
+        'space-8':  '32px',
+        'space-10': '40px',
+        'space-12': '48px',
+        'space-16': '64px',
+      },
+      borderRadius: {
+        'none': '0px',
+        'xs':   '4px',
+        'sm':   '6px',
+        'md':   '8px',
+        'lg':   '12px',
+        'xl':   '16px',
+        '2xl':  '20px',
+        '3xl':  '24px',
+        'full': '9999px',
+      },
+      boxShadow: {
+        'none':    'none',
+        'xs':      '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        'sm':      '0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06)',
+        'md':      '0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05)',
+        'lg':      '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05)',
+        'xl':      '0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.05)',
+        '2xl':     '0 25px 50px -12px rgb(0 0 0 / 0.15)',
+        'primary': '0 4px 14px 0 rgb(240 78 42 / 0.35)',
+        'inner':   'inset 0 2px 4px 0 rgb(0 0 0 / 0.06)',
+      },
+      transitionTimingFunction: {
+        'default': 'cubic-bezier(0.4, 0, 0.2, 1)',
+        'spring':  'cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'out':     'cubic-bezier(0, 0, 0.2, 1)',
+      },
+      transitionDuration: {
+        'fast':   '150ms',
+        'normal': '250ms',
+        'slow':   '350ms',
+      },
+    },
+  },
+  plugins: [],
+}
