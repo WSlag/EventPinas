@@ -1,7 +1,7 @@
-﻿import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
-import { SectionHeader, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
+import { ManageBadge, ManageButton, ManageCard, ManageFilterBar, ManageSectionHeader } from '@/components/ui/ManagePrimitives'
 import { listManageStaff, toggleManageStaffStatus, updateManageStaffRole } from '@/services'
 
 const staffRoleOptions = [
@@ -21,11 +21,11 @@ export default function ManageStaffPage() {
 
   const canManageStaff = permissions.includes('staff')
 
-  async function loadStaff() {
+  const loadStaff = useCallback(async () => {
     if (!selectedEventId) return
     const payload = await listManageStaff(selectedEventId, { query, status }, { simulateLatency: false })
     setStaff(payload)
-  }
+  }, [selectedEventId, query, status])
 
   useEffect(() => {
     if (!selectedEventId) return
@@ -33,9 +33,7 @@ export default function ManageStaffPage() {
       setLoading(false)
       return
     }
-
     let active = true
-
     async function load() {
       setLoading(true)
       setError('')
@@ -47,12 +45,11 @@ export default function ManageStaffPage() {
         if (active) setLoading(false)
       }
     }
-
     load()
     return () => {
       active = false
     }
-  }, [selectedEventId, query, status, canManageStaff])
+  }, [selectedEventId, query, status, canManageStaff, loadStaff])
 
   async function onRoleChange(staffId, nextRole) {
     setError('')
@@ -81,15 +78,15 @@ export default function ManageStaffPage() {
 
   return (
     <section className="space-y-space-4">
-      <SectionHeader title="Staff & Permissions" subtitle="Apply least-privilege roles to gate check-in and seating actions." />
+      <ManageSectionHeader title="Staff & Permissions" subtitle="Apply least-privilege roles to gate check-in and seating actions." />
       {error && <ErrorState message={error} />}
 
-      <div className="grid gap-space-2 md:grid-cols-2">
+      <ManageFilterBar>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search by name, role, or station"
-          className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+          className="h-10 flex-1 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
         />
         <select
           value={status}
@@ -100,12 +97,12 @@ export default function ManageStaffPage() {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-      </div>
+      </ManageFilterBar>
 
       <div className="space-y-space-2">
         {staff.map((member) => (
-          <SurfaceCard key={member.id}>
-            <div className="grid gap-space-2 md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-center">
+          <ManageCard key={member.id}>
+            <div className="grid gap-space-2 md:grid-cols-[1.4fr_1fr_auto_auto] md:items-center">
               <div>
                 <p className="font-display text-heading-sm text-neutral-900">{member.name}</p>
                 <p className="font-body text-caption-lg text-neutral-500">{member.station}</p>
@@ -121,25 +118,17 @@ export default function ManageStaffPage() {
                 ))}
               </select>
 
-              <span className={`inline-flex w-max rounded-full px-space-2 py-space-1 text-label-sm ${
-                member.status === 'active' ? 'bg-green-100 text-success' : 'bg-neutral-100 text-neutral-600'
-              }`}
-              >
+              <ManageBadge tone={member.status === 'active' ? 'success' : 'neutral'}>
                 {member.status}
-              </span>
+              </ManageBadge>
 
-              <button
-                type="button"
-                onClick={() => onToggleStatus(member.id)}
-                className="rounded-full bg-neutral-100 px-space-3 py-space-1 font-display text-label-sm text-neutral-700"
-              >
+              <ManageButton variant="secondary" onClick={() => onToggleStatus(member.id)}>
                 Toggle
-              </button>
+              </ManageButton>
             </div>
-          </SurfaceCard>
+          </ManageCard>
         ))}
       </div>
     </section>
   )
 }
-

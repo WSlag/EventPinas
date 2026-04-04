@@ -1,33 +1,38 @@
+import { Suspense, lazy } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/hooks/useAuth'
 import OrganizerGuard from '@/components/auth/OrganizerGuard'
 
 import TopNav from '@/components/layout/TopNav'
 import BottomNav from '@/components/layout/BottomNav'
+import ManageBottomNav from '@/components/layout/ManageBottomNav'
 
-import LoginPage from '@/pages/auth/LoginPage'
-import RegisterPage from '@/pages/auth/RegisterPage'
-import SubscribePage from '@/pages/auth/SubscribePage'
-import HomePage from '@/pages/marketplace/HomePage'
-import EventsPage from '@/pages/marketplace/EventsPage'
-import EventDetailPage from '@/pages/marketplace/EventDetailPage'
-import SuppliersPage from '@/pages/marketplace/SuppliersPage'
-import SupplierDetailPage from '@/pages/marketplace/SupplierDetailPage'
-import OrganizersPage from '@/pages/marketplace/OrganizersPage'
-import OrganizerDetailPage from '@/pages/marketplace/OrganizerDetailPage'
-import SavedPage from '@/pages/marketplace/SavedPage'
-import OrganizerManagePage from '@/pages/marketplace/OrganizerManagePage'
-import ManageDashboardPage from '@/pages/marketplace/manage/ManageDashboardPage'
-import ManageEventsPage from '@/pages/marketplace/manage/ManageEventsPage'
-import ManageCheckinPage from '@/pages/marketplace/manage/ManageCheckinPage'
-import ManageGuestsPage from '@/pages/marketplace/manage/ManageGuestsPage'
-import ManageSeatingPage from '@/pages/marketplace/manage/ManageSeatingPage'
-import ManageStaffPage from '@/pages/marketplace/manage/ManageStaffPage'
-import ManageQrPage from '@/pages/marketplace/manage/ManageQrPage'
-import ManageIncidentsPage from '@/pages/marketplace/manage/ManageIncidentsPage'
-import ManageWaitlistPage from '@/pages/marketplace/manage/ManageWaitlistPage'
-import ManageAnalyticsPage from '@/pages/marketplace/manage/ManageAnalyticsPage'
-import ManageAuditPage from '@/pages/marketplace/manage/ManageAuditPage'
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
+const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'))
+const SubscribePage = lazy(() => import('@/pages/auth/SubscribePage'))
+const HomePage = lazy(() => import('@/pages/marketplace/HomePage'))
+const EventsPage = lazy(() => import('@/pages/marketplace/EventsPage'))
+const EventDetailPage = lazy(() => import('@/pages/marketplace/EventDetailPage'))
+const SuppliersPage = lazy(() => import('@/pages/marketplace/SuppliersPage'))
+const SupplierDetailPage = lazy(() => import('@/pages/marketplace/SupplierDetailPage'))
+const OrganizersPage = lazy(() => import('@/pages/marketplace/OrganizersPage'))
+const OrganizerDetailPage = lazy(() => import('@/pages/marketplace/OrganizerDetailPage'))
+const SavedPage = lazy(() => import('@/pages/marketplace/SavedPage'))
+const OrganizerManagePage = lazy(() => import('@/pages/marketplace/OrganizerManagePage'))
+const ManageDashboardPage = lazy(() => import('@/pages/marketplace/manage/ManageDashboardPage'))
+const ManageEventsPage = lazy(() => import('@/pages/marketplace/manage/ManageEventsPage'))
+const ManageCheckinPage = lazy(() => import('@/pages/marketplace/manage/ManageCheckinPage'))
+const ManageGuestsPage = lazy(() => import('@/pages/marketplace/manage/ManageGuestsPage'))
+const ManageSeatingPage = lazy(() => import('@/pages/marketplace/manage/ManageSeatingPage'))
+const ManageStaffPage = lazy(() => import('@/pages/marketplace/manage/ManageStaffPage'))
+const ManageQrPage = lazy(() => import('@/pages/marketplace/manage/ManageQrPage'))
+const ManageIncidentsPage = lazy(() => import('@/pages/marketplace/manage/ManageIncidentsPage'))
+const ManageWaitlistPage = lazy(() => import('@/pages/marketplace/manage/ManageWaitlistPage'))
+const ManageAnalyticsPage = lazy(() => import('@/pages/marketplace/manage/ManageAnalyticsPage'))
+const ManageAuditPage = lazy(() => import('@/pages/marketplace/manage/ManageAuditPage'))
+const ManagePlannerPage = lazy(() => import('@/pages/marketplace/manage/ManagePlannerPage'))
+const ManageOnlineRegistrationPage = lazy(() => import('@/pages/marketplace/manage/ManageOnlineRegistrationPage'))
+const ManageOnsiteRegistrationPage = lazy(() => import('@/pages/marketplace/manage/ManageOnsiteRegistrationPage'))
 
 function MarketplaceLayout({ children }) {
   return (
@@ -39,46 +44,83 @@ function MarketplaceLayout({ children }) {
   )
 }
 
+function ManageLayout({ children }) {
+  return (
+    <div className="min-h-screen bg-neutral-100">
+      <TopNav />
+      <main className="pb-24 md:pb-space-8">{children}</main>
+      <ManageBottomNav />
+    </div>
+  )
+}
+
+function RouteFallback() {
+  return (
+    <div className="mx-auto w-full max-w-[1280px] px-space-4 py-space-6 font-body text-body-sm text-neutral-500 md:px-space-6 md:py-space-8">
+      Loading page...
+    </div>
+  )
+}
+
+function LazyPage({ children }) {
+  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>
+}
+
+function renderLazy(Component) {
+  return (
+    <LazyPage>
+      <Component />
+    </LazyPage>
+  )
+}
+
+function renderMarketplacePage(Component) {
+  return <MarketplaceLayout>{renderLazy(Component)}</MarketplaceLayout>
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/subscribe" element={<MarketplaceLayout><SubscribePage /></MarketplaceLayout>} />
+          <Route path="/login" element={renderLazy(LoginPage)} />
+          <Route path="/register" element={renderLazy(RegisterPage)} />
+          <Route path="/subscribe" element={renderMarketplacePage(SubscribePage)} />
 
-          <Route path="/" element={<MarketplaceLayout><HomePage /></MarketplaceLayout>} />
-          <Route path="/events" element={<MarketplaceLayout><EventsPage /></MarketplaceLayout>} />
-          <Route path="/events/:id" element={<MarketplaceLayout><EventDetailPage /></MarketplaceLayout>} />
-          <Route path="/suppliers" element={<MarketplaceLayout><SuppliersPage /></MarketplaceLayout>} />
-          <Route path="/suppliers/:id" element={<MarketplaceLayout><SupplierDetailPage /></MarketplaceLayout>} />
-          <Route path="/organizers" element={<MarketplaceLayout><OrganizersPage /></MarketplaceLayout>} />
-          <Route path="/organizers/:id" element={<MarketplaceLayout><OrganizerDetailPage /></MarketplaceLayout>} />
-          <Route path="/saved" element={<MarketplaceLayout><SavedPage /></MarketplaceLayout>} />
+          <Route path="/" element={renderMarketplacePage(HomePage)} />
+          <Route path="/events" element={renderMarketplacePage(EventsPage)} />
+          <Route path="/events/:id" element={renderMarketplacePage(EventDetailPage)} />
+          <Route path="/suppliers" element={renderMarketplacePage(SuppliersPage)} />
+          <Route path="/suppliers/:id" element={renderMarketplacePage(SupplierDetailPage)} />
+          <Route path="/organizers" element={renderMarketplacePage(OrganizersPage)} />
+          <Route path="/organizers/:id" element={renderMarketplacePage(OrganizerDetailPage)} />
+          <Route path="/saved" element={renderMarketplacePage(SavedPage)} />
 
           <Route
             path="/manage"
             element={(
               <OrganizerGuard>
-                <MarketplaceLayout>
-                  <OrganizerManagePage />
-                </MarketplaceLayout>
+                <ManageLayout>
+                  {renderLazy(OrganizerManagePage)}
+                </ManageLayout>
               </OrganizerGuard>
             )}
           >
             <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<ManageDashboardPage />} />
-            <Route path="events" element={<ManageEventsPage />} />
-            <Route path="checkin" element={<ManageCheckinPage />} />
-            <Route path="guests" element={<ManageGuestsPage />} />
-            <Route path="seating" element={<ManageSeatingPage />} />
-            <Route path="staff" element={<ManageStaffPage />} />
-            <Route path="qr" element={<ManageQrPage />} />
-            <Route path="incidents" element={<ManageIncidentsPage />} />
-            <Route path="waitlist" element={<ManageWaitlistPage />} />
-            <Route path="analytics" element={<ManageAnalyticsPage />} />
-            <Route path="audit" element={<ManageAuditPage />} />
+            <Route path="dashboard" element={renderLazy(ManageDashboardPage)} />
+            <Route path="events" element={renderLazy(ManageEventsPage)} />
+            <Route path="planner" element={renderLazy(ManagePlannerPage)} />
+            <Route path="registration-online" element={renderLazy(ManageOnlineRegistrationPage)} />
+            <Route path="registration-onsite" element={renderLazy(ManageOnsiteRegistrationPage)} />
+            <Route path="checkin" element={renderLazy(ManageCheckinPage)} />
+            <Route path="guests" element={renderLazy(ManageGuestsPage)} />
+            <Route path="seating" element={renderLazy(ManageSeatingPage)} />
+            <Route path="staff" element={renderLazy(ManageStaffPage)} />
+            <Route path="qr" element={renderLazy(ManageQrPage)} />
+            <Route path="incidents" element={renderLazy(ManageIncidentsPage)} />
+            <Route path="waitlist" element={renderLazy(ManageWaitlistPage)} />
+            <Route path="analytics" element={renderLazy(ManageAnalyticsPage)} />
+            <Route path="audit" element={renderLazy(ManageAuditPage)} />
           </Route>
         </Routes>
       </BrowserRouter>

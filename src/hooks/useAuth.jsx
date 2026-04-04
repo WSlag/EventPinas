@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, createContext, useContext } from 'react'
+import { useEffect, useState, createContext, useContext } from 'react'
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -273,22 +273,19 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const value = useMemo(
-    () => ({
-      user,
-      profile,
-      loading,
-      authBusy,
-      login,
-      register,
-      logout,
-      activateSubscription,
-      isOrganizer: profile?.role === 'organizer',
-      hasActiveSubscription: hasActiveOrganizerSubscription(profile),
-      authMode: firebaseEnabled ? 'firebase' : 'local',
-    }),
-    [user, profile, loading, authBusy],
-  )
+  const value = {
+    user,
+    profile,
+    loading,
+    authBusy,
+    login,
+    register,
+    logout,
+    activateSubscription,
+    isOrganizer: profile?.role === 'organizer',
+    hasActiveSubscription: hasActiveOrganizerSubscription(profile),
+    authMode: firebaseEnabled ? 'firebase' : 'local',
+  }
 
   return (
     <AuthContext.Provider value={value}>

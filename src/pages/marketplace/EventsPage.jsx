@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { FilterPanel, HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
 import { getMarketplaceFilterOptions, getSavedItems, listEvents, toggleSavedItem } from '@/services'
@@ -31,16 +31,40 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value))
 }
 
+function resolveEventFiltersFromSearch(search, categories, cities) {
+  const params = new URLSearchParams(search)
+  const rawCategory = params.get('category') ?? 'All'
+  const rawCity = params.get('city') ?? 'All'
+  const query = params.get('query') ?? ''
+
+  return {
+    category: categories.includes(rawCategory) ? rawCategory : 'All',
+    city: rawCity === 'All' || cities.includes(rawCity) ? rawCity : 'All',
+    query,
+  }
+}
+
 export default function EventsPage() {
+  const location = useLocation()
   const filterOptions = useMemo(() => getMarketplaceFilterOptions(), [])
-  const [category, setCategory] = useState('All')
-  const [city, setCity] = useState('All')
-  const [query, setQuery] = useState('')
+  const searchDefaults = useMemo(
+    () => resolveEventFiltersFromSearch(location.search, filterOptions.categories, filterOptions.cities),
+    [location.search, filterOptions.categories, filterOptions.cities],
+  )
+  const [category, setCategory] = useState(searchDefaults.category)
+  const [city, setCity] = useState(searchDefaults.city)
+  const [query, setQuery] = useState(searchDefaults.query)
   const [sortBy, setSortBy] = useState('dateAsc')
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [savedMap, setSavedMap] = useState(() => getSavedItems())
+
+  useEffect(() => {
+    setCategory(searchDefaults.category)
+    setCity(searchDefaults.city)
+    setQuery(searchDefaults.query)
+  }, [searchDefaults.category, searchDefaults.city, searchDefaults.query])
 
   useEffect(() => {
     let active = true

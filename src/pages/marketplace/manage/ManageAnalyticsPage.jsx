@@ -1,7 +1,7 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
-import { SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
+import { ManageButton, ManageCard, ManageKpiTile, ManageSectionHeader } from '@/components/ui/ManagePrimitives'
 import { exportManageReport, getManageAnalytics } from '@/services'
 
 function mapRecordToRows(record) {
@@ -28,9 +28,7 @@ export default function ManageAnalyticsPage() {
       setLoading(false)
       return
     }
-
     let active = true
-
     async function loadAnalytics() {
       setLoading(true)
       setError('')
@@ -43,7 +41,6 @@ export default function ManageAnalyticsPage() {
         if (active) setLoading(false)
       }
     }
-
     loadAnalytics()
     return () => {
       active = false
@@ -69,21 +66,21 @@ export default function ManageAnalyticsPage() {
 
   return (
     <section className="space-y-space-4">
-      <SectionHeader title="Live Analytics & Exports" subtitle="Review operations metrics and export attendance or incident reports." />
+      <ManageSectionHeader title="Live Analytics & Exports" subtitle="Review operations metrics and export attendance or incident reports." />
       {error && <ErrorState message={error} />}
 
       {analytics && (
         <div className="grid grid-cols-2 gap-space-2 md:grid-cols-5">
-          <StatChip label="Total guests" value={analytics.totalGuests} />
-          <StatChip label="Checked in" value={analytics.checkedIn} />
-          <StatChip label="Pending" value={analytics.pending} />
-          <StatChip label="Walk-ins" value={analytics.walkIns} />
-          <StatChip label="SLA breaches" value={analytics.slaBreaches} />
+          <ManageKpiTile label="Total guests" value={analytics.totalGuests} />
+          <ManageKpiTile label="Checked in" value={analytics.checkedIn} />
+          <ManageKpiTile label="Pending" value={analytics.pending} />
+          <ManageKpiTile label="Walk-ins" value={analytics.walkIns} />
+          <ManageKpiTile label="SLA breaches" value={analytics.slaBreaches} />
         </div>
       )}
 
       <div className="grid gap-space-3 md:grid-cols-3">
-        <SurfaceCard>
+        <ManageCard>
           <h3 className="font-display text-heading-sm text-neutral-900">Check-in Sources</h3>
           {checkInSourceRows.length === 0 && <p className="mt-space-1 font-body text-body-sm text-neutral-500">No data yet.</p>}
           {checkInSourceRows.length > 0 && (
@@ -96,9 +93,9 @@ export default function ManageAnalyticsPage() {
               ))}
             </ul>
           )}
-        </SurfaceCard>
+        </ManageCard>
 
-        <SurfaceCard>
+        <ManageCard>
           <h3 className="font-display text-heading-sm text-neutral-900">Ticket Breakdown</h3>
           {ticketRows.length === 0 && <p className="mt-space-1 font-body text-body-sm text-neutral-500">No data yet.</p>}
           {ticketRows.length > 0 && (
@@ -111,9 +108,9 @@ export default function ManageAnalyticsPage() {
               ))}
             </ul>
           )}
-        </SurfaceCard>
+        </ManageCard>
 
-        <SurfaceCard>
+        <ManageCard>
           <h3 className="font-display text-heading-sm text-neutral-900">Check-ins Per Hour</h3>
           {hourlyRows.length === 0 && <p className="mt-space-1 font-body text-body-sm text-neutral-500">No data yet.</p>}
           {hourlyRows.length > 0 && (
@@ -126,10 +123,10 @@ export default function ManageAnalyticsPage() {
               ))}
             </ul>
           )}
-        </SurfaceCard>
+        </ManageCard>
       </div>
 
-      <SurfaceCard>
+      <ManageCard>
         <h3 className="font-display text-heading-sm text-neutral-900">Export Reports</h3>
         <div className="mt-space-2 flex flex-wrap items-center gap-space-2">
           <select
@@ -140,9 +137,7 @@ export default function ManageAnalyticsPage() {
             <option value="attendance">Attendance CSV</option>
             <option value="incidents">Incident CSV</option>
           </select>
-          <button type="button" onClick={onExport} className="rounded-full bg-info px-space-4 py-space-2 font-display text-label-md text-white">
-            Generate
-          </button>
+          <ManageButton type="button" onClick={onExport}>Generate</ManageButton>
         </div>
         {exportFilename && (
           <p className="mt-space-2 font-body text-caption-lg text-neutral-500">Generated: {exportFilename}</p>
@@ -154,8 +149,7 @@ export default function ManageAnalyticsPage() {
             className="mt-space-2 h-48 w-full rounded-md border border-neutral-200 bg-neutral-50 px-space-3 py-space-2 font-mono text-caption-lg text-neutral-700"
           />
         )}
-      </SurfaceCard>
+      </ManageCard>
     </section>
   )
 }
-

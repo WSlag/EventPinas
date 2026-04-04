@@ -1,7 +1,13 @@
-﻿import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
-import { SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
+import {
+  ManageBadge,
+  ManageButton,
+  ManageCard,
+  ManageKpiTile,
+  ManageSectionHeader,
+} from '@/components/ui/ManagePrimitives'
 import {
   addManageWaitlistEntry,
   approveManageWaitlistEntry,
@@ -26,7 +32,7 @@ export default function ManageWaitlistPage() {
 
   const canManageWaitlist = permissions.includes('waitlist')
 
-  async function loadWaitlistData() {
+  const loadWaitlistData = useCallback(async () => {
     if (!selectedEventId) return
     const [capacityPayload, waitlistPayload] = await Promise.all([
       getManageCapacitySnapshot(selectedEventId, { simulateLatency: false }),
@@ -34,7 +40,7 @@ export default function ManageWaitlistPage() {
     ])
     setCapacity(capacityPayload)
     setWaitlist(waitlistPayload)
-  }
+  }, [selectedEventId])
 
   useEffect(() => {
     if (!selectedEventId) return
@@ -61,7 +67,7 @@ export default function ManageWaitlistPage() {
     return () => {
       active = false
     }
-  }, [selectedEventId, canManageWaitlist])
+  }, [selectedEventId, canManageWaitlist, loadWaitlistData])
 
   async function onAddWaitlist(event) {
     event.preventDefault()
@@ -109,94 +115,73 @@ export default function ManageWaitlistPage() {
 
   return (
     <section className="space-y-space-4">
-      <SectionHeader title="Waitlist & Capacity" subtitle="Track seat availability and promote waitlisted guests when slots open." />
+      <ManageSectionHeader title="Waitlist & Capacity" subtitle="Track seat availability and promote waitlisted guests when slots open." />
       {error && <ErrorState message={error} />}
 
       {capacity && (
         <div className="grid grid-cols-2 gap-space-2 md:grid-cols-5">
-          <StatChip label="Capacity" value={capacity.event.guestCapacity} />
-          <StatChip label="Registered" value={capacity.registered} />
-          <StatChip label="Checked in" value={capacity.checkedIn} />
-          <StatChip label="Waitlist" value={capacity.waitlistCount} />
-          <StatChip label="Available slots" value={capacity.availableSlots} />
+          <ManageKpiTile label="Capacity" value={capacity.event.guestCapacity} />
+          <ManageKpiTile label="Registered" value={capacity.registered} />
+          <ManageKpiTile label="Checked in" value={capacity.checkedIn} />
+          <ManageKpiTile label="Waitlist" value={capacity.waitlistCount} />
+          <ManageKpiTile label="Available slots" value={capacity.availableSlots} />
         </div>
       )}
 
-      <form onSubmit={onAddWaitlist} className="rounded-2xl border border-neutral-200 bg-white p-space-4">
-        <p className="font-display text-heading-sm text-neutral-900">Add to waitlist</p>
-        <div className="mt-space-2 grid gap-space-2 md:grid-cols-4">
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Guest name"
-            className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm md:col-span-2"
-          />
-          <select value={ticketType} onChange={(event) => setTicketType(event.target.value)} className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm">
-            <option>General</option>
-            <option>VIP</option>
-            <option>Staff</option>
-          </select>
-          <input
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            placeholder="Phone"
-            className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
-          />
-        </div>
-        <button type="submit" className="mt-space-2 rounded-full bg-info px-space-4 py-space-2 font-display text-label-md text-white">
-          Add Entry
-        </button>
-      </form>
+      <ManageCard>
+        <form onSubmit={onAddWaitlist}>
+          <p className="font-display text-heading-sm text-neutral-900">Add to waitlist</p>
+          <div className="mt-space-2 grid gap-space-2 md:grid-cols-4">
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Guest name"
+              className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm md:col-span-2"
+            />
+            <select value={ticketType} onChange={(event) => setTicketType(event.target.value)} className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm">
+              <option>General</option>
+              <option>VIP</option>
+              <option>Staff</option>
+            </select>
+            <input
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="Phone"
+              className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+            />
+          </div>
+          <ManageButton type="submit" className="mt-space-2">Add Entry</ManageButton>
+        </form>
+      </ManageCard>
 
       <div className="space-y-space-2">
         {waitlist.length === 0 && <EmptyState message="No waitlist entries yet." />}
         {waitlist.map((entry) => (
-          <SurfaceCard key={entry.id}>
+          <ManageCard key={entry.id}>
             <div className="flex flex-wrap items-center justify-between gap-space-2">
               <div>
                 <p className="font-display text-heading-sm text-neutral-900">{entry.name}</p>
                 <p className="font-body text-caption-lg text-neutral-500">
-                  {entry.ticketType} · {entry.phone || 'No phone'} · requested {formatDateTime(entry.requestedAt)}
+                  {entry.ticketType} - {entry.phone || 'No phone'} - requested {formatDateTime(entry.requestedAt)}
                 </p>
               </div>
 
               <div className="flex items-center gap-space-2">
-                <span className={`rounded-full px-space-2 py-space-1 text-label-sm ${
-                  entry.status === 'waiting'
-                    ? 'bg-amber-100 text-warning'
-                    : entry.status === 'approved'
-                      ? 'bg-green-100 text-success'
-                      : 'bg-neutral-100 text-neutral-600'
-                }`}
-                >
+                <ManageBadge tone={entry.status === 'waiting' ? 'warning' : entry.status === 'approved' ? 'success' : 'neutral'}>
                   {entry.status}
-                </span>
+                </ManageBadge>
 
                 {entry.status === 'waiting' && (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => onApprove(entry.id)}
-                      className="rounded-full bg-info px-space-3 py-space-1 font-display text-label-sm text-white"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onRemove(entry.id)}
-                      className="rounded-full bg-neutral-100 px-space-3 py-space-1 font-display text-label-sm text-neutral-700"
-                    >
-                      Remove
-                    </button>
+                    <ManageButton type="button" onClick={() => onApprove(entry.id)}>Approve</ManageButton>
+                    <ManageButton type="button" variant="secondary" onClick={() => onRemove(entry.id)}>Remove</ManageButton>
                   </>
                 )}
               </div>
             </div>
-          </SurfaceCard>
+          </ManageCard>
         ))}
       </div>
     </section>
   )
 }
-
-

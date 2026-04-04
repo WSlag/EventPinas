@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import {
   ActionButton,
@@ -10,7 +10,7 @@ import {
   SurfaceCard,
 } from '@/components/ui/MarketplacePrimitives'
 import { marketplaceCategories } from '@/data'
-import { getHomeFeed, getSavedItems, toggleSavedItem } from '@/services'
+import { getHomeFeed, getMarketplaceFilterOptions, getSavedItems, toggleSavedItem } from '@/services'
 
 const heroImageUrl = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2200&q=80'
 
@@ -54,7 +54,11 @@ function PinIcon() {
 }
 
 export default function HomePage() {
+  const navigate = useNavigate()
+  const filterOptions = useMemo(() => getMarketplaceFilterOptions(), [])
   const [activeCategory, setActiveCategory] = useState('All')
+  const [quickCity, setQuickCity] = useState('All')
+  const [quickQuery, setQuickQuery] = useState('')
   const [feed, setFeed] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -68,7 +72,14 @@ export default function HomePage() {
       setError('')
 
       try {
-        const data = await getHomeFeed({ category: activeCategory, eventsLimit: 6, suppliersLimit: 6, organizersLimit: 6 })
+        const data = await getHomeFeed({
+          category: activeCategory,
+          city: quickCity,
+          query: quickQuery,
+          eventsLimit: 6,
+          suppliersLimit: 6,
+          organizersLimit: 6,
+        })
         if (active) setFeed(data)
       } catch {
         if (active) setError('Unable to load homepage feed right now.')
@@ -81,7 +92,7 @@ export default function HomePage() {
     return () => {
       active = false
     }
-  }, [activeCategory])
+  }, [activeCategory, quickCity, quickQuery])
 
   const savedEvents = useMemo(() => new Set(savedMap.events ?? []), [savedMap.events])
   const featuredEvents = feed?.upcomingEvents?.slice(0, 3) ?? []
@@ -90,6 +101,20 @@ export default function HomePage() {
   function onToggleSavedEvent(id) {
     const updated = toggleSavedItem('events', id)
     setSavedMap(updated)
+  }
+
+  function toDiscoverPath(basePath) {
+    const params = new URLSearchParams()
+    if (activeCategory !== 'All') params.set('category', activeCategory)
+    if (quickCity !== 'All') params.set('city', quickCity)
+    if (quickQuery.trim().length > 0) params.set('query', quickQuery.trim())
+    const queryString = params.toString()
+    return queryString ? `${basePath}?${queryString}` : basePath
+  }
+
+  function onDiscoverSubmit(event) {
+    event.preventDefault()
+    navigate(toDiscoverPath('/events'))
   }
 
   return (
@@ -111,7 +136,7 @@ export default function HomePage() {
               actions={(
                 <>
                   <ActionButton to="/register">Create event</ActionButton>
-                  <ActionButton to="/suppliers" tone="soft">Let's talk</ActionButton>
+                  <ActionButton to="/suppliers" tone="soft">Let&apos;s talk</ActionButton>
                 </>
               )}
             />
@@ -120,6 +145,67 @@ export default function HomePage() {
       </section>
 
       <PageShell className="space-y-space-8">
+        <section className="relative -mt-space-16 z-10">
+          <SurfaceCard className="space-y-space-4 border border-white/70 bg-white/95 p-space-4 shadow-lg backdrop-blur">
+            <div className="flex items-center justify-between gap-space-2">
+              <h2 className="font-display text-heading-lg text-neutral-900">Discover fast</h2>
+              <p className="rounded-full bg-info/10 px-space-2 py-1 font-display text-caption-lg text-info">
+                {feed?.upcomingEvents?.length ?? 0} matches
+              </p>
+            </div>
+            <p className="font-body text-body-sm text-neutral-600">
+              Search events, tune category and city, then jump straight to booking-ready results.
+            </p>
+
+            <form className="space-y-space-3" onSubmit={onDiscoverSubmit}>
+              <input
+                value={quickQuery}
+                onChange={(event) => setQuickQuery(event.target.value)}
+                placeholder="Search event title, venue, tag, or city"
+                className="h-11 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+              />
+
+              <div className="grid grid-cols-1 gap-space-2 sm:grid-cols-2">
+                <select
+                  value={activeCategory}
+                  onChange={(event) => setActiveCategory(event.target.value)}
+                  className="h-11 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                >
+                  {filterOptions.categories.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={quickCity}
+                  onChange={(event) => setQuickCity(event.target.value)}
+                  className="h-11 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                >
+                  <option value="All">All cities</option>
+                  {filterOptions.cities.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap gap-space-2">
+                <button
+                  type="submit"
+                  className="inline-flex h-11 min-w-[148px] items-center justify-center rounded-full bg-info px-space-4 font-display text-label-md text-white"
+                >
+                  Search events
+                </button>
+                <Link
+                  to={toDiscoverPath('/suppliers')}
+                  className="inline-flex h-11 min-w-[148px] items-center justify-center rounded-full border border-info/30 bg-white px-space-4 font-display text-label-md text-info"
+                >
+                  Find vendors
+                </Link>
+              </div>
+            </form>
+          </SurfaceCard>
+        </section>
+
         <section className="space-y-space-4">
           <SectionHeader title="Featured events" actionLabel="View all" actionTo="/events" />
 
@@ -164,7 +250,7 @@ export default function HomePage() {
                         {event.city}
                       </p>
                       <Link to={`/events/${event.id}`} className="rounded-full bg-info px-space-4 py-1 font-display text-label-sm text-white">
-                        Let's go
+                        Let&apos;s go
                       </Link>
                     </div>
 

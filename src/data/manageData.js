@@ -166,3 +166,93 @@ export const manageAuditLogByEvent = {
   'm-evt-002': [],
   'm-evt-003': [],
 }
+
+export const managePlannerByEvent = {
+  'm-evt-001': {
+    eventDetails: {
+      plannerLead: 'Lito Lagbas',
+      guestTarget: 250,
+      venueOpenTime: '15:00',
+      showStartTime: '17:00',
+    },
+    checklist: [
+      { id: 'cl-pre-1', phase: 'preEvent', label: 'Finalize master guest list', done: true },
+      { id: 'cl-pre-2', phase: 'preEvent', label: 'Lock event suppliers and crew', done: true },
+      { id: 'cl-setup-1', phase: 'setup', label: 'Verify table tags and seat cards', done: false },
+      { id: 'cl-setup-2', phase: 'setup', label: 'Test scanner and backup devices', done: false },
+      { id: 'cl-live-1', phase: 'live', label: 'Activate gate check-in command', done: false },
+      { id: 'cl-live-2', phase: 'live', label: 'Monitor queue and incident channels', done: false },
+      { id: 'cl-post-1', phase: 'post', label: 'Export attendance and incident reports', done: false },
+      { id: 'cl-post-2', phase: 'post', label: 'Send organizer close-out summary', done: false },
+    ],
+    budget: [
+      { id: 'bgt-1', category: 'Venue', planned: 180000, spent: 180000 },
+      { id: 'bgt-2', category: 'Food', planned: 120000, spent: 92000 },
+      { id: 'bgt-3', category: 'AV & Lights', planned: 60000, spent: 53000 },
+      { id: 'bgt-4', category: 'Staff', planned: 35000, spent: 18000 },
+      { id: 'bgt-5', category: 'Contingency', planned: 25000, spent: 5000 },
+    ],
+  },
+  'm-evt-002': {
+    eventDetails: { plannerLead: 'Wedding Captain', guestTarget: 180, venueOpenTime: '14:00', showStartTime: '16:00' },
+    checklist: [],
+    budget: [],
+  },
+  'm-evt-003': {
+    eventDetails: { plannerLead: 'Summit Director', guestTarget: 350, venueOpenTime: '08:00', showStartTime: '10:00' },
+    checklist: [],
+    budget: [],
+  },
+}
+
+export const manageOnlineRegistrationByEvent = {
+  'm-evt-001': {
+    mode: 'ticketed',
+    fields: [
+      { id: 'name', label: 'Full Name', type: 'text', required: true },
+      { id: 'email', label: 'Email', type: 'email', required: false },
+      { id: 'phone', label: 'Mobile Number', type: 'tel', required: false },
+      { id: 'tableRequest', label: 'Preferred Table Group', type: 'text', required: false },
+    ],
+    ticketTypes: [
+      { id: 'tt-vip', label: 'VIP', pricePhp: 500, sold: 42, total: 50 },
+      { id: 'tt-general', label: 'General', pricePhp: 250, sold: 121, total: 180 },
+      { id: 'tt-staff', label: 'Staff', pricePhp: 0, sold: 15, total: 25 },
+    ],
+    paymentGateways: [
+      { id: 'gcash', label: 'GCash', enabled: true },
+      { id: 'maya', label: 'Maya', enabled: true },
+      { id: 'card', label: 'Card', enabled: false },
+      { id: 'cash', label: 'Cash', enabled: true },
+    ],
+  },
+  'm-evt-002': { mode: 'free', fields: [], ticketTypes: [], paymentGateways: [] },
+  'm-evt-003': { mode: 'ticketed', fields: [], ticketTypes: [], paymentGateways: [] },
+}
+
+export const manageOnsiteRegistrationByEvent = {
+  'm-evt-001': {
+    walkIns: [
+      {
+        id: 'onsite-001',
+        guestName: 'Mario Cortez',
+        ticketType: 'General',
+        paymentMethod: 'GCash',
+        amountPaid: 250,
+        createdAt: '2026-06-15T09:11:00.000Z',
+        badgePrinted: true,
+      },
+      {
+        id: 'onsite-002',
+        guestName: 'Nina Salazar',
+        ticketType: 'VIP',
+        paymentMethod: 'Cash',
+        amountPaid: 500,
+        createdAt: '2026-06-15T09:34:00.000Z',
+        badgePrinted: true,
+      },
+    ],
+  },
+  'm-evt-002': { walkIns: [] },
+  'm-evt-003': { walkIns: [] },
+}

@@ -1,0 +1,49 @@
+
+> eventpinas@0.1.0 dev
+> vite --host 0.0.0.0 --port 5173
+
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1723[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.2:[1m5173[22m/[39m
+[2m9:52:48 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/ManageBottomNav.jsx, /src/pages/marketplace/HomePage.jsx, /src/pages/marketplace/OrganizerManagePage.jsx, /src/pages/marketplace/manage/ManageDashboardPage.jsx, /src/pages/marketplace/manage/ManageEventsPage.jsx, /src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/pages/marketplace/manage/ManageWaitlistPage.jsx, /src/pages/marketplace/manage/ManageAuditPage.jsx[22m
+[2m9:53:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/ManageBottomNav.jsx, /src/pages/marketplace/HomePage.jsx, /src/pages/marketplace/OrganizerManagePage.jsx, /src/pages/marketplace/manage/ManageDashboardPage.jsx, /src/pages/marketplace/manage/ManageEventsPage.jsx, /src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/pages/marketplace/manage/ManageWaitlistPage.jsx, /src/pages/marketplace/manage/ManageAuditPage.jsx[22m
+[2m9:53:43 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/ManageBottomNav.jsx, /src/pages/marketplace/HomePage.jsx, /src/pages/marketplace/OrganizerManagePage.jsx, /src/pages/marketplace/manage/ManageDashboardPage.jsx, /src/pages/marketplace/manage/ManageEventsPage.jsx, /src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/pages/marketplace/manage/ManageWaitlistPage.jsx, /src/pages/marketplace/manage/ManageAuditPage.jsx[22m
+[2m9:54:52 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/index.css[22m
+[2m9:55:05 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/index.css[22m
+[2m9:55:57 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/services/manageService.test.js[22m
+[2m9:56:12 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m9:56:19 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/index.css[22m
+[2m9:56:31 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:14:13 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/ManageBottomNav.jsx, /src/pages/marketplace/HomePage.jsx, /src/pages/marketplace/OrganizerManagePage.jsx, /src/pages/marketplace/manage/ManageDashboardPage.jsx, /src/pages/marketplace/manage/ManageEventsPage.jsx, /src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/pages/marketplace/manage/ManageWaitlistPage.jsx, /src/pages/marketplace/manage/ManageAuditPage.jsx, /src/pages/marketplace/manage/ManageGuestsPage.jsx, /src/pages/marketplace/manage/ManagePlannerPage.jsx[22m
+[2m10:15:02 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageGuestsPage.jsx, /src/index.css[22m
+[2m10:15:14 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/services/manageService.test.js[22m
+[2m10:15:27 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/services/manageService.test.js[22m
+[2m10:15:38 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:15:46 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageGuestsPage.jsx, /src/index.css[22m
+[2m10:15:50 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:20:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageGuestsPage.jsx, /src/index.css[22m
+[2m10:20:40 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:21:36 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:22:19 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageGuestsPage.jsx, /src/index.css[22m
+[2m10:22:47 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:26:48 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageGuestsPage.jsx, /src/index.css[22m
+[2m10:27:08 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageGuestsPage.jsx, /src/index.css[22m
+[2m10:27:19 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:29:09 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:35:53 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/ManageBottomNav.jsx, /src/pages/marketplace/HomePage.jsx, /src/pages/marketplace/OrganizerManagePage.jsx, /src/pages/marketplace/manage/ManageDashboardPage.jsx, /src/pages/marketplace/manage/ManageEventsPage.jsx, /src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/pages/marketplace/manage/ManageWaitlistPage.jsx, /src/pages/marketplace/manage/ManageAuditPage.jsx, /src/pages/marketplace/manage/ManageGuestsPage.jsx, /src/pages/marketplace/manage/ManagePlannerPage.jsx, /src/pages/marketplace/EventsPage.jsx, /src/pages/marketplace/SuppliersPage.jsx, /src/pages/marketplace/OrganizersPage.jsx, /src/pages/marketplace/SavedPage.jsx[22m
+[2m10:36:39 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:40:46 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:43:06 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:47:51 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/ManageBottomNav.jsx, /src/pages/marketplace/HomePage.jsx, /src/pages/marketplace/OrganizerManagePage.jsx, /src/pages/marketplace/manage/ManageDashboardPage.jsx, /src/pages/marketplace/manage/ManageEventsPage.jsx, /src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/pages/marketplace/manage/ManageWaitlistPage.jsx, /src/pages/marketplace/manage/ManageAuditPage.jsx, /src/pages/marketplace/manage/ManageGuestsPage.jsx, /src/pages/marketplace/manage/ManagePlannerPage.jsx, /src/pages/marketplace/EventsPage.jsx, /src/pages/marketplace/SuppliersPage.jsx, /src/pages/marketplace/OrganizersPage.jsx, /src/pages/marketplace/SavedPage.jsx[22m
+[2m10:48:51 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/services/manageService.test.js[22m
+[2m10:49:01 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:52:06 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:55:05 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/ManageBottomNav.jsx, /src/pages/marketplace/HomePage.jsx, /src/pages/marketplace/OrganizerManagePage.jsx, /src/pages/marketplace/manage/ManageDashboardPage.jsx, /src/pages/marketplace/manage/ManageEventsPage.jsx, /src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/pages/marketplace/manage/ManageWaitlistPage.jsx, /src/pages/marketplace/manage/ManageAuditPage.jsx, /src/pages/marketplace/manage/ManageGuestsPage.jsx, /src/pages/marketplace/manage/ManagePlannerPage.jsx, /src/pages/marketplace/EventsPage.jsx, /src/pages/marketplace/SuppliersPage.jsx, /src/pages/marketplace/OrganizersPage.jsx, /src/pages/marketplace/SavedPage.jsx[22m
+[2m10:55:41 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/services/manageService.test.js[22m
+[2m10:55:52 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m10:59:19 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/index.css[22m
+[2m10:59:26 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/index.css[22m
+[2m10:59:37 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/pages/marketplace/OrganizerManagePage.smoke.test.jsx[22m
+[2m11:00:01 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/marketplace/manage/ManageSeatingPage.jsx, /src/index.css[22m

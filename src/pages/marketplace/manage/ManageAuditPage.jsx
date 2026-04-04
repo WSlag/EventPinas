@@ -1,22 +1,14 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
-import { SectionHeader, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
+import { ManageBadge, ManageCard, ManageFilterBar, ManageSectionHeader } from '@/components/ui/ManagePrimitives'
 import { listManageAuditTrail } from '@/services'
 
 function formatDateTime(value) {
   return new Date(value).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-const moduleOptions = [
-  'all',
-  'checkin',
-  'seating',
-  'staff',
-  'incidents',
-  'waitlist',
-]
-
+const moduleOptions = ['all', 'checkin', 'seating', 'staff', 'incidents', 'waitlist']
 const severityOptions = ['all', 'info', 'warning']
 
 export default function ManageAuditPage() {
@@ -36,9 +28,7 @@ export default function ManageAuditPage() {
       setLoading(false)
       return
     }
-
     let active = true
-
     async function loadAuditTrail() {
       setLoading(true)
       setError('')
@@ -55,7 +45,6 @@ export default function ManageAuditPage() {
         if (active) setLoading(false)
       }
     }
-
     loadAuditTrail()
     return () => {
       active = false
@@ -69,17 +58,16 @@ export default function ManageAuditPage() {
 
   return (
     <section className="space-y-space-4">
-      <SectionHeader title="Audit Trail" subtitle="Track who changed operational data and when." />
+      <ManageSectionHeader title="Audit Trail" subtitle="Track who changed operational data and when." />
       {error && <ErrorState message={error} />}
 
-      <div className="grid gap-space-2 md:grid-cols-3">
+      <ManageFilterBar>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search summary, action, or role"
-          className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+          className="h-10 flex-1 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
         />
-
         <select
           value={module}
           onChange={(event) => setModule(event.target.value)}
@@ -91,7 +79,6 @@ export default function ManageAuditPage() {
             </option>
           ))}
         </select>
-
         <select
           value={severity}
           onChange={(event) => setSeverity(event.target.value)}
@@ -103,12 +90,12 @@ export default function ManageAuditPage() {
             </option>
           ))}
         </select>
-      </div>
+      </ManageFilterBar>
 
       <div className="space-y-space-2">
         {entries.length === 0 && <EmptyState message="No audit entries matched your filters." />}
         {entries.map((entry) => (
-          <SurfaceCard key={entry.id}>
+          <ManageCard key={entry.id}>
             <div className="flex items-start justify-between gap-space-2">
               <div>
                 <p className="font-display text-heading-sm text-neutral-900">{entry.summary}</p>
@@ -117,19 +104,15 @@ export default function ManageAuditPage() {
                 </p>
               </div>
               <div className="text-right">
-                <span className={`rounded-full px-space-2 py-space-1 text-label-sm ${
-                  entry.severity === 'warning' ? 'bg-amber-100 text-warning' : 'bg-neutral-100 text-neutral-600'
-                }`}
-                >
+                <ManageBadge tone={entry.severity === 'warning' ? 'warning' : 'neutral'}>
                   {entry.severity}
-                </span>
+                </ManageBadge>
                 <p className="mt-space-1 font-body text-caption-lg text-neutral-500">{formatDateTime(entry.createdAt)}</p>
               </div>
             </div>
-          </SurfaceCard>
+          </ManageCard>
         ))}
       </div>
     </section>
   )
 }
-

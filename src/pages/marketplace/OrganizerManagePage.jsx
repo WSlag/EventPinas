@@ -1,22 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { HeroBanner, PageShell, StatChip } from '@/components/ui/MarketplacePrimitives'
+import { HeroBanner, PageShell } from '@/components/ui/MarketplacePrimitives'
 import { ErrorState, LoadingState } from '@/components/ui/PageStates'
+import { ManageBadge, ManageKpiTile } from '@/components/ui/ManagePrimitives'
+import { ManageIcon } from '@/components/layout/ManageIcons'
+import { manageNavConfig } from '@/data'
 import { getManageBootstrap, getManageRolePermissions, setManageOperatorRole, setManageSelectedEvent } from '@/services'
-
-const manageNavItems = [
-  { to: '/manage/dashboard', label: 'Dashboard', permission: 'dashboard' },
-  { to: '/manage/events', label: 'My Events', permission: 'events' },
-  { to: '/manage/checkin', label: 'Check-in', permission: 'checkin' },
-  { to: '/manage/guests', label: 'Guests', permission: 'guests' },
-  { to: '/manage/seating', label: 'Seating', permission: 'seating' },
-  { to: '/manage/staff', label: 'Staff', permission: 'staff' },
-  { to: '/manage/qr', label: 'QR Tools', permission: 'qr' },
-  { to: '/manage/incidents', label: 'Incidents', permission: 'incidents' },
-  { to: '/manage/waitlist', label: 'Waitlist', permission: 'waitlist' },
-  { to: '/manage/analytics', label: 'Analytics', permission: 'analytics' },
-  { to: '/manage/audit', label: 'Audit Trail', permission: 'audit' },
-]
 
 const operatorRoleOptions = [
   { id: 'admin', label: 'Admin' },
@@ -41,9 +30,20 @@ export default function OrganizerManagePage() {
   )
   const permissions = useMemo(() => getManageRolePermissions(operatorRole), [operatorRole])
   const visibleNavItems = useMemo(
-    () => manageNavItems.filter((item) => permissions.includes(item.permission)),
+    () => manageNavConfig.filter((item) => permissions.includes(item.permission)),
     [permissions],
   )
+  const activeModule = useMemo(
+    () => visibleNavItems.find((item) => item.to === location.pathname) ?? visibleNavItems[0] ?? null,
+    [location.pathname, visibleNavItems],
+  )
+
+  const refreshManageBootstrap = useCallback(async () => {
+    const payload = await getManageBootstrap({ simulateLatency: false })
+    setEvents(payload.events)
+    setOperatorRole(payload.selectedOperatorRole ?? 'admin')
+    return payload
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -52,10 +52,8 @@ export default function OrganizerManagePage() {
       setLoading(true)
       setError('')
       try {
-        const payload = await getManageBootstrap()
+        await refreshManageBootstrap()
         if (!active) return
-        setEvents(payload.events)
-        setOperatorRole(payload.selectedOperatorRole ?? 'admin')
       } catch {
         if (active) setError('Unable to load organizer console right now.')
       } finally {
@@ -67,7 +65,7 @@ export default function OrganizerManagePage() {
     return () => {
       active = false
     }
-  }, [setSearchParams])
+  }, [refreshManageBootstrap])
 
   useEffect(() => {
     if (!events.length) return
@@ -81,14 +79,23 @@ export default function OrganizerManagePage() {
     }, { replace: true })
   }, [events, selectedEventId, setSearchParams])
 
+  const withEventSearch = useCallback((pathname) => {
+    const nextParams = new URLSearchParams(searchParams)
+    if (selectedEvent?.id) {
+      nextParams.set('event', selectedEvent.id)
+    }
+    const search = nextParams.toString()
+    return `${pathname}${search ? `?${search}` : ''}`
+  }, [searchParams, selectedEvent?.id])
+
   useEffect(() => {
-    const current = manageNavItems.find((item) => item.to === location.pathname)
+    const current = manageNavConfig.find((item) => item.to === location.pathname)
     if (!current) return
     if (permissions.includes(current.permission)) return
     const fallback = visibleNavItems[0]
     if (!fallback) return
     navigate(withEventSearch(fallback.to), { replace: true })
-  }, [location.pathname, permissions, visibleNavItems])
+  }, [location.pathname, permissions, visibleNavItems, navigate, withEventSearch])
 
   async function onSelectEvent(eventId) {
     setSearchParams((prev) => {
@@ -104,29 +111,20 @@ export default function OrganizerManagePage() {
     await setManageOperatorRole(nextRole, { simulateLatency: false })
   }
 
-  function withEventSearch(pathname) {
-    const nextParams = new URLSearchParams(searchParams)
-    if (selectedEvent?.id) {
-      nextParams.set('event', selectedEvent.id)
-    }
-    const search = nextParams.toString()
-    return `${pathname}${search ? `?${search}` : ''}`
-  }
-
   if (loading) return <PageShell><LoadingState label="Loading organizer console..." /></PageShell>
   if (error) return <PageShell><ErrorState message={error} /></PageShell>
 
   return (
     <PageShell className="space-y-space-4">
       <HeroBanner
-        eyebrow="Organizer Console"
-        title="Operate your event day in one place."
-        description="Run check-in, monitor guests, and track live operations from a single organizer workspace."
+        eyebrow="Operations Cockpit"
+        title="Run event-day operations from one console."
+        description="Switch modules quickly, keep critical tools visible, and coordinate your event team in real time."
         tone="dark"
       />
 
       <section className="grid gap-space-2 md:grid-cols-4">
-        <div className="rounded-xl border border-neutral-200 bg-white p-space-2">
+        <div className="rounded-xl border border-neutral-200 bg-white p-space-3">
           <p className="font-body text-caption-lg text-neutral-500">Active event</p>
           <select
             value={selectedEvent?.id ?? ''}
@@ -140,9 +138,9 @@ export default function OrganizerManagePage() {
             ))}
           </select>
         </div>
-        <StatChip label="Status" value={selectedEvent?.status ?? 'N/A'} />
-        <StatChip label="Capacity" value={selectedEvent?.guestCapacity ?? 0} />
-        <div className="rounded-xl border border-neutral-200 bg-white p-space-2">
+        <ManageKpiTile label="Status" value={selectedEvent?.status ?? 'N/A'} />
+        <ManageKpiTile label="Capacity" value={selectedEvent?.guestCapacity ?? 0} />
+        <div className="rounded-xl border border-neutral-200 bg-white p-space-3">
           <p className="font-body text-caption-lg text-neutral-500">Operator role</p>
           <select
             value={operatorRole}
@@ -158,25 +156,51 @@ export default function OrganizerManagePage() {
         </div>
       </section>
 
-      <section className="overflow-x-auto scrollbar-hide">
-        <div className="flex min-w-max gap-space-2">
-          {visibleNavItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={withEventSearch(item.to)}
-              className={({ isActive }) => `rounded-full px-space-3 py-space-1 font-display text-label-sm ${
-                isActive || location.pathname === item.to
-                  ? 'bg-info text-white'
-                  : 'border border-neutral-200 bg-white text-neutral-700'
-              }`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+      <section className="grid gap-space-3 md:grid-cols-[250px_1fr]">
+        <aside className="hidden md:block">
+          <div className="sticky top-[5.8rem] rounded-2xl border border-neutral-200 bg-white p-space-2 shadow-sm">
+            <p className="px-space-2 py-space-1 font-display text-caption-lg text-neutral-500">Modules</p>
+            <nav aria-label="Manage modules" className="space-y-space-1">
+              {visibleNavItems.map((item) => (
+                <NavLink
+                  key={item.id}
+                  to={withEventSearch(item.to)}
+                  className={({ isActive }) => `flex items-center gap-space-2 rounded-xl px-space-2 py-space-2 ${
+                    isActive ? 'bg-info text-white' : 'text-neutral-700 hover:bg-neutral-50'
+                  }`}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <ManageIcon id={item.id} active={isActive} />
+                      <span className="font-display text-label-md">{item.label}</span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+        </aside>
+
+        <div className="space-y-space-3">
+          <div className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-space-3">
+            <div className="flex items-center gap-space-2">
+              <ManageIcon id={activeModule?.id ?? 'dashboard'} active />
+              <p className="font-display text-heading-sm text-neutral-900">{activeModule?.label ?? 'Module'}</p>
+            </div>
+            <ManageBadge tone="info">{operatorRole}</ManageBadge>
+          </div>
+          <Outlet
+            context={{
+              selectedEventId: selectedEvent?.id ?? null,
+              selectedEvent,
+              events,
+              operatorRole,
+              permissions,
+              refreshManageBootstrap,
+            }}
+          />
         </div>
       </section>
-
-      <Outlet context={{ selectedEventId: selectedEvent?.id ?? null, selectedEvent, events, operatorRole, permissions }} />
     </PageShell>
   )
 }

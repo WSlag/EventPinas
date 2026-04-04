@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
-import { SectionHeader, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
+import {
+  ManageBadge,
+  ManageButton,
+  ManageCard,
+  ManageFilterBar,
+  ManageSectionHeader,
+} from '@/components/ui/ManagePrimitives'
 import { createManageIncident, listManageIncidents, updateManageIncidentStatus } from '@/services'
 
 function formatDateTime(value) {
@@ -23,11 +29,11 @@ export default function ManageIncidentsPage() {
 
   const canManageIncidents = permissions.includes('incidents')
 
-  async function loadIncidents() {
+  const loadIncidents = useCallback(async () => {
     if (!selectedEventId) return
     const payload = await listManageIncidents(selectedEventId, { status: statusFilter }, { simulateLatency: false })
     setIncidents(payload)
-  }
+  }, [selectedEventId, statusFilter])
 
   useEffect(() => {
     if (!selectedEventId) return
@@ -54,7 +60,7 @@ export default function ManageIncidentsPage() {
     return () => {
       active = false
     }
-  }, [selectedEventId, statusFilter, canManageIncidents])
+  }, [selectedEventId, statusFilter, canManageIncidents, loadIncidents])
 
   async function onCreateIncident(event) {
     event.preventDefault()
@@ -116,7 +122,7 @@ export default function ManageIncidentsPage() {
     const isOverdue = new Date(incident.slaDueAt).getTime() < Date.now()
     return {
       text: isOverdue ? 'SLA overdue' : `SLA due ${formatDateTime(incident.slaDueAt)}`,
-      className: isOverdue ? 'bg-primary-50 text-primary-600' : 'bg-neutral-100 text-neutral-600',
+      tone: isOverdue ? 'danger' : 'neutral',
     }
   }
 
@@ -127,49 +133,49 @@ export default function ManageIncidentsPage() {
 
   return (
     <section className="space-y-space-4">
-      <SectionHeader title="Incident Log" subtitle="Track operational, technical, and safety issues in real time." />
+      <ManageSectionHeader title="Incident Log" subtitle="Track operational, technical, and safety issues in real time." />
       {error && <ErrorState message={error} />}
 
-      <form onSubmit={onCreateIncident} className="rounded-2xl border border-neutral-200 bg-white p-space-4">
-        <p className="font-display text-heading-sm text-neutral-900">Report new incident</p>
-        <div className="mt-space-2 grid gap-space-2 md:grid-cols-4">
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Incident title"
-            className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm md:col-span-4"
+      <ManageCard>
+        <form onSubmit={onCreateIncident}>
+          <p className="font-display text-heading-sm text-neutral-900">Report new incident</p>
+          <div className="mt-space-2 grid gap-space-2 md:grid-cols-4">
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Incident title"
+              className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm md:col-span-4"
+            />
+            <select value={type} onChange={(event) => setType(event.target.value)} className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm">
+              <option value="logistics">Logistics</option>
+              <option value="medical">Medical</option>
+              <option value="security">Security</option>
+              <option value="technical">Technical</option>
+            </select>
+            <select value={severity} onChange={(event) => setSeverity(event.target.value)} className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+            <input
+              value={assignee}
+              onChange={(event) => setAssignee(event.target.value)}
+              placeholder="Assignee (optional)"
+              className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+            />
+            <ManageButton type="submit" variant="danger">Add Incident</ManageButton>
+          </div>
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            rows={3}
+            placeholder="Action notes"
+            className="mt-space-2 w-full rounded-md border border-neutral-200 bg-white px-space-3 py-space-2 text-body-sm"
           />
-          <select value={type} onChange={(event) => setType(event.target.value)} className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm">
-            <option value="logistics">Logistics</option>
-            <option value="medical">Medical</option>
-            <option value="security">Security</option>
-            <option value="technical">Technical</option>
-          </select>
-          <select value={severity} onChange={(event) => setSeverity(event.target.value)} className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm">
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-          </select>
-          <input
-            value={assignee}
-            onChange={(event) => setAssignee(event.target.value)}
-            placeholder="Assignee (optional)"
-            className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
-          />
-          <button type="submit" className="rounded-full bg-primary-400 px-space-4 py-space-2 font-display text-label-md text-white">
-            Add Incident
-          </button>
-        </div>
-        <textarea
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          rows={3}
-          placeholder="Action notes"
-          className="mt-space-2 w-full rounded-md border border-neutral-200 bg-white px-space-3 py-space-2 text-body-sm"
-        />
-      </form>
+        </form>
+      </ManageCard>
 
-      <div className="flex items-center gap-space-2">
+      <ManageFilterBar>
         <span className="font-body text-caption-lg text-neutral-500">Status</span>
         <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-9 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm">
           <option value="all">All</option>
@@ -178,32 +184,25 @@ export default function ManageIncidentsPage() {
           <option value="escalated">Escalated</option>
           <option value="resolved">Resolved</option>
         </select>
-      </div>
+      </ManageFilterBar>
 
       <div className="space-y-space-2">
         {incidents.length === 0 && <EmptyState message="No incidents logged for this event." />}
         {incidents.map((incident) => {
           const slaBadge = getSlaBadge(incident)
           return (
-            <SurfaceCard key={incident.id}>
+            <ManageCard key={incident.id}>
               <div className="space-y-space-2">
                 <div className="flex items-start justify-between gap-space-2">
                   <div>
                     <p className="font-display text-heading-sm text-neutral-900">{incident.title}</p>
                     <p className="font-body text-caption-lg text-neutral-500">
-                      {incident.type} · {incident.severity} · {incident.reportedBy} · {formatDateTime(incident.reportedAt)}
+                      {incident.type} - {incident.severity} - {incident.reportedBy} - {formatDateTime(incident.reportedAt)}
                     </p>
                   </div>
-                  <span className={`rounded-full px-space-3 py-space-1 font-display text-label-sm ${
-                    incident.status === 'resolved'
-                      ? 'bg-green-100 text-success'
-                      : incident.status === 'escalated'
-                        ? 'bg-primary-50 text-primary-600'
-                        : 'bg-neutral-100 text-neutral-700'
-                  }`}
-                  >
+                  <ManageBadge tone={incident.status === 'resolved' ? 'success' : incident.status === 'escalated' ? 'danger' : 'neutral'}>
                     {incident.status}
-                  </span>
+                  </ManageBadge>
                 </div>
 
                 <div>
@@ -236,22 +235,14 @@ export default function ManageIncidentsPage() {
                     placeholder="Resolution note"
                     className="h-9 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
                   />
-                  <button
-                    type="button"
-                    onClick={() => onChangeStatus(incident, incident.status)}
-                    className="rounded-full bg-info px-space-3 py-space-1 font-display text-label-sm text-white"
-                  >
+                  <ManageButton type="button" onClick={() => onChangeStatus(incident, incident.status)}>
                     Save Update
-                  </button>
+                  </ManageButton>
                 </div>
 
-                {slaBadge && (
-                  <span className={`inline-flex rounded-full px-space-2 py-space-1 text-label-sm ${slaBadge.className}`}>
-                    {slaBadge.text}
-                  </span>
-                )}
+                {slaBadge && <ManageBadge tone={slaBadge.tone}>{slaBadge.text}</ManageBadge>}
               </div>
-            </SurfaceCard>
+            </ManageCard>
           )
         })}
       </div>
