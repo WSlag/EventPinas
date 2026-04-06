@@ -45,9 +45,7 @@ export default function ManageBottomNav() {
     }
 
     loadPermissions()
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [location.pathname])
 
   useEffect(() => {
@@ -60,7 +58,7 @@ export default function ManageBottomNav() {
     <>
       <nav
         aria-label="Manage navigation"
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-white pb-safe shadow-xl md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-mgmt-border bg-mgmt-surface pb-safe shadow-mgmt md:hidden"
       >
         <div className="grid grid-cols-5">
           {coreItems.map((item) => {
@@ -70,13 +68,17 @@ export default function ManageBottomNav() {
                 key={item.id}
                 to={`${item.to}${querySuffix}`}
                 aria-current={active ? 'page' : undefined}
-                className={`relative flex h-16 flex-col items-center justify-center gap-0.5 ${
-                  active ? 'text-info' : 'text-neutral-500'
+                className={`relative flex h-16 flex-col items-center justify-center gap-0.5 transition-colors duration-fast ${
+                  active ? 'text-mgmt-gold' : 'text-mgmt-muted'
                 }`}
               >
-                {active && <span className="absolute top-0 h-1 w-8 rounded-full bg-info" />}
+                {active && (
+                  <span className="absolute top-0 h-[2px] w-8 rounded-full bg-gradient-accent-h" />
+                )}
                 <ManageIcon id={item.id} active={active} />
-                <span className="font-display text-caption-sm">{item.label}</span>
+                <span className="font-barlow text-[0.6875rem] uppercase tracking-[0.08em]">
+                  {item.label}
+                </span>
               </Link>
             )
           })}
@@ -86,40 +88,52 @@ export default function ManageBottomNav() {
             aria-label="More modules"
             aria-expanded={showMore}
             aria-controls={morePanelId}
-            className={`relative flex h-16 flex-col items-center justify-center gap-0.5 ${
-              showMore ? 'text-info' : 'text-neutral-500'
+            className={`relative flex h-16 flex-col items-center justify-center gap-0.5 transition-colors duration-fast ${
+              showMore ? 'text-mgmt-gold' : 'text-mgmt-muted'
             }`}
           >
-            {showMore && <span className="absolute top-0 h-1 w-8 rounded-full bg-info" />}
+            {showMore && (
+              <span className="absolute top-0 h-[2px] w-8 rounded-full bg-gradient-accent-h" />
+            )}
             <ManageIcon id="more" active={showMore} />
-            <span className="font-display text-caption-sm">More</span>
+            <span className="font-barlow text-[0.6875rem] uppercase tracking-[0.08em]">More</span>
           </button>
         </div>
       </nav>
 
       {showMore && (
-        <div className="fixed inset-0 z-50 bg-neutral-900/40 md:hidden" onClick={() => setShowMore(false)} role="presentation">
+        <div
+          className="fixed inset-0 z-50 bg-mgmt-bg/60 backdrop-blur-sm md:hidden"
+          onClick={() => setShowMore(false)}
+          role="presentation"
+        >
           <div
             id={morePanelId}
-            className="absolute bottom-16 left-0 right-0 rounded-t-3xl border border-neutral-200 bg-white p-space-4 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
+            className="absolute bottom-16 left-0 right-0 rounded-t-2xl border-l border-r border-t border-mgmt-border bg-mgmt-surface p-space-4 shadow-mgmt"
+            onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label="More manage modules"
           >
-            <p className="font-display text-label-md text-neutral-500">More tools</p>
-            <div className="mt-space-2 grid grid-cols-2 gap-space-2">
+            <p className="font-barlow text-[0.75rem] uppercase tracking-[0.18em] text-mgmt-gold">
+              More Tools
+            </p>
+            <div className="mt-space-3 grid grid-cols-2 gap-space-2">
               {moreItems.map((item) => {
                 const active = location.pathname === item.to
                 return (
                   <Link
                     key={item.id}
                     to={`${item.to}${querySuffix}`}
-                    className={`flex min-h-10 items-center gap-space-2 rounded-xl border p-space-2 ${
-                      active ? 'border-info bg-blue-50 text-info' : 'border-neutral-200 text-neutral-700'
+                    className={`flex min-h-10 items-center gap-space-2 rounded-lg border p-space-2 transition-colors duration-fast ${
+                      active
+                        ? 'border-mgmt-gold/50 bg-gradient-accent-tint text-mgmt-gold'
+                        : 'border-mgmt-border bg-mgmt-raised text-mgmt-muted hover:border-mgmt-border-bright hover:text-mgmt-text'
                     }`}
                   >
                     <ManageIcon id={item.id} active={active} />
-                    <span className="font-display text-label-sm">{item.label}</span>
+                    <span className="font-barlow text-[0.8125rem] font-semibold uppercase tracking-[0.04em]">
+                      {item.label}
+                    </span>
                   </Link>
                 )
               })}

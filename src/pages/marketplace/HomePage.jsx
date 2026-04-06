@@ -6,13 +6,40 @@ import {
   HeroBanner,
   PageShell,
   SectionHeader,
-  StatChip,
   SurfaceCard,
 } from '@/components/ui/MarketplacePrimitives'
 import { marketplaceCategories } from '@/data'
 import { getHomeFeed, getMarketplaceFilterOptions, getSavedItems, toggleSavedItem } from '@/services'
 
 const heroImageUrl = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2200&q=80'
+
+const supplierImageByCategory = {
+  Florist:       'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=600&q=75',
+  Catering:      'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=600&q=75',
+  Photography:   'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=600&q=75',
+  'Audio-Visual':'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=600&q=75',
+}
+const supplierFallbackImage = 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=600&q=75'
+
+const organizerImageBySpecialty = {
+  Concert:   'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=75',
+  Festival:  'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=600&q=75',
+  Wedding:   'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=75',
+  Debut:     'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=600&q=75',
+  Corporate: 'https://images.unsplash.com/photo-1515169067868-5387ec356754?auto=format&fit=crop&w=600&q=75',
+  Expo:      'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=600&q=75',
+  Community: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=600&q=75',
+  Reunion:   'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=600&q=75',
+}
+const organizerFallbackImage = 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=75'
+
+function tagBadgeClass(tag) {
+  if (tag === 'Hot') return 'bg-red-500'
+  if (tag === 'Free') return 'bg-emerald-500'
+  if (tag === 'New') return 'bg-secondary-500'
+  if (tag === 'Selling Fast' || tag === 'Limited') return 'bg-primary-400'
+  return 'bg-neutral-700/80'
+}
 
 const eventImageByCategory = {
   Wedding: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1000&q=80',
@@ -130,7 +157,7 @@ export default function HomePage() {
             <HeroBanner
               eyebrow="EventPH Marketplace"
               title="Great events start here."
-              description="Empowering event creators through every stage of the journey: sell tickets, promote events, and discover trusted suppliers."
+              description="Empowering event creators through every stage of the journey: Manage events, promote events, and discover trusted suppliers — everything Philippine event creators need, in one place."
               tone="soft"
               className="border-none bg-none p-0 shadow-none"
               actions={(
@@ -219,11 +246,18 @@ export default function HomePage() {
             <div className="grid gap-space-4 md:grid-cols-3">
               {featuredEvents.map((event) => (
                 <SurfaceCard key={event.id} className="overflow-hidden p-0">
-                  <img
-                    src={eventImageByCategory[event.category] || eventImageByCategory.Festival}
-                    alt={event.title}
-                    className="h-48 w-full object-cover"
-                  />
+                  <div className="relative">
+                    <img
+                      src={eventImageByCategory[event.category] || eventImageByCategory.Festival}
+                      alt={event.title}
+                      className="h-48 w-full object-cover"
+                    />
+                    {event.tags[0] && (
+                      <span className={`absolute left-space-3 top-space-3 rounded-full px-space-2 py-0.5 font-display text-caption-sm text-white ${tagBadgeClass(event.tags[0])}`}>
+                        {event.tags[0]}
+                      </span>
+                    )}
+                  </div>
                   <div className="p-space-4">
                     <div className="mb-space-2 flex items-center justify-between gap-space-3">
                       <p className="font-display text-heading-sm text-info">{formatDate(event.date)}</p>
@@ -262,6 +296,15 @@ export default function HomePage() {
                       ))}
                     </div>
                     <p className="mt-space-3 font-display text-heading-sm text-info">{formatPhp(event.pricePhp)}</p>
+                    <div className="mt-space-2">
+                      <p className="font-body text-caption-sm text-neutral-500">{event.soldPercent}% sold</p>
+                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                        <div
+                          className={`h-full rounded-full ${event.soldPercent >= 80 ? 'bg-red-500' : event.soldPercent >= 50 ? 'bg-amber-400' : 'bg-secondary-500'}`}
+                          style={{ width: `${event.soldPercent}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </SurfaceCard>
               ))}
@@ -283,6 +326,90 @@ export default function HomePage() {
             </div>
           )}
         </section>
+
+        {!loading && !error && (feed?.featuredSuppliers?.length ?? 0) > 0 && (
+          <section className="space-y-space-4">
+            <SectionHeader title="Featured Suppliers" actionLabel="Browse all" actionTo="/suppliers" />
+            <div className="-mx-space-4 flex gap-space-4 overflow-x-auto px-space-4 pb-space-2 md:mx-0 md:px-0">
+              {feed.featuredSuppliers.map((supplier) => (
+                <Link key={supplier.id} to={`/suppliers/${supplier.id}`} className="w-56 flex-shrink-0">
+                  <SurfaceCard className="h-full overflow-hidden p-0">
+                    <div className="relative">
+                      <img
+                        src={supplierImageByCategory[supplier.category] || supplierFallbackImage}
+                        alt={supplier.name}
+                        className="h-36 w-full object-cover"
+                      />
+                      {supplier.isFeatured && (
+                        <span className="absolute right-space-2 top-space-2 rounded-full bg-info px-space-2 py-0.5 font-display text-caption-sm text-white">
+                          Featured
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-space-3">
+                      <p className="line-clamp-1 font-display text-heading-sm text-neutral-900">{supplier.name}</p>
+                      <p className="font-body text-caption-sm text-neutral-500">{supplier.category} · {supplier.city}</p>
+                      <div className="mt-space-2 flex items-center gap-1 font-body text-caption-sm text-neutral-600">
+                        <span className="text-amber-400">★</span>
+                        <span>{supplier.rating}</span>
+                        <span className="text-neutral-400">({supplier.reviews})</span>
+                      </div>
+                    </div>
+                  </SurfaceCard>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="overflow-hidden rounded-2xl bg-gradient-to-r from-secondary-600 via-info to-secondary-500 p-space-6 text-white">
+          <p className="font-display text-heading-sm uppercase tracking-wide opacity-80">For Businesses</p>
+          <h2 className="mt-space-1 font-display text-heading-2xl">Are you an Event Supplier?</h2>
+          <p className="mt-space-2 max-w-md font-body text-body-sm opacity-90">
+            List your services on EventPH and get discovered by thousands of event organizers across the Philippines.
+          </p>
+          <Link
+            to="/suppliers"
+            className="mt-space-4 inline-flex items-center rounded-full bg-white px-space-5 py-space-2 font-display text-label-md text-info transition-opacity hover:opacity-90"
+          >
+            List your business →
+          </Link>
+        </section>
+
+        {!loading && !error && (feed?.topOrganizers?.length ?? 0) > 0 && (
+          <section className="space-y-space-4">
+            <SectionHeader title="Top Organizers" actionLabel="View all" actionTo="/organizers" />
+            <div className="-mx-space-4 flex gap-space-4 overflow-x-auto px-space-4 pb-space-2 md:mx-0 md:px-0">
+              {feed.topOrganizers.map((org) => (
+                <Link key={org.id} to={`/organizers/${org.id}`} className="w-56 flex-shrink-0">
+                  <SurfaceCard className="h-full overflow-hidden p-0">
+                    <div className="relative">
+                      <img
+                        src={organizerImageBySpecialty[org.specialties[0]] || organizerFallbackImage}
+                        alt={org.name}
+                        className="h-36 w-full object-cover"
+                      />
+                      {org.isVerified && (
+                        <span className="absolute right-space-2 top-space-2 rounded-full bg-info px-space-2 py-0.5 font-display text-caption-sm text-white">
+                          Verified
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-space-3">
+                      <p className="line-clamp-1 font-display text-heading-sm text-neutral-900">{org.name}</p>
+                      <p className="font-body text-caption-sm text-neutral-500">{org.specialties[0]} · {org.city}</p>
+                      <div className="mt-space-2 flex items-center gap-1 font-body text-caption-sm text-neutral-600">
+                        <span className="text-amber-400">★</span>
+                        <span>{org.rating}</span>
+                        <span className="text-neutral-400">({org.eventsHandled} events)</span>
+                      </div>
+                    </div>
+                  </SurfaceCard>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="space-y-space-4">
           <SectionHeader title="Categories" subtitle="Filter your feed" />
@@ -338,13 +465,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {!loading && !error && (
-          <section className="grid gap-space-3 md:grid-cols-3">
-            <StatChip label="Events Loaded" value={feed?.upcomingEvents?.length ?? 0} />
-            <StatChip label="Suppliers Featured" value={feed?.featuredSuppliers?.length ?? 0} />
-            <StatChip label="Organizers Listed" value={feed?.topOrganizers?.length ?? 0} />
-          </section>
-        )}
       </PageShell>
     </div>
   )

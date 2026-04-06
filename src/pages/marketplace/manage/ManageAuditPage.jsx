@@ -4,6 +4,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates
 import { ManageBadge, ManageCard, ManageFilterBar, ManageSectionHeader } from '@/components/ui/ManagePrimitives'
 import { listManageAuditTrail } from '@/services'
 
+const inputCls = 'h-10 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none focus:ring-1 focus:ring-mgmt-gold/30'
+
 function formatDateTime(value) {
   return new Date(value).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
@@ -66,12 +68,12 @@ export default function ManageAuditPage() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search summary, action, or role"
-          className="h-10 flex-1 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+          className={`flex-1 ${inputCls}`}
         />
         <select
           value={module}
           onChange={(event) => setModule(event.target.value)}
-          className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+          className={inputCls}
         >
           {moduleOptions.map((option) => (
             <option key={option} value={option}>
@@ -82,7 +84,7 @@ export default function ManageAuditPage() {
         <select
           value={severity}
           onChange={(event) => setSeverity(event.target.value)}
-          className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+          className={inputCls}
         >
           {severityOptions.map((option) => (
             <option key={option} value={option}>
@@ -98,8 +100,8 @@ export default function ManageAuditPage() {
           <ManageCard key={entry.id}>
             <div className="flex items-start justify-between gap-space-2">
               <div>
-                <p className="font-display text-heading-sm text-neutral-900">{entry.summary}</p>
-                <p className="font-body text-caption-lg text-neutral-500">
+                <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{entry.summary}</p>
+                <p className="font-body text-caption-lg text-mgmt-muted">
                   {entry.module} - {entry.action} - {entry.actorRole}
                 </p>
               </div>
@@ -107,7 +109,7 @@ export default function ManageAuditPage() {
                 <ManageBadge tone={entry.severity === 'warning' ? 'warning' : 'neutral'}>
                   {entry.severity}
                 </ManageBadge>
-                <p className="mt-space-1 font-body text-caption-lg text-neutral-500">{formatDateTime(entry.createdAt)}</p>
+                <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">{formatDateTime(entry.createdAt)}</p>
               </div>
             </div>
           </ManageCard>

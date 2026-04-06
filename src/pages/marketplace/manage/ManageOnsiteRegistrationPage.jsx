@@ -17,6 +17,8 @@ import {
 
 const steps = ['Guest Info', 'Ticket Select', 'Payment', 'Badge Print']
 
+const inputCls = 'h-10 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none focus:ring-1 focus:ring-mgmt-gold/30'
+
 function formatDateTime(value) {
   return new Date(value).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
@@ -186,7 +188,7 @@ export default function ManageOnsiteRegistrationPage() {
       {statusMessage && (
         <ManageCard className={statusTone === 'success' ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}>
           <div className="flex flex-wrap items-center justify-between gap-space-2">
-            <p className="font-body text-body-sm text-neutral-700">{statusMessage}</p>
+            <p className="font-body text-body-sm text-mgmt-text">{statusMessage}</p>
             {statusAction === 'openWaitlist' && canManageWaitlist && (
               <ManageButton type="button" variant="secondary" onClick={onOpenWaitlistModule}>
                 Open Waitlist Module
@@ -222,12 +224,14 @@ export default function ManageOnsiteRegistrationPage() {
               type="button"
               key={step}
               onClick={() => setStepIndex(index)}
-              className={`rounded-xl border px-space-3 py-space-2 text-left ${
-                stepIndex === index ? 'border-info bg-blue-50 text-info' : 'border-neutral-200 bg-white text-neutral-700'
+              className={`rounded-xl border px-space-3 py-space-2 text-left transition-colors duration-fast ${
+                stepIndex === index
+                  ? 'border-mgmt-gold/60 bg-gradient-accent-tint text-mgmt-gold'
+                  : 'border-mgmt-border bg-mgmt-raised text-mgmt-muted hover:border-mgmt-border-bright hover:text-mgmt-text'
               }`}
             >
-              <p className="font-display text-label-sm">Step {index + 1}</p>
-              <p className="font-body text-body-sm">{step}</p>
+              <p className="font-barlow text-[0.75rem] font-semibold uppercase tracking-[0.1em]">Step {index + 1}</p>
+              <p className="font-barlow text-[0.875rem] font-semibold uppercase tracking-wide">{step}</p>
             </button>
           ))}
         </div>
@@ -239,13 +243,13 @@ export default function ManageOnsiteRegistrationPage() {
                 value={guestName}
                 onChange={(event) => setGuestName(event.target.value)}
                 placeholder="Guest full name"
-                className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                className={inputCls}
               />
               <input
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
                 placeholder="Phone number"
-                className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                className={inputCls}
               />
             </div>
           )}
@@ -254,7 +258,7 @@ export default function ManageOnsiteRegistrationPage() {
             <select
               value={ticketType}
               onChange={(event) => setTicketType(event.target.value)}
-              className="h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+              className={`w-full ${inputCls}`}
             >
               <option value="General">General</option>
               <option value="VIP">VIP</option>
@@ -267,7 +271,7 @@ export default function ManageOnsiteRegistrationPage() {
               <select
                 value={paymentMethod}
                 onChange={(event) => setPaymentMethod(event.target.value)}
-                className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                className={inputCls}
               >
                 <option>Cash</option>
                 <option>GCash</option>
@@ -279,15 +283,15 @@ export default function ManageOnsiteRegistrationPage() {
                 min="0"
                 value={amountPaid}
                 onChange={(event) => setAmountPaid(Number(event.target.value))}
-                className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                className={inputCls}
               />
             </div>
           )}
 
           {stepIndex === 3 && (
-            <label className="flex items-center gap-space-2 rounded-xl border border-neutral-200 bg-neutral-50 p-space-2">
-              <input type="checkbox" checked={badgePrinted} onChange={(event) => setBadgePrinted(event.target.checked)} />
-              <span className="font-body text-body-sm text-neutral-700">Badge printed and handed to guest.</span>
+            <label className="flex items-center gap-space-2 rounded-xl border border-mgmt-border bg-mgmt-raised p-space-2 cursor-pointer">
+              <input type="checkbox" checked={badgePrinted} onChange={(event) => setBadgePrinted(event.target.checked)} className="accent-mgmt-gold" />
+              <span className="font-body text-body-sm text-mgmt-text">Badge printed and handed to guest.</span>
             </label>
           )}
 
@@ -325,7 +329,7 @@ export default function ManageOnsiteRegistrationPage() {
             </div>
           )}
           {isFull && !canManageWaitlist && (
-            <p className="font-body text-caption-lg text-neutral-500">
+            <p className="font-body text-caption-lg text-mgmt-muted">
               Waitlist permission is required to queue full-capacity walk-ins.
             </p>
           )}
@@ -337,10 +341,10 @@ export default function ManageOnsiteRegistrationPage() {
         <div className="mt-space-2 space-y-space-2">
           {payload.walkIns.length === 0 && <EmptyState message="No walk-ins recorded yet." />}
           {payload.walkIns.map((item) => (
-            <div key={item.id} className="flex flex-wrap items-center justify-between gap-space-2 rounded-xl border border-neutral-200 p-space-2">
+            <div key={item.id} className="flex flex-wrap items-center justify-between gap-space-2 rounded-xl border border-mgmt-border bg-mgmt-raised p-space-2">
               <div>
-                <p className="font-display text-label-md text-neutral-900">{item.guestName}</p>
-                <p className="font-body text-caption-lg text-neutral-500">
+                <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{item.guestName}</p>
+                <p className="font-body text-caption-lg text-mgmt-muted">
                   {item.ticketType} - {item.paymentMethod} - PHP {Number(item.amountPaid).toLocaleString()}
                 </p>
               </div>
@@ -348,7 +352,7 @@ export default function ManageOnsiteRegistrationPage() {
                 <ManageBadge tone={item.badgePrinted ? 'success' : 'warning'}>
                   {item.badgePrinted ? 'Badge printed' : 'Pending badge'}
                 </ManageBadge>
-                <p className="mt-space-1 font-body text-caption-lg text-neutral-500">{formatDateTime(item.createdAt)}</p>
+                <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">{formatDateTime(item.createdAt)}</p>
               </div>
             </div>
           ))}

@@ -133,13 +133,15 @@ export default function ManageOnlineRegistrationPage() {
                 onDragStart={() => setDragIndex(index)}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={() => onDropField(index)}
-                className={`flex items-center justify-between rounded-xl border p-space-2 ${
-                  dragIndex === index ? 'border-info bg-blue-50' : 'border-neutral-200 bg-white'
+                className={`flex cursor-grab items-center justify-between rounded-xl border p-space-2 transition-colors duration-fast active:cursor-grabbing ${
+                  dragIndex === index
+                    ? 'border-mgmt-gold/50 bg-gradient-accent-tint'
+                    : 'border-mgmt-border bg-mgmt-raised hover:border-mgmt-border-bright'
                 }`}
               >
                 <div>
-                  <p className="font-display text-label-md text-neutral-900">{field.label}</p>
-                  <p className="font-body text-caption-lg text-neutral-500">{field.type}</p>
+                  <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{field.label}</p>
+                  <p className="font-body text-caption-lg text-mgmt-muted">{field.type}</p>
                 </div>
                 <ManageBadge tone={field.required ? 'warning' : 'neutral'}>
                   {field.required ? 'Required' : 'Optional'}
@@ -157,9 +159,9 @@ export default function ManageOnlineRegistrationPage() {
                 type="button"
                 key={gateway.id}
                 onClick={() => onToggleGateway(gateway.id)}
-                className="flex w-full items-center justify-between rounded-xl border border-neutral-200 p-space-2 text-left"
+                className="flex w-full items-center justify-between rounded-xl border border-mgmt-border bg-mgmt-raised p-space-2 text-left transition-colors duration-fast hover:border-mgmt-border-bright"
               >
-                <p className="font-display text-label-md text-neutral-900">{gateway.label}</p>
+                <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{gateway.label}</p>
                 <ManageBadge tone={gateway.enabled ? 'success' : 'neutral'}>
                   {gateway.enabled ? 'Enabled' : 'Disabled'}
                 </ManageBadge>
@@ -177,11 +179,11 @@ export default function ManageOnlineRegistrationPage() {
             const total = Number(ticket.total) || 0
             const pct = total > 0 ? Math.min((sold / total) * 100, 100) : 0
             return (
-              <div key={ticket.id} className="rounded-xl border border-neutral-200 p-space-3">
-                <p className="font-display text-label-md text-neutral-900">{ticket.label}</p>
-                <p className="font-body text-caption-lg text-neutral-500">{formatCurrency(ticket.pricePhp)}</p>
-                <p className="mt-space-1 font-body text-caption-lg text-neutral-600">{sold}/{total} sold</p>
-                <div className="mt-space-2 h-2 rounded-full bg-neutral-200">
+              <div key={ticket.id} className="rounded-xl border border-mgmt-border bg-mgmt-raised p-space-3">
+                <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{ticket.label}</p>
+                <p className="font-body text-caption-lg text-mgmt-muted">{formatCurrency(ticket.pricePhp)}</p>
+                <p className="mt-space-1 font-body text-caption-lg text-mgmt-text">{sold}/{total} sold</p>
+                <div className="mt-space-2 h-2 rounded-full bg-mgmt-bg">
                   <div className="h-2 rounded-full bg-secondary-500" style={{ width: `${pct}%` }} />
                 </div>
               </div>

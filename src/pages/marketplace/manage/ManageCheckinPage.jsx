@@ -26,6 +26,8 @@ const scanStatusChips = [
   { id: 'error', label: 'Error' },
 ]
 
+const inputCls = 'h-10 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none focus:ring-1 focus:ring-mgmt-gold/30'
+
 function formatTime(value) {
   if (!value) return 'Just now'
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -235,12 +237,12 @@ export default function ManageCheckinPage() {
 
       <div className="grid gap-space-3 md:grid-cols-2">
         <ManageCard>
-          <p className="font-display text-heading-md text-neutral-900">Scanner Viewfinder</p>
-          <div className="relative mt-space-3 overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-b from-blue-50 to-white p-space-4">
-            <div className="mx-auto grid h-44 w-44 place-items-center rounded-2xl border-2 border-dashed border-info/60 bg-white">
-              <span className="font-display text-label-sm text-info">Camera Scan Zone</span>
+          <p className="font-playfair text-heading-md text-mgmt-text">Scanner Viewfinder</p>
+          <div className="relative mt-space-3 overflow-hidden rounded-2xl border border-mgmt-border bg-mgmt-raised p-space-4">
+            <div className="mx-auto grid h-44 w-44 place-items-center rounded-2xl border-2 border-dashed border-mgmt-gold/40 bg-white">
+              <span className="font-barlow text-label-sm uppercase tracking-wide text-mgmt-gold">Camera Scan Zone</span>
             </div>
-            <span className="absolute left-1/2 top-1/2 h-0.5 w-36 -translate-x-1/2 bg-info/70 shadow-[0_0_12px_rgba(37,99,235,0.4)]" />
+            <span className="absolute left-1/2 top-1/2 h-0.5 w-36 -translate-x-1/2 bg-gradient-accent-h shadow-[0_0_12px_rgba(255,107,74,0.35)]" />
           </div>
 
           <form onSubmit={onScanSubmit} className="mt-space-3 flex gap-space-2">
@@ -248,47 +250,47 @@ export default function ManageCheckinPage() {
               value={scanCode}
               onChange={(event) => setScanCode(event.target.value)}
               placeholder="Paste guest id, payload, or /qr/event/guest URL"
-              className="h-10 flex-1 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+              className={`flex-1 ${inputCls}`}
             />
             <ManageButton type="submit">Scan</ManageButton>
           </form>
         </ManageCard>
 
         <ManageCard>
-          <p className="font-display text-heading-md text-neutral-900">Last Scan Result</p>
-          {!lastScan && <p className="mt-space-3 font-body text-body-sm text-neutral-500">No scan activity yet.</p>}
+          <p className="font-playfair text-heading-md text-mgmt-text">Last Scan Result</p>
+          {!lastScan && <p className="mt-space-3 font-body text-body-sm text-mgmt-muted">No scan activity yet.</p>}
           {lastScan && (
             <div className={`mt-space-3 rounded-xl border p-space-3 ${
               lastScan.status === 'success'
                 ? 'border-green-200 bg-green-50'
                 : lastScan.status === 'warning'
                   ? 'border-amber-200 bg-amber-50'
-                  : 'border-primary-200 bg-primary-50'
+                  : 'border-red-200 bg-red-50'
             }`}
             >
               <div className="flex items-center justify-between">
-                <p className="font-display text-label-md text-neutral-900">{lastScan.title}</p>
+                <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{lastScan.title}</p>
                 <ManageBadge tone={lastScan.status === 'success' ? 'success' : lastScan.status === 'warning' ? 'warning' : 'danger'}>
                   {lastScan.status}
                 </ManageBadge>
               </div>
-              <p className="mt-space-1 font-body text-body-sm text-neutral-600">{lastScan.detail}</p>
+              <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">{lastScan.detail}</p>
             </div>
           )}
 
           <form onSubmit={onWalkInSubmit} className="mt-space-4 space-y-space-2">
-            <p className="font-display text-label-md text-neutral-900">Walk-in Registration</p>
+            <p className="font-barlow text-[0.8125rem] font-semibold uppercase tracking-[0.1em] text-mgmt-muted">Walk-in Registration</p>
             <input
               value={walkInName}
               onChange={(event) => setWalkInName(event.target.value)}
               placeholder="Guest full name"
-              className="h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+              className={`w-full ${inputCls}`}
             />
-            <div className="grid grid-cols-2 gap-space-2">
+            <div className="grid grid-cols-1 gap-space-2 sm:grid-cols-2">
               <select
                 value={walkInTicket}
                 onChange={(event) => setWalkInTicket(event.target.value)}
-                className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                className={inputCls}
               >
                 <option>General</option>
                 <option>VIP</option>
@@ -298,7 +300,7 @@ export default function ManageCheckinPage() {
                 value={walkInPhone}
                 onChange={(event) => setWalkInPhone(event.target.value)}
                 placeholder="Phone number"
-                className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                className={inputCls}
               />
             </div>
             <ManageButton type="submit" variant="secondary">Register Walk-in</ManageButton>
@@ -311,7 +313,7 @@ export default function ManageCheckinPage() {
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
           placeholder="Manual guest search by name or id"
-          className="h-10 flex-1 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+          className={`flex-1 ${inputCls}`}
         />
         <ManageBadge tone="neutral">{filteredPendingGuests.length} pending</ManageBadge>
       </ManageFilterBar>
@@ -326,11 +328,11 @@ export default function ManageCheckinPage() {
                 type="button"
                 key={guest.id}
                 onClick={() => onCheckIn(guest.id, 'manual')}
-                className="flex w-full items-center justify-between rounded-xl border border-neutral-200 bg-white p-space-2 text-left hover:border-info/40"
+                className="flex w-full items-center justify-between rounded-xl border border-mgmt-border bg-mgmt-raised p-space-2 text-left transition-colors duration-fast hover:border-mgmt-gold/40"
               >
                 <div>
-                  <p className="font-display text-label-md text-neutral-900">{guest.name}</p>
-                  <p className="font-body text-caption-lg text-neutral-500">{guest.id} - {guest.ticketType}</p>
+                  <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{guest.name}</p>
+                  <p className="font-body text-caption-lg text-mgmt-muted">{guest.id} - {guest.ticketType}</p>
                 </div>
                 <ManageBadge tone="warning">Check in</ManageBadge>
               </button>
@@ -340,12 +342,12 @@ export default function ManageCheckinPage() {
 
         <ManageCard>
           <ManageSectionHeader title="Scan Log" subtitle="Success, warning, and error outcomes from the gate." />
-          <div className="mt-space-2 space-y-space-2 rounded-xl border border-neutral-200 bg-neutral-50 p-space-2">
+          <div className="mt-space-2 space-y-space-2 rounded-xl border border-mgmt-border bg-mgmt-raised p-space-2">
             <input
               value={scanQuery}
               onChange={(event) => setScanQuery(event.target.value)}
               placeholder="Search by guest, detail, source, or code"
-              className="h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+              className={`w-full ${inputCls}`}
             />
             <div className="flex flex-wrap items-center gap-space-2">
               {scanStatusChips.map((chip) => (
@@ -381,14 +383,14 @@ export default function ManageCheckinPage() {
                 }`}
               >
                 <div>
-                  <p className="font-display text-label-md text-neutral-900">{entry.name || 'Unknown guest'}</p>
-                  <p className="font-body text-caption-lg text-neutral-500">{entry.detail || entry.input || 'No detail'}</p>
+                  <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{entry.name || 'Unknown guest'}</p>
+                  <p className="font-body text-caption-lg text-mgmt-muted">{entry.detail || entry.input || 'No detail'}</p>
                 </div>
                 <div className="text-right">
                   <ManageBadge tone={entry.status === 'success' ? 'success' : entry.status === 'warning' ? 'warning' : 'danger'}>
                     {entry.status}
                   </ManageBadge>
-                  <p className="mt-space-1 font-body text-caption-lg text-neutral-500">{entry.source} - {formatTime(entry.createdAt)}</p>
+                  <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">{entry.source} - {formatTime(entry.createdAt)}</p>
                 </div>
               </div>
             ))}

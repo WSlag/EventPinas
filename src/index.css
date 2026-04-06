@@ -1,5 +1,5 @@
 /* Google Fonts — must be first */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&family=Playfair+Display:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -50,6 +50,9 @@
   --ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-out:        cubic-bezier(0, 0, 0.2, 1);
 }
+
+/* Management Console — Light Gradient scope */
+.mgmt-console { color-scheme: light; }
 
 /* Base Resets */
 @layer base {

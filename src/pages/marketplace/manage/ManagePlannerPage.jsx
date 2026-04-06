@@ -12,6 +12,8 @@ const phaseLabels = {
   post: 'Post',
 }
 
+const inputCls = 'rounded-md border border-mgmt-border bg-mgmt-raised px-space-2 text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none focus:ring-1 focus:ring-mgmt-gold/30'
+
 function formatCurrency(value) {
   return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(value ?? 0)
 }
@@ -100,7 +102,7 @@ export default function ManagePlannerPage() {
         {checklistPhases.map((phase) => (
           <ManageCard key={phase}>
             <div className="flex items-center justify-between">
-              <p className="font-display text-heading-sm text-neutral-900">{phaseLabels[phase]}</p>
+              <p className="font-playfair text-heading-sm text-mgmt-text">{phaseLabels[phase]}</p>
               <ManageBadge tone="info">
                 {planner.checklist.filter((item) => item.phase === phase && item.done).length}/
                 {planner.checklist.filter((item) => item.phase === phase).length}
@@ -112,16 +114,16 @@ export default function ManagePlannerPage() {
                   key={item.id}
                   type="button"
                   onClick={() => onToggleChecklist(item.id)}
-                  className={`flex w-full items-start gap-space-2 rounded-lg border p-space-2 text-left ${
-                    item.done ? 'border-green-200 bg-green-50' : 'border-neutral-200 bg-white'
+                  className={`flex w-full items-start gap-space-2 rounded-lg border p-space-2 text-left transition-colors duration-fast ${
+                    item.done ? 'border-green-200 bg-green-50' : 'border-mgmt-border bg-mgmt-raised'
                   }`}
                 >
-                  <span className="mt-[2px] font-display text-label-sm">{item.done ? '[x]' : '[ ]'}</span>
-                  <span className="font-body text-body-sm text-neutral-700">{item.label}</span>
+                  <span className="mt-[2px] font-barlow text-[0.8125rem] font-semibold text-mgmt-gold">{item.done ? '[x]' : '[ ]'}</span>
+                  <span className="font-body text-body-sm text-mgmt-text">{item.label}</span>
                 </button>
               ))}
               {planner.checklist.filter((item) => item.phase === phase).length === 0 && (
-                <p className="font-body text-body-sm text-neutral-500">No items in this phase.</p>
+                <p className="font-body text-body-sm text-mgmt-muted">No items in this phase.</p>
               )}
             </div>
           </ManageCard>
@@ -134,29 +136,29 @@ export default function ManagePlannerPage() {
           subtitle="Track category spend versus plan in real time."
           actions={<ManageBadge tone={totals.spent > totals.planned ? 'danger' : 'success'}>{formatCurrency(totals.spent)} spent</ManageBadge>}
         />
-        <p className="mt-space-1 font-body text-caption-lg text-neutral-500">Planned total: {formatCurrency(totals.planned)}</p>
+        <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">Planned total: {formatCurrency(totals.planned)}</p>
 
         <div className="mt-space-3 space-y-space-3">
           {planner.budget.map((category) => {
             const ratio = category.planned > 0 ? Math.min((category.spent / category.planned) * 100, 100) : 0
             return (
-              <div key={category.id} className="rounded-xl border border-neutral-200 p-space-3">
+              <div key={category.id} className="rounded-xl border border-mgmt-border p-space-3">
                 <div className="flex items-center justify-between gap-space-2">
-                  <p className="font-display text-label-md text-neutral-900">{category.category}</p>
+                  <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{category.category}</p>
                   <ManageBadge tone={category.spent > category.planned ? 'danger' : 'neutral'}>
                     {formatCurrency(category.spent)} / {formatCurrency(category.planned)}
                   </ManageBadge>
                 </div>
-                <div className="mt-space-2 h-2 rounded-full bg-neutral-200">
+                <div className="mt-space-2 h-2 rounded-full bg-mgmt-bg">
                   <div className={`h-2 rounded-full ${category.spent > category.planned ? 'bg-primary-500' : 'bg-secondary-500'}`} style={{ width: `${ratio}%` }} />
                 </div>
-                <div className="mt-space-2 flex items-center gap-space-2">
+                <div className="mt-space-2 flex flex-wrap items-center gap-space-2">
                   <input
                     type="number"
                     min="0"
                     value={category.spent}
                     onChange={(event) => onUpdateSpent(category.id, event.target.value)}
-                    className="h-9 w-40 rounded-md border border-neutral-200 bg-white px-space-2 text-body-sm"
+                    className={`h-9 min-w-0 flex-1 ${inputCls}`}
                   />
                   <ManageButton variant="secondary" onClick={() => onUpdateSpent(category.id, category.planned)}>
                     Set to Planned

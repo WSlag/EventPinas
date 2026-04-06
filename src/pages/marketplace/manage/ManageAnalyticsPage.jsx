@@ -4,6 +4,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates
 import { ManageButton, ManageCard, ManageKpiTile, ManageSectionHeader } from '@/components/ui/ManagePrimitives'
 import { exportManageReport, getManageAnalytics } from '@/services'
 
+const inputCls = 'h-10 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none focus:ring-1 focus:ring-mgmt-gold/30'
+
 function mapRecordToRows(record) {
   return Object.entries(record ?? {}).map(([key, value]) => ({ key, value }))
 }
@@ -81,13 +83,13 @@ export default function ManageAnalyticsPage() {
 
       <div className="grid gap-space-3 md:grid-cols-3">
         <ManageCard>
-          <h3 className="font-display text-heading-sm text-neutral-900">Check-in Sources</h3>
-          {checkInSourceRows.length === 0 && <p className="mt-space-1 font-body text-body-sm text-neutral-500">No data yet.</p>}
+          <h3 className="font-playfair text-heading-sm text-mgmt-text">Check-in Sources</h3>
+          {checkInSourceRows.length === 0 && <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">No data yet.</p>}
           {checkInSourceRows.length > 0 && (
             <ul className="mt-space-2 space-y-space-1">
               {checkInSourceRows.map((row) => (
-                <li key={row.key} className="flex items-center justify-between font-body text-body-sm text-neutral-700">
-                  <span>{row.key}</span>
+                <li key={row.key} className="flex items-center justify-between font-body text-body-sm text-mgmt-text">
+                  <span className="text-mgmt-muted">{row.key}</span>
                   <span>{row.value}</span>
                 </li>
               ))}
@@ -96,13 +98,13 @@ export default function ManageAnalyticsPage() {
         </ManageCard>
 
         <ManageCard>
-          <h3 className="font-display text-heading-sm text-neutral-900">Ticket Breakdown</h3>
-          {ticketRows.length === 0 && <p className="mt-space-1 font-body text-body-sm text-neutral-500">No data yet.</p>}
+          <h3 className="font-playfair text-heading-sm text-mgmt-text">Ticket Breakdown</h3>
+          {ticketRows.length === 0 && <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">No data yet.</p>}
           {ticketRows.length > 0 && (
             <ul className="mt-space-2 space-y-space-1">
               {ticketRows.map((row) => (
-                <li key={row.key} className="flex items-center justify-between font-body text-body-sm text-neutral-700">
-                  <span>{row.key}</span>
+                <li key={row.key} className="flex items-center justify-between font-body text-body-sm text-mgmt-text">
+                  <span className="text-mgmt-muted">{row.key}</span>
                   <span>{row.value}</span>
                 </li>
               ))}
@@ -111,13 +113,13 @@ export default function ManageAnalyticsPage() {
         </ManageCard>
 
         <ManageCard>
-          <h3 className="font-display text-heading-sm text-neutral-900">Check-ins Per Hour</h3>
-          {hourlyRows.length === 0 && <p className="mt-space-1 font-body text-body-sm text-neutral-500">No data yet.</p>}
+          <h3 className="font-playfair text-heading-sm text-mgmt-text">Check-ins Per Hour</h3>
+          {hourlyRows.length === 0 && <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">No data yet.</p>}
           {hourlyRows.length > 0 && (
             <ul className="mt-space-2 space-y-space-1">
               {hourlyRows.map((row) => (
-                <li key={row.key} className="flex items-center justify-between font-body text-body-sm text-neutral-700">
-                  <span>{row.key}</span>
+                <li key={row.key} className="flex items-center justify-between font-body text-body-sm text-mgmt-text">
+                  <span className="text-mgmt-muted">{row.key}</span>
                   <span>{row.value}</span>
                 </li>
               ))}
@@ -127,12 +129,12 @@ export default function ManageAnalyticsPage() {
       </div>
 
       <ManageCard>
-        <h3 className="font-display text-heading-sm text-neutral-900">Export Reports</h3>
+        <h3 className="font-playfair text-heading-sm text-mgmt-text">Export Reports</h3>
         <div className="mt-space-2 flex flex-wrap items-center gap-space-2">
           <select
             value={exportType}
             onChange={(event) => setExportType(event.target.value)}
-            className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+            className={inputCls}
           >
             <option value="attendance">Attendance CSV</option>
             <option value="incidents">Incident CSV</option>
@@ -140,13 +142,13 @@ export default function ManageAnalyticsPage() {
           <ManageButton type="button" onClick={onExport}>Generate</ManageButton>
         </div>
         {exportFilename && (
-          <p className="mt-space-2 font-body text-caption-lg text-neutral-500">Generated: {exportFilename}</p>
+          <p className="mt-space-2 font-body text-caption-lg text-mgmt-muted">Generated: {exportFilename}</p>
         )}
         {exportPreview && (
           <textarea
             readOnly
             value={exportPreview}
-            className="mt-space-2 h-48 w-full rounded-md border border-neutral-200 bg-neutral-50 px-space-3 py-space-2 font-mono text-caption-lg text-neutral-700"
+            className="mt-space-2 h-48 w-full rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 py-space-2 font-mono text-caption-lg text-mgmt-muted focus:outline-none"
           />
         )}
       </ManageCard>

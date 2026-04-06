@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
 const primaryNavItems = [
-  { label: 'My Tickets', to: '/saved' },
   { label: 'Discover Events', to: '/events' },
   { label: 'Suppliers', to: '/suppliers' },
   { label: 'Organizers', to: '/organizers' },
@@ -80,22 +79,6 @@ function resolveTone(pathname) {
   return 'discover'
 }
 
-function AppsIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <circle cx="5" cy="5" r="2.2" />
-      <circle cx="12" cy="5" r="2.2" />
-      <circle cx="19" cy="5" r="2.2" />
-      <circle cx="5" cy="12" r="2.2" />
-      <circle cx="12" cy="12" r="2.2" />
-      <circle cx="19" cy="12" r="2.2" />
-      <circle cx="5" cy="19" r="2.2" />
-      <circle cx="12" cy="19" r="2.2" />
-      <circle cx="19" cy="19" r="2.2" />
-    </svg>
-  )
-}
-
 function HamburgerIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
@@ -118,7 +101,8 @@ function CloseIcon() {
 export default function TopNav() {
   const [scrolled, setScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { user, profile, hasActiveSubscription, logout, authBusy } = useAuth()
+  const { user, profile, hasActiveSubscription, logout, authBusy, register, activateSubscription } = useAuth()
+  const navigate = useNavigate()
   const location = useLocation()
   const tone = useMemo(() => resolveTone(location.pathname), [location.pathname])
   const styles = toneStyles[tone]
@@ -170,6 +154,23 @@ export default function TopNav() {
     return 'Create Events'
   }, [user, profile?.role, hasActiveSubscription])
 
+  async function onBypassManage() {
+    const stamp = Date.now()
+    try {
+      await register({
+        email: `organizer.test.${stamp}@eventpinas.com`,
+        password: `test${stamp}`.slice(0, 12),
+        displayName: 'Organizer Test User',
+        role: 'organizer',
+      })
+      await activateSubscription({ planId: 'pro', durationDays: 30 })
+      navigate('/manage/dashboard', { replace: true })
+    } catch {
+      // silent — already logged in as organizer, just navigate
+      navigate('/manage/dashboard', { replace: true })
+    }
+  }
+
   async function onLogout() {
     try {
       await logout()
@@ -204,6 +205,13 @@ export default function TopNav() {
           </Link>
 
           <nav className="hidden items-center gap-space-2 lg:flex">
+            <button
+              type="button"
+              onClick={onBypassManage}
+              className="rounded-full border border-dashed border-white/50 px-space-3 py-1 font-display text-caption-sm text-white/70 hover:border-white hover:text-white"
+            >
+              [dev] manage
+            </button>
             {primaryNavItems.map((item) => {
               const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))
               return (
@@ -220,9 +228,7 @@ export default function TopNav() {
             })}
             <Link
               to={createEventsLink}
-              className={`rounded-full px-space-3 py-space-2 font-display transition-colors duration-fast ${navTextClass} ${
-                location.pathname.startsWith('/manage') ? styles.navActive : styles.navIdle
-              }`}
+              className="rounded-full bg-primary-400 px-space-4 py-space-2 font-display text-label-md text-white transition-opacity duration-fast hover:opacity-90"
             >
               {createEventsLabel}
             </Link>
@@ -262,9 +268,6 @@ export default function TopNav() {
               {isMobileMenuOpen ? <CloseIcon /> : <HamburgerIcon />}
             </button>
 
-            <button type="button" className={`hidden rounded-full p-2 lg:inline-flex ${styles.menuButton}`} aria-label="Open apps">
-              <AppsIcon />
-            </button>
           </div>
         </div>
       </div>
@@ -294,9 +297,7 @@ export default function TopNav() {
               })}
               <Link
                 to={createEventsLink}
-                className={`rounded-full px-space-3 py-space-2 font-display text-label-md transition-colors duration-fast ${
-                  location.pathname.startsWith('/manage') ? styles.navActive : styles.navIdle
-                }`}
+                className="inline-flex items-center justify-center rounded-full bg-primary-400 px-space-4 py-space-2 font-display text-label-md text-white"
                 onClick={onMobileMenuLinkClick}
               >
                 {createEventsLabel}

@@ -6,6 +6,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates
 import { ManageBadge, ManageButton, ManageCard, ManageSectionHeader } from '@/components/ui/ManagePrimitives'
 import { getGuestQrPayload, listManageGuests, validateManageQrCode } from '@/services'
 
+const inputCls = 'h-10 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none focus:ring-1 focus:ring-mgmt-gold/30'
+
 function escapeCsvValue(value) {
   const raw = String(value ?? '')
   if (/[,"\n]/.test(raw)) {
@@ -321,17 +323,17 @@ export default function ManageQrPage() {
                 : 'border-blue-200 bg-blue-50'
         }
         >
-          <p className="font-body text-body-sm text-neutral-700">{actionMessage}</p>
+          <p className="font-body text-body-sm text-mgmt-text">{actionMessage}</p>
         </ManageCard>
       )}
 
       <div className="grid gap-space-3 md:grid-cols-2">
         <ManageCard>
-          <h3 className="font-display text-heading-md text-neutral-900">Generate Guest QR</h3>
+          <h3 className="font-playfair text-heading-md text-mgmt-text">Generate Guest QR</h3>
           <select
             value={selectedGuestId}
             onChange={(event) => setSelectedGuestId(event.target.value)}
-            className="mt-space-3 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+            className={`mt-space-3 w-full ${inputCls}`}
           >
             {guests.map((guest) => (
               <option key={guest.id} value={guest.id}>
@@ -339,18 +341,18 @@ export default function ManageQrPage() {
               </option>
             ))}
           </select>
-          <div className="mt-space-3 rounded-lg border border-neutral-200 bg-neutral-50 p-space-3">
-            <div className="flex items-center justify-center rounded-lg border border-neutral-200 bg-white p-space-2">
+          <div className="mt-space-3 rounded-lg border border-mgmt-border bg-mgmt-raised p-space-3">
+            <div className="flex items-center justify-center rounded-lg border border-mgmt-border bg-mgmt-raised p-space-2">
               {qrImage ? (
                 <img src={qrImage} alt="Generated guest QR code" className="h-52 w-52 object-contain" />
               ) : (
-                <p className="font-body text-body-sm text-neutral-500">No QR generated yet.</p>
+                <p className="font-body text-body-sm text-mgmt-muted">No QR generated yet.</p>
               )}
             </div>
-            <p className="mt-space-2 break-all rounded-lg border border-neutral-200 bg-white p-space-2 font-mono text-caption-lg text-neutral-700">
+            <p className="mt-space-2 break-all rounded-lg border border-mgmt-border bg-mgmt-raised p-space-2 font-mono text-caption-lg text-mgmt-muted">
               {payload || 'No payload generated yet.'}
             </p>
-            <p className="mt-space-2 break-all rounded-lg border border-neutral-200 bg-white p-space-2 font-mono text-caption-lg text-neutral-700">
+            <p className="mt-space-2 break-all rounded-lg border border-mgmt-border bg-mgmt-raised p-space-2 font-mono text-caption-lg text-mgmt-muted">
               {shareUrl || 'No share link generated yet.'}
             </p>
             <div className="mt-space-2 flex flex-wrap gap-space-2">
@@ -373,13 +375,13 @@ export default function ManageQrPage() {
         </ManageCard>
 
         <ManageCard>
-          <h3 className="font-display text-heading-md text-neutral-900">Validate Scan Input</h3>
+          <h3 className="font-playfair text-heading-md text-mgmt-text">Validate Scan Input</h3>
           <form onSubmit={onValidate} className="mt-space-3 space-y-space-2">
             <input
               value={scanInput}
               onChange={(event) => setScanInput(event.target.value)}
               placeholder="Paste guest id, EVENTPH payload, or /qr/event/guest URL"
-              className="h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+              className={`w-full ${inputCls}`}
             />
             <ManageButton type="submit">Validate</ManageButton>
           </form>
@@ -387,10 +389,10 @@ export default function ManageQrPage() {
           {scanResult && (
             <div className="mt-space-3 rounded-lg border border-green-200 bg-green-50 p-space-3">
               <div className="flex items-center justify-between">
-                <p className="font-display text-label-md text-success">Valid guest</p>
+                <p className="font-barlow text-[0.875rem] font-semibold uppercase tracking-wide text-green-700">Valid guest</p>
                 <ManageBadge tone="success">Verified</ManageBadge>
               </div>
-              <p className="font-body text-body-sm text-neutral-700">{scanResult.name} - {scanResult.id}</p>
+              <p className="font-body text-body-sm text-mgmt-text">{scanResult.name} - {scanResult.id}</p>
             </div>
           )}
         </ManageCard>

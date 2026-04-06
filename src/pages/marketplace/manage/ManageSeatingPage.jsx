@@ -17,9 +17,11 @@ import {
   updateManageTableSeats,
 } from '@/services'
 
+const inputCls = 'h-10 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none focus:ring-1 focus:ring-mgmt-gold/30'
+
 function getTableTone(table) {
   const ratio = table.capacity > 0 ? table.seated / table.capacity : 0
-  if (ratio >= 1) return { wrap: 'border-primary-200 bg-primary-50', badge: 'danger', text: 'Full' }
+  if (ratio >= 1) return { wrap: 'border-red-200 bg-red-50', badge: 'danger', text: 'Full' }
   if (ratio >= 0.7) return { wrap: 'border-amber-200 bg-amber-50', badge: 'warning', text: 'Almost full' }
   return { wrap: 'border-green-200 bg-green-50', badge: 'success', text: 'Available' }
 }
@@ -386,7 +388,7 @@ export default function ManageSeatingPage() {
         }
         >
           <div className="flex items-center justify-between gap-space-2">
-            <p className="font-body text-body-sm text-neutral-700">{notice}</p>
+            <p className="font-body text-body-sm text-mgmt-text">{notice}</p>
             <ManageBadge tone={noticeTone === 'danger' ? 'danger' : noticeTone}>
               {noticeTone}
             </ManageBadge>
@@ -396,13 +398,13 @@ export default function ManageSeatingPage() {
 
       <div className="grid gap-space-3 md:grid-cols-[1.1fr_0.9fr]">
         <ManageCard>
-          <p className="font-display text-heading-sm text-neutral-900">Interactive Table Grid</p>
-          <p className="mt-space-1 font-body text-body-sm text-neutral-500">
+          <p className="font-playfair text-heading-sm text-mgmt-text">Interactive Table Grid</p>
+          <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">
             Tap a table to inspect details, or drag unassigned guest chips onto a table to assign seats.
           </p>
           <div className="mt-space-2 flex flex-wrap gap-space-2">
             {draggableGuests.length === 0 && (
-              <p className="font-body text-caption-lg text-neutral-500">No unassigned guests waiting for seats.</p>
+              <p className="font-body text-caption-lg text-mgmt-muted">No unassigned guests waiting for seats.</p>
             )}
             {draggableGuests.map((guest) => (
               <button
@@ -410,12 +412,12 @@ export default function ManageSeatingPage() {
                 type="button"
                 {...bindGuestDrag(guest.id)}
                 aria-label={`Drag ${guest.name} to table`}
-                className={`rounded-full border px-space-3 py-space-1 font-body text-caption-lg ${
+                className={`rounded-full border px-space-3 py-space-1 font-body text-caption-lg transition-colors duration-fast ${
                   draggingGuestId === guest.id
-                    ? 'border-info bg-blue-100 text-info'
+                    ? 'border-mgmt-gold/60 bg-gradient-accent-tint text-mgmt-gold'
                     : assigningGuestId === guest.id
-                      ? 'border-neutral-300 bg-neutral-100 text-neutral-500'
-                      : 'border-neutral-300 bg-white text-neutral-700'
+                      ? 'border-mgmt-border-bright bg-mgmt-raised text-mgmt-dim'
+                      : 'border-mgmt-border bg-mgmt-raised text-mgmt-text'
                 } cursor-grab active:cursor-grabbing`}
               >
                 {assigningGuestId === guest.id ? 'Assigning...' : `${guest.name} (${guest.ticketType})`}
@@ -427,14 +429,14 @@ export default function ManageSeatingPage() {
                 type="button"
                 disabled
                 aria-label={`${guest.name} is checked in and locked`}
-                className="cursor-not-allowed rounded-full border border-neutral-200 bg-neutral-100 px-space-3 py-space-1 font-body text-caption-lg text-neutral-500"
+                className="cursor-not-allowed rounded-full border border-mgmt-border bg-mgmt-surface px-space-3 py-space-1 font-body text-caption-lg text-mgmt-dim"
               >
                 {guest.name} ({guest.ticketType}) locked
               </button>
             ))}
           </div>
           {!!lockedUnassignedGuests.length && (
-            <p className="mt-space-1 font-body text-caption-lg text-neutral-500">
+            <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">
               Checked-in guests are locked and cannot be dragged.
             </p>
           )}
@@ -457,25 +459,25 @@ export default function ManageSeatingPage() {
                   key={table.id}
                   id={`table-drop-${table.id}`}
                   onClick={() => setSelectedTableId(table.id)}
-                  className={`rounded-2xl border p-space-3 text-left ${tone.wrap} ${
-                    active ? 'ring-2 ring-info/40' : ''
+                  className={`rounded-2xl border p-space-3 text-left transition-all duration-fast ${tone.wrap} ${
+                    active ? 'ring-2 ring-mgmt-gold/40' : ''
                   } ${
-                    hovered && !isBlockedDrop ? 'ring-2 ring-success/60' : ''
+                    hovered && !isBlockedDrop ? 'ring-2 ring-mgmt-gold/60 bg-gradient-accent-tint' : ''
                   } ${
-                    isBlockedDrop ? 'ring-2 ring-red-300' : ''
+                    isBlockedDrop ? 'ring-2 ring-red-700' : ''
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <p className="font-display text-label-md text-neutral-900">{table.label}</p>
+                    <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{table.label}</p>
                     <ManageBadge tone={tone.badge}>{tone.text}</ManageBadge>
                   </div>
-                  <p className="mt-space-1 font-body text-caption-lg text-neutral-600">{table.seated}/{table.capacity} seated</p>
+                  <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">{table.seated}/{table.capacity} seated</p>
                   <div className="mt-space-2 flex flex-wrap gap-1">
                     {Array.from({ length: table.capacity }).map((_, index) => (
                       <span
                         key={`${table.id}-seat-${index + 1}`}
                         className={`h-2.5 w-2.5 rounded-full ${
-                          index < table.seated ? 'bg-info' : 'bg-white/70 border border-neutral-300'
+                          index < table.seated ? 'bg-mgmt-gold' : 'border border-mgmt-border bg-mgmt-bg'
                         }`}
                       />
                     ))}
@@ -488,18 +490,18 @@ export default function ManageSeatingPage() {
 
         <div className="space-y-space-3">
           <ManageCard>
-            <p className="font-display text-heading-sm text-neutral-900">Table Controls</p>
+            <p className="font-playfair text-heading-sm text-mgmt-text">Table Controls</p>
             <div className="mt-space-2 flex items-center gap-space-2">
               <ManageBadge tone="info">Total seats: {totalSeats}</ManageBadge>
               <ManageBadge tone="neutral">Event capacity: {selectedEvent?.guestCapacity ?? totalSeats}</ManageBadge>
             </div>
             <form onSubmit={onAddTable} className="mt-space-2 space-y-space-2">
-              <div className="grid grid-cols-2 gap-space-2">
+              <div className="grid grid-cols-1 gap-space-2 sm:grid-cols-2">
                 <input
                   value={addTableLabel}
                   onChange={(event) => setAddTableLabel(event.target.value)}
                   placeholder="Optional label (e.g. VIP-3)"
-                  className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                  className={inputCls}
                 />
                 <input
                   type="number"
@@ -508,7 +510,7 @@ export default function ManageSeatingPage() {
                   value={addTableSeats}
                   onChange={(event) => setAddTableSeats(event.target.value)}
                   placeholder="Seats"
-                  className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                  className={inputCls}
                 />
               </div>
               <ManageButton type="submit" className="w-full" disabled={creatingTable}>
@@ -518,12 +520,12 @@ export default function ManageSeatingPage() {
           </ManageCard>
 
           <ManageCard>
-            <p className="font-display text-heading-sm text-neutral-900">Quick Assign Seat</p>
+            <p className="font-playfair text-heading-sm text-mgmt-text">Quick Assign Seat</p>
             <form onSubmit={onAssignSeat} className="mt-space-2 space-y-space-2">
               <select
                 value={selectedGuestId}
                 onChange={(event) => setSelectedGuestId(event.target.value)}
-                className="h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                className={`w-full ${inputCls}`}
               >
                 <option value="">Select guest</option>
                 {guests.map((guest) => (
@@ -535,7 +537,7 @@ export default function ManageSeatingPage() {
               <select
                 value={selectedTableLabel}
                 onChange={(event) => setSelectedTableLabel(event.target.value)}
-                className="h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                className={`w-full ${inputCls}`}
               >
                 <option value="">Unassign table</option>
                 {tables.map((table) => (
@@ -548,40 +550,40 @@ export default function ManageSeatingPage() {
                 {selectedGuest?.tableLabel ? 'Reassign Seat' : 'Assign Seat'}
               </ManageButton>
             </form>
-            <p className="mt-space-2 font-body text-caption-lg text-neutral-500">Unassigned guests: {unassignedGuestsCount}</p>
+            <p className="mt-space-2 font-body text-caption-lg text-mgmt-muted">Unassigned guests: {unassignedGuestsCount}</p>
             {!!lockedUnassignedGuests.length && (
-              <p className="font-body text-caption-lg text-neutral-500">Locked (checked-in): {lockedUnassignedGuests.length}</p>
+              <p className="font-body text-caption-lg text-mgmt-muted">Locked (checked-in): {lockedUnassignedGuests.length}</p>
             )}
           </ManageCard>
 
           <ManageCard>
-            <p className="font-display text-heading-sm text-neutral-900">Table Detail</p>
-            {!selectedTable && <p className="mt-space-2 font-body text-body-sm text-neutral-500">Select a table to inspect details.</p>}
+            <p className="font-playfair text-heading-sm text-mgmt-text">Table Detail</p>
+            {!selectedTable && <p className="mt-space-2 font-body text-body-sm text-mgmt-muted">Select a table to inspect details.</p>}
             {selectedTable && (
               <div className="mt-space-2 space-y-space-2">
                 <div className="flex items-center justify-between">
-                  <p className="font-display text-label-md text-neutral-900">{selectedTable.label}</p>
+                  <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{selectedTable.label}</p>
                   <ManageBadge tone={getTableTone(selectedTable).badge}>
                     {selectedTable.available} seats open
                   </ManageBadge>
                 </div>
-                {selectedTable.guests.length === 0 && <p className="font-body text-body-sm text-neutral-500">No guests assigned.</p>}
+                {selectedTable.guests.length === 0 && <p className="font-body text-body-sm text-mgmt-muted">No guests assigned.</p>}
                 {selectedTable.guests.map((guest) => (
-                  <div key={guest.id} className="flex items-center justify-between rounded-xl border border-neutral-200 p-space-2">
-                    <p className="font-body text-body-sm text-neutral-700">{guest.name}</p>
+                  <div key={guest.id} className="flex items-center justify-between rounded-xl border border-mgmt-border p-space-2">
+                    <p className="font-body text-body-sm text-mgmt-text">{guest.name}</p>
                     <ManageBadge tone="neutral">{guest.ticketType}</ManageBadge>
                   </div>
                 ))}
-                <form onSubmit={onSaveTableSeats} className="mt-space-2 space-y-space-2 rounded-xl border border-neutral-200 bg-neutral-50 p-space-2">
+                <form onSubmit={onSaveTableSeats} className="mt-space-2 space-y-space-2 rounded-xl border border-mgmt-border bg-mgmt-raised p-space-2">
                   <label className="block">
-                    <span className="font-body text-label-sm text-neutral-700">Seats</span>
+                    <span className="font-barlow text-[0.75rem] uppercase tracking-[0.1em] text-mgmt-muted">Seats</span>
                     <input
                       type="number"
                       min="1"
                       step="1"
                       value={editTableSeats}
                       onChange={(event) => setEditTableSeats(event.target.value)}
-                      className="mt-space-1 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                      className={`mt-space-1 w-full ${inputCls}`}
                     />
                   </label>
                   {downsizeBlocked && (
@@ -598,7 +600,7 @@ export default function ManageSeatingPage() {
                     </ManageButton>
                   </div>
                   {removeReason && (
-                    <p className="font-body text-caption-lg text-neutral-500">{removeReason}</p>
+                    <p className="font-body text-caption-lg text-mgmt-muted">{removeReason}</p>
                   )}
                 </form>
               </div>
@@ -608,16 +610,16 @@ export default function ManageSeatingPage() {
       </div>
 
       {capacityDialog && (
-        <div className="fixed inset-0 z-50 bg-neutral-900/50 p-space-3 md:p-space-6" role="presentation" onClick={() => setCapacityDialog(null)}>
+        <div className="fixed inset-0 z-50 bg-mgmt-text/40 p-space-3 backdrop-blur-sm md:p-space-6" role="presentation" onClick={() => setCapacityDialog(null)}>
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Capacity auto-adjust confirmation"
-            className="mx-auto mt-[8vh] w-full max-w-xl rounded-2xl border border-neutral-200 bg-white p-space-4 shadow-2xl"
+            className="mx-auto mt-[8vh] w-full max-w-xl rounded-2xl border border-mgmt-border bg-mgmt-surface p-space-4 shadow-mgmt"
             onClick={(event) => event.stopPropagation()}
           >
-            <h3 className="font-display text-heading-md text-neutral-900">Auto-adjust to Event Capacity</h3>
-            <p className="mt-space-1 font-body text-body-sm text-neutral-600">
+            <h3 className="font-playfair text-heading-md text-mgmt-text">Auto-adjust to Event Capacity</h3>
+            <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">
               This action would make total seats {capacityDialog.predictedSeats}, while event capacity is {capacityDialog.targetCapacity}.
             </p>
             <div className="mt-space-2 flex flex-wrap items-center gap-space-2">
@@ -626,7 +628,7 @@ export default function ManageSeatingPage() {
                 {capacityDialog.delta > 0 ? `Over by ${capacityDialog.delta}` : `Under by ${Math.abs(capacityDialog.delta)}`}
               </ManageBadge>
             </div>
-            <p className="mt-space-2 font-body text-caption-lg text-neutral-500">
+            <p className="mt-space-2 font-body text-caption-lg text-mgmt-muted">
               Assigned guests are protected. Other tables and seat counts will auto-adjust to keep total seats exactly equal to event capacity.
             </p>
             <div className="mt-space-4 flex items-center justify-end gap-space-2">

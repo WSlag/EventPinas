@@ -11,6 +11,8 @@ const staffRoleOptions = [
   { id: 'staff', label: 'Staff' },
 ]
 
+const inputCls = 'h-10 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none focus:ring-1 focus:ring-mgmt-gold/30'
+
 export default function ManageStaffPage() {
   const { selectedEventId, permissions } = useOutletContext()
   const [loading, setLoading] = useState(true)
@@ -86,12 +88,12 @@ export default function ManageStaffPage() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search by name, role, or station"
-          className="h-10 flex-1 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+          className={`flex-1 ${inputCls}`}
         />
         <select
           value={status}
           onChange={(event) => setStatus(event.target.value)}
-          className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+          className={inputCls}
         >
           <option value="all">All statuses</option>
           <option value="active">Active</option>
@@ -104,14 +106,14 @@ export default function ManageStaffPage() {
           <ManageCard key={member.id}>
             <div className="grid gap-space-2 md:grid-cols-[1.4fr_1fr_auto_auto] md:items-center">
               <div>
-                <p className="font-display text-heading-sm text-neutral-900">{member.name}</p>
-                <p className="font-body text-caption-lg text-neutral-500">{member.station}</p>
+                <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{member.name}</p>
+                <p className="font-body text-caption-lg text-mgmt-muted">{member.station}</p>
               </div>
 
               <select
                 value={member.role}
                 onChange={(event) => onRoleChange(member.id, event.target.value)}
-                className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                className={inputCls}
               >
                 {staffRoleOptions.map((role) => (
                   <option key={role.id} value={role.id}>{role.label}</option>

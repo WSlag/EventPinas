@@ -16,6 +16,8 @@ import {
   removeManageWaitlistEntry,
 } from '@/services'
 
+const inputCls = 'h-10 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none focus:ring-1 focus:ring-mgmt-gold/30'
+
 function formatDateTime(value) {
   return new Date(value).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
@@ -130,15 +132,15 @@ export default function ManageWaitlistPage() {
 
       <ManageCard>
         <form onSubmit={onAddWaitlist}>
-          <p className="font-display text-heading-sm text-neutral-900">Add to waitlist</p>
+          <p className="font-playfair text-heading-sm text-mgmt-text">Add to waitlist</p>
           <div className="mt-space-2 grid gap-space-2 md:grid-cols-4">
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Guest name"
-              className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm md:col-span-2"
+              className={`md:col-span-2 ${inputCls}`}
             />
-            <select value={ticketType} onChange={(event) => setTicketType(event.target.value)} className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm">
+            <select value={ticketType} onChange={(event) => setTicketType(event.target.value)} className={inputCls}>
               <option>General</option>
               <option>VIP</option>
               <option>Staff</option>
@@ -147,7 +149,7 @@ export default function ManageWaitlistPage() {
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
               placeholder="Phone"
-              className="h-10 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+              className={inputCls}
             />
           </div>
           <ManageButton type="submit" className="mt-space-2">Add Entry</ManageButton>
@@ -160,8 +162,8 @@ export default function ManageWaitlistPage() {
           <ManageCard key={entry.id}>
             <div className="flex flex-wrap items-center justify-between gap-space-2">
               <div>
-                <p className="font-display text-heading-sm text-neutral-900">{entry.name}</p>
-                <p className="font-body text-caption-lg text-neutral-500">
+                <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{entry.name}</p>
+                <p className="font-body text-caption-lg text-mgmt-muted">
                   {entry.ticketType} - {entry.phone || 'No phone'} - requested {formatDateTime(entry.requestedAt)}
                 </p>
               </div>
