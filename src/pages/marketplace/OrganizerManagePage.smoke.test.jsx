@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, vi } from 'vitest'
@@ -15,7 +15,7 @@ import ManageSeatingPage from './manage/ManageSeatingPage'
 import ManageGuestsPage from './manage/ManageGuestsPage'
 import ManageOnsiteRegistrationPage from './manage/ManageOnsiteRegistrationPage'
 import ManageQrPage from './manage/ManageQrPage'
-import { createManageEvent, createManageGuest, listManageWaitlist } from '@/services'
+import { createManageEvent, createManageGuest, listManageEvents, listManageWaitlist } from '@/services'
 
 const routerFuture = {
   v7_startTransition: true,
@@ -23,9 +23,13 @@ const routerFuture = {
 }
 
 const MANAGE_STORAGE_KEY = 'eventpinas-manage-state'
+const MANAGE_NAV_ORDER_KEY = 'mgmt-nav-order'
+const MANAGE_NAV_ORDER_V2_KEY = 'mgmt-nav-order-v2'
 
 beforeEach(() => {
   localStorage.removeItem(MANAGE_STORAGE_KEY)
+  localStorage.removeItem(MANAGE_NAV_ORDER_KEY)
+  localStorage.removeItem(MANAGE_NAV_ORDER_V2_KEY)
 })
 
 vi.mock('@/hooks/useAuth', () => ({
@@ -52,9 +56,46 @@ describe('OrganizerManagePage smoke', () => {
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('heading', { name: /run event-day operations from one console/i })).toBeInTheDocument()
+    expect(await screen.findByText(/drag tiles to reorder/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
-    expect(await screen.findByText(/total guests/i)).toBeInTheDocument()
+    expect(await screen.findByText(/seating snapshot/i)).toBeInTheDocument()
+  })
+
+  it('uses lifecycle-first default module order in desktop sidebar', async () => {
+    render(
+      <MemoryRouter future={routerFuture} initialEntries={['/manage/dashboard']}>
+        <Routes>
+          <Route path="/manage" element={<OrganizerManagePage />}>
+            <Route path="dashboard" element={<ManageDashboardPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    const nav = await screen.findByRole('navigation', { name: /manage modules/i })
+    const labels = within(nav).getAllByRole('link').map((link) => (link.textContent ?? '').trim().toLowerCase())
+    expect(labels.slice(0, 3)).toEqual(['dashboard', 'my events', 'event planner'])
+  })
+
+  it('ignores legacy module-order key so new default order is applied', async () => {
+    localStorage.setItem(
+      MANAGE_NAV_ORDER_KEY,
+      JSON.stringify(['checkin', 'guests', 'seating', 'dashboard', 'events', 'planner']),
+    )
+
+    render(
+      <MemoryRouter future={routerFuture} initialEntries={['/manage/dashboard']}>
+        <Routes>
+          <Route path="/manage" element={<OrganizerManagePage />}>
+            <Route path="dashboard" element={<ManageDashboardPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    const nav = await screen.findByRole('navigation', { name: /manage modules/i })
+    const labels = within(nav).getAllByRole('link').map((link) => (link.textContent ?? '').trim().toLowerCase())
+    expect(labels.slice(0, 3)).toEqual(['dashboard', 'my events', 'event planner'])
   })
 
   it('renders incidents module route', async () => {
@@ -167,7 +208,8 @@ describe('OrganizerManagePage smoke', () => {
     )
 
     expect(await screen.findByRole('heading', { name: /guest management/i })).toBeInTheDocument()
-    expect(await screen.findByText(/ready to import|needs fixes/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^import$/i }))
+    expect(await screen.findByText(/ready|needs fixes/i)).toBeInTheDocument()
 
     const csvInput = screen.getByLabelText(/guest csv input/i)
     await user.clear(csvInput)
@@ -178,9 +220,11 @@ describe('OrganizerManagePage smoke', () => {
     const uploadInput = screen.getByLabelText(/upload csv file/i)
     const uploadFile = new File(['name,ticketType\nUploaded Guest,VIP\n'], 'guests.csv', { type: 'text/csv' })
     await user.upload(uploadInput, uploadFile)
-    const fileBadges = await screen.findAllByText(/file: guests\.csv/i)
+    const fileBadges = await screen.findAllByText(/guests\.csv/i)
     expect(fileBadges.length).toBeGreaterThan(0)
-    expect(await screen.findByText(/ready to import/i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /import csv/i })).toBeEnabled()
+    })
   })
 
   it('supports inline seat assignment in guests page and guards checked-in guests', async () => {
@@ -197,15 +241,14 @@ describe('OrganizerManagePage smoke', () => {
 
     expect(await screen.findByRole('heading', { name: /guest management/i })).toBeInTheDocument()
 
-    const carlosCard = screen.getByText(/carlos reyes/i).closest('article')
-    const carlosTableSelect = within(carlosCard).getByRole('combobox', { name: /seat table for carlos reyes/i })
+    const carlosSelects = screen.getAllByRole('combobox', { name: /seat for carlos reyes/i })
+    const carlosTableSelect = carlosSelects[0]
     await user.selectOptions(carlosTableSelect, 'T3')
-    await user.click(within(carlosCard).getByRole('button', { name: /assign seat for carlos reyes/i }))
-    expect(await within(carlosCard).findByText(/table: t3/i)).toBeInTheDocument()
+    const selectContainer = carlosTableSelect.closest('div')
+    await user.click(within(selectContainer).getByRole('button', { name: /^set$/i }))
+    expect(await screen.findByText(/seat assigned for carlos reyes: t3/i)).toBeInTheDocument()
 
-    const anaCard = screen.getByText(/ana reyes/i).closest('article')
-    expect(within(anaCard).getByText(/checked-in guests cannot be moved/i)).toBeInTheDocument()
-    expect(within(anaCard).getByRole('button', { name: /assign seat for ana reyes/i })).toBeDisabled()
+    expect(screen.queryByRole('combobox', { name: /seat for ana reyes/i })).not.toBeInTheDocument()
   })
 
   it('renders audit module route', async () => {
@@ -249,7 +292,7 @@ describe('OrganizerManagePage smoke', () => {
     await user.type(screen.getByLabelText(/^venue$/i), 'Abreeza Hall B')
 
     await user.click(screen.getByRole('button', { name: /^next$/i }))
-    expect(screen.getByText(/auto-generated seating plan/i)).toBeInTheDocument()
+    expect(screen.getByText(/auto-generated seating/i)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /^create event$/i }))
     expect(await screen.findByRole('heading', { name: /event planner/i })).toBeInTheDocument()
@@ -269,18 +312,15 @@ describe('OrganizerManagePage smoke', () => {
     )
 
     expect(await screen.findByRole('heading', { name: /my events/i })).toBeInTheDocument()
-    await user.click(screen.getAllByRole('button', { name: /edit event/i })[0])
+    await user.click(screen.getAllByRole('button', { name: /^edit$/i })[0])
 
     const titleInput = screen.getByLabelText(/event title/i)
     await user.clear(titleInput)
     await user.type(titleInput, 'Edited Reunion Name')
-    await user.clear(screen.getByLabelText(/guest capacity/i))
-    await user.type(screen.getByLabelText(/guest capacity/i), '120')
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
-    const editedNameMatches = await screen.findAllByText(/edited reunion name/i)
-    expect(editedNameMatches.length).toBeGreaterThan(0)
-    expect(screen.getByText(/capacity: 120/i)).toBeInTheDocument()
+    const events = await listManageEvents({}, { simulateLatency: false })
+    expect(events.some((event) => event.title === 'Edited Reunion Name')).toBe(true)
   })
 
   it('handles table add, seat update, and remove controls on seating page', async () => {

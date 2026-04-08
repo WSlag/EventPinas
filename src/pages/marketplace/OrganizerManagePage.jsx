@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useSpring, animated } from '@react-spring/web'
 import { useDrag } from '@use-gesture/react'
@@ -6,7 +6,13 @@ import { ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { ManageBadge, ManageKpiTile } from '@/components/ui/ManagePrimitives'
 import { ManageIcon } from '@/components/layout/ManageIcons'
 import { manageNavConfig } from '@/data'
-import { getManageBootstrap, getManageRolePermissions, setManageOperatorRole, setManageSelectedEvent } from '@/services'
+import {
+  getManageBootstrap,
+  getManageRolePermissions,
+  setManageOperatorRole,
+  setManageSelectedEvent,
+  subscribeManageEvents,
+} from '@/services'
 
 const operatorRoleOptions = [
   { id: 'admin',       label: 'Admin' },
@@ -14,6 +20,7 @@ const operatorRoleOptions = [
   { id: 'seatingLead', label: 'Seating Lead' },
   { id: 'staff',       label: 'Staff' },
 ]
+const MANAGE_NAV_ORDER_KEY = 'mgmt-nav-order-v2'
 
 // ---------------------------------------------------------------------------
 // DraggableNavItem — a sidebar nav item that can be dragged to reorder
@@ -88,8 +95,10 @@ export default function OrganizerManagePage() {
   // Persisted sidebar module order
   const [navOrder, setNavOrder] = useState(() => {
     try {
-      const saved = localStorage.getItem('mgmt-nav-order')
-      return saved ? JSON.parse(saved) : null
+      const saved = localStorage.getItem(MANAGE_NAV_ORDER_KEY)
+      if (!saved) return null
+      const parsed = JSON.parse(saved)
+      return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : null
     } catch {
       return null
     }
@@ -109,13 +118,12 @@ export default function OrganizerManagePage() {
 
   const orderedNavItems = useMemo(() => {
     if (!navOrder) return visibleNavItems
-    return [...visibleNavItems].sort((a, b) => {
-      const ai = navOrder.indexOf(a.id)
-      const bi = navOrder.indexOf(b.id)
-      if (ai === -1) return 1
-      if (bi === -1) return -1
-      return ai - bi
-    })
+    const visibleById = new Map(visibleNavItems.map((item) => [item.id, item]))
+    const orderedFromSaved = navOrder.map((id) => visibleById.get(id)).filter(Boolean)
+    if (!orderedFromSaved.length) return visibleNavItems
+    const includedIds = new Set(orderedFromSaved.map((item) => item.id))
+    const missingVisibleItems = visibleNavItems.filter((item) => !includedIds.has(item.id))
+    return [...orderedFromSaved, ...missingVisibleItems]
   }, [visibleNavItems, navOrder])
 
   const activeModule = useMemo(
@@ -132,11 +140,16 @@ export default function OrganizerManagePage() {
 
   useEffect(() => {
     let active = true
+    let unsubscribe = null
     async function loadBootstrap() {
       setLoading(true)
       setError('')
       try {
         await refreshManageBootstrap()
+        unsubscribe = subscribeManageEvents({}, async () => {
+          if (!active) return
+          await refreshManageBootstrap()
+        })
         if (!active) return
       } catch {
         if (active) setError('Unable to load organizer console right now.')
@@ -145,7 +158,10 @@ export default function OrganizerManagePage() {
       }
     }
     loadBootstrap()
-    return () => { active = false }
+    return () => {
+      active = false
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
   }, [refreshManageBootstrap])
 
   useEffect(() => {
@@ -198,7 +214,7 @@ export default function OrganizerManagePage() {
     next.splice(clamped, 0, moved)
     const newOrder = next.map((item) => item.id)
     setNavOrder(newOrder)
-    localStorage.setItem('mgmt-nav-order', JSON.stringify(newOrder))
+    localStorage.setItem(MANAGE_NAV_ORDER_KEY, JSON.stringify(newOrder))
   }
 
   if (loading) {
