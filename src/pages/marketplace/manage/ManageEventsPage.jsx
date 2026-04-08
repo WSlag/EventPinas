@@ -1,16 +1,28 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { LoadingState, ErrorState } from '@/components/ui/PageStates'
 import {
   ManageBadge,
   ManageButton,
   ManageCard,
+  ManageDialog,
   ManageFilterBar,
+  ManageFilterChip,
   ManageSectionHeader,
   TiltCard,
 } from '@/components/ui/ManagePrimitives'
 import { KanbanBoard, KanbanColumn } from '@/components/ui/ManageKanban'
-import { createManageEvent, listManageEvents, updateManageEvent } from '@/services'
+import {
+  archiveManageEvent,
+  createManageEvent,
+  goLiveManageEvent,
+  listManageEvents,
+  publishManageEvent,
+  restoreManageEvent,
+  softDeleteManageEvent,
+  subscribeManageEvents,
+  updateManageEvent,
+} from '@/services'
 
 function formatDate(value) {
   return new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
@@ -99,6 +111,8 @@ export default function ManageEventsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
+  const [showDeleted, setShowDeleted] = useState(false)
+  const [eventActionBusyKey, setEventActionBusyKey] = useState('')
   const [searchParams] = useSearchParams()
   const selectedEventId = searchParams.get('event')
   const navigate = useNavigate()
@@ -125,7 +139,10 @@ export default function ManageEventsPage() {
       setLoading(true)
       setError('')
       try {
-        const payload = await listManageEvents({ query, status: 'All' }, { simulateLatency: false })
+        const payload = await listManageEvents(
+          { query, status: 'All', includeDeleted: showDeleted },
+          { simulateLatency: false },
+        )
         if (active) setEvents(payload)
       } catch {
         if (active) setError('Unable to load your events right now.')
@@ -135,10 +152,22 @@ export default function ManageEventsPage() {
     }
     loadEvents()
     return () => { active = false }
-  }, [query, canAccessEvents])
+  }, [query, showDeleted, canAccessEvents])
+
+  useEffect(() => {
+    if (!canAccessEvents) return undefined
+    const unsubscribe = subscribeManageEvents(
+      { query, status: 'All', includeDeleted: showDeleted },
+      setEvents,
+    )
+    return () => unsubscribe?.()
+  }, [query, showDeleted, canAccessEvents])
 
   async function reloadEvents() {
-    const payload = await listManageEvents({ query, status: 'All' }, { simulateLatency: false })
+    const payload = await listManageEvents(
+      { query, status: 'All', includeDeleted: showDeleted },
+      { simulateLatency: false },
+    )
     setEvents(payload)
   }
 
@@ -198,6 +227,43 @@ export default function ManageEventsPage() {
     } finally { setSavingEdit(false) }
   }
 
+  async function onEventLifecycleAction(event, action) {
+    if (!event?.id) return
+    setEventActionBusyKey(`${event.id}:${action}`)
+    setError('')
+    try {
+      if (action === 'publish') {
+        await publishManageEvent(event.id, { simulateLatency: false })
+      } else if (action === 'live') {
+        await goLiveManageEvent(event.id, { simulateLatency: false })
+      } else if (action === 'archive') {
+        await archiveManageEvent(event.id, { simulateLatency: false })
+      } else if (action === 'delete') {
+        await softDeleteManageEvent(event.id, { simulateLatency: false })
+      } else if (action === 'restore') {
+        await restoreManageEvent(event.id, { simulateLatency: false })
+      }
+      if (typeof refreshManageBootstrap === 'function') await refreshManageBootstrap()
+      await reloadEvents()
+    } catch (lifecycleError) {
+      setError(lifecycleError?.message ?? 'Unable to update event status.')
+    } finally {
+      setEventActionBusyKey('')
+    }
+  }
+
+  function getLifecycleActions(event) {
+    if (!event || event.deletedAt) return [{ id: 'restore', label: 'Restore', variant: 'secondary' }]
+    const actions = []
+    if (event.status === 'draft') actions.push({ id: 'publish', label: 'Publish', variant: 'secondary' })
+    if (event.status === 'upcoming') actions.push({ id: 'live', label: 'Go Live', variant: 'secondary' })
+    if (event.status === 'draft' || event.status === 'upcoming' || event.status === 'live') {
+      actions.push({ id: 'archive', label: 'Archive', variant: 'ghost' })
+    }
+    actions.push({ id: 'delete', label: 'Delete', variant: 'danger' })
+    return actions
+  }
+
   if (loading) return <LoadingState label="Loading organizer events..." />
   if (!canAccessEvents) return <ErrorState message="Your current role has no event-management permission." />
   if (error) return <ErrorState message={error} />
@@ -206,7 +272,7 @@ export default function ManageEventsPage() {
     <section className="space-y-space-3">
       <ManageSectionHeader
         title="My Events"
-        subtitle="Browse by status · click Open Console to manage an event"
+        subtitle="Browse by status and use lifecycle controls to publish, go live, archive, delete, or restore."
         actions={<ManageButton onClick={openCreateWizard}>+ Create Event</ManageButton>}
       />
 
@@ -217,6 +283,12 @@ export default function ManageEventsPage() {
           placeholder="Search event title, city, or venue..."
           className="h-10 flex-1 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 font-body text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none transition-colors"
         />
+        <ManageFilterChip active={!showDeleted} onClick={() => setShowDeleted(false)}>
+          Active
+        </ManageFilterChip>
+        <ManageFilterChip active={showDeleted} onClick={() => setShowDeleted(true)}>
+          Show Deleted
+        </ManageFilterChip>
       </ManageFilterBar>
 
       {/* Mobile — tab switcher + stacked event list */}
@@ -267,7 +339,10 @@ export default function ManageEventsPage() {
                 <span aria-hidden="true" className="pointer-events-none absolute left-0 top-0 h-5 w-5 rounded-tl-lg border-l-2 border-t-2 border-mgmt-gold/40" />
                 <div className="flex items-start justify-between gap-space-2">
                   <p className="font-playfair text-[1.05rem] font-bold leading-tight text-mgmt-text">{event.title}</p>
-                  <ManageBadge tone={statusTone(event.status)}>{event.status}</ManageBadge>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    <ManageBadge tone={statusTone(event.status)}>{event.status}</ManageBadge>
+                    {event.deletedAt && <ManageBadge tone="danger">deleted</ManageBadge>}
+                  </div>
                 </div>
                 <p className="mt-space-1 font-body text-[0.8rem] text-mgmt-muted">{event.venue}</p>
                 <p className="font-barlow text-[0.75rem] uppercase tracking-wide text-mgmt-dim">
@@ -276,17 +351,39 @@ export default function ManageEventsPage() {
                 <p className="mt-space-1 font-barlow text-[0.75rem] uppercase tracking-wide text-mgmt-dim">
                   Capacity: {event.guestCapacity}
                 </p>
-                <div className="mt-space-2 flex gap-space-2">
-                  <ManageButton variant="ghost" onClick={() => openEditModal(event)} className="flex-1 text-center text-[0.75rem]">
+                <div className="mt-space-2 grid grid-cols-2 gap-space-2">
+                  <ManageButton
+                    variant="ghost"
+                    onClick={() => openEditModal(event)}
+                    className="text-center text-[0.75rem]"
+                    disabled={Boolean(event.deletedAt)}
+                  >
                     Edit
                   </ManageButton>
                   <ManageButton
                     variant={selectedEventId === event.id ? 'primary' : 'secondary'}
                     onClick={() => navigate(`/manage/dashboard?event=${event.id}`)}
-                    className="flex-1 text-center text-[0.75rem]"
+                    className="text-center text-[0.75rem]"
+                    disabled={Boolean(event.deletedAt)}
                   >
                     {selectedEventId === event.id ? 'Active' : 'Console'}
                   </ManageButton>
+                </div>
+                <div className="mt-space-2 flex flex-wrap gap-space-2">
+                  {getLifecycleActions(event).map((action) => {
+                    const busy = eventActionBusyKey === `${event.id}:${action.id}`
+                    return (
+                      <ManageButton
+                        key={action.id}
+                        variant={action.variant}
+                        className="text-[0.7rem]"
+                        disabled={Boolean(eventActionBusyKey)}
+                        onClick={() => onEventLifecycleAction(event, action.id)}
+                      >
+                        {busy ? 'Working...' : action.label}
+                      </ManageButton>
+                    )
+                  })}
                 </div>
               </div>
             ))
@@ -326,7 +423,10 @@ export default function ManageEventsPage() {
                       <p className="font-playfair text-[1.05rem] font-bold leading-tight text-mgmt-text">
                         {event.title}
                       </p>
-                      <ManageBadge tone={statusTone(event.status)}>{event.status}</ManageBadge>
+                      <div className="flex flex-wrap justify-end gap-1">
+                        <ManageBadge tone={statusTone(event.status)}>{event.status}</ManageBadge>
+                        {event.deletedAt && <ManageBadge tone="danger">deleted</ManageBadge>}
+                      </div>
                     </div>
 
                     <p className="mt-space-1 font-body text-[0.8rem] text-mgmt-muted">{event.venue}</p>
@@ -337,17 +437,39 @@ export default function ManageEventsPage() {
                       Capacity: {event.guestCapacity}
                     </p>
 
-                    <div className="mt-space-2 flex items-center gap-space-2">
-                      <ManageButton variant="ghost" onClick={() => openEditModal(event)} className="flex-1 text-center text-[0.75rem]">
+                    <div className="mt-space-2 grid grid-cols-2 gap-space-2">
+                      <ManageButton
+                        variant="ghost"
+                        onClick={() => openEditModal(event)}
+                        className="text-center text-[0.75rem]"
+                        disabled={Boolean(event.deletedAt)}
+                      >
                         Edit
                       </ManageButton>
                       <ManageButton
                         variant={selectedEventId === event.id ? 'primary' : 'secondary'}
                         onClick={() => navigate(`/manage/dashboard?event=${event.id}`)}
-                        className="flex-1 text-center text-[0.75rem]"
+                        className="text-center text-[0.75rem]"
+                        disabled={Boolean(event.deletedAt)}
                       >
                         {selectedEventId === event.id ? 'Active' : 'Console'}
                       </ManageButton>
+                    </div>
+                    <div className="mt-space-2 flex flex-wrap gap-space-2">
+                      {getLifecycleActions(event).map((action) => {
+                        const busy = eventActionBusyKey === `${event.id}:${action.id}`
+                        return (
+                          <ManageButton
+                            key={action.id}
+                            variant={action.variant}
+                            className="text-[0.7rem]"
+                            disabled={Boolean(eventActionBusyKey)}
+                            onClick={() => onEventLifecycleAction(event, action.id)}
+                          >
+                            {busy ? 'Working...' : action.label}
+                          </ManageButton>
+                        )
+                      })}
                     </div>
                   </div>
                 </TiltCard>
@@ -359,15 +481,7 @@ export default function ManageEventsPage() {
       </div>
 
       {/* Create Event Modal */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-mgmt-text/40 p-space-3 backdrop-blur-sm md:p-space-6" onClick={closeCreateWizard} role="presentation">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Create new event"
-            className="mx-auto mt-[4vh] w-full max-w-2xl rounded-xl border border-mgmt-border-bright bg-mgmt-surface p-space-4 shadow-mgmt"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <ManageDialog isOpen={isCreateOpen} onClose={closeCreateWizard} ariaLabel="Create new event">
             <div className="flex items-center justify-between gap-space-2">
               <div>
                 <p className="font-playfair text-heading-md font-bold text-mgmt-text">Create New Event</p>
@@ -399,7 +513,7 @@ export default function ManageEventsPage() {
                 <ManageCard>
                   <p className="font-playfair text-heading-sm font-bold text-mgmt-text">Auto-generated Seating</p>
                   <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">
-                    {createSeatingPreview.tableCount} table(s) × {createSeatingPreview.seatsPerTable} seats = {createSeatingPreview.totalSeats} total seats
+                    {createSeatingPreview.tableCount} table(s) x {createSeatingPreview.seatsPerTable} seats = {createSeatingPreview.totalSeats} total seats
                   </p>
                   <p className="mt-space-1 font-body text-caption-lg text-mgmt-dim">Adjust tables and seats later in Seating & Tables.</p>
                 </ManageCard>
@@ -416,20 +530,10 @@ export default function ManageEventsPage() {
                 }
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </ManageDialog>
 
       {/* Edit Event Modal */}
-      {isEditOpen && (
-        <div className="fixed inset-0 z-50 bg-mgmt-text/40 p-space-3 backdrop-blur-sm md:p-space-6" onClick={closeEditModal} role="presentation">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Edit event"
-            className="mx-auto mt-[4vh] w-full max-w-2xl rounded-xl border border-mgmt-border-bright bg-mgmt-surface p-space-4 shadow-mgmt"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <ManageDialog isOpen={isEditOpen} onClose={closeEditModal} ariaLabel="Edit event">
             <div className="flex items-center justify-between gap-space-2">
               <div>
                 <p className="font-playfair text-heading-md font-bold text-mgmt-text">Edit Event</p>
@@ -449,7 +553,7 @@ export default function ManageEventsPage() {
             <ManageCard className="mt-space-3">
               <p className="font-playfair text-heading-sm font-bold text-mgmt-text">Capacity & Seating Safety</p>
               <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">
-                Preview: {editSeatingPreview.tableCount} table(s) × {editSeatingPreview.seatsPerTable} seats = {editSeatingPreview.totalSeats} seats.
+                Preview: {editSeatingPreview.tableCount} table(s) x {editSeatingPreview.seatsPerTable} seats = {editSeatingPreview.totalSeats} seats.
               </p>
               <p className="mt-space-1 font-body text-caption-lg text-mgmt-dim">
                 Existing seat assignments are preserved. If capacity is reduced, only empty tables are removed.
@@ -460,9 +564,7 @@ export default function ManageEventsPage() {
               <ManageButton variant="secondary" onClick={closeEditModal} disabled={savingEdit}>Cancel</ManageButton>
               <ManageButton onClick={onSaveEdit} disabled={savingEdit}>{savingEdit ? 'Saving...' : 'Save Changes'}</ManageButton>
             </div>
-          </div>
-        </div>
-      )}
+      </ManageDialog>
     </section>
   )
 }

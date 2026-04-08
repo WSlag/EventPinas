@@ -3,7 +3,12 @@ import { useOutletContext } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { ManageBadge, ManageButton, ManageCard, ManageKpiTile, ManageSectionHeader } from '@/components/ui/ManagePrimitives'
 import { checklistPhases } from '@/data'
-import { getManagePlanner, toggleManagePlannerChecklistItem, updateManageBudgetCategorySpend } from '@/services'
+import {
+  getManagePlanner,
+  toggleManagePlannerChecklistItem,
+  updateManageBudgetCategorySpend,
+  updateManagePlannerEventDetails,
+} from '@/services'
 
 const phaseLabels = {
   preEvent: 'Pre-Event',
@@ -23,6 +28,13 @@ export default function ManagePlannerPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [planner, setPlanner] = useState(null)
+  const [editingDetails, setEditingDetails] = useState(false)
+  const [savingDetails, setSavingDetails] = useState(false)
+  const [detailsForm, setDetailsForm] = useState({
+    plannerLead: '',
+    venueOpenTime: '',
+    showStartTime: '',
+  })
   const canAccessPlanner = permissions.includes('planner')
 
   const totals = useMemo(() => {
@@ -59,6 +71,16 @@ export default function ManagePlannerPage() {
     }
   }, [selectedEventId, canAccessPlanner])
 
+  useEffect(() => {
+    if (!planner) return
+    const details = planner.eventDetails ?? {}
+    setDetailsForm({
+      plannerLead: details.plannerLead ?? '',
+      venueOpenTime: details.venueOpenTime ?? '',
+      showStartTime: details.showStartTime ?? '',
+    })
+  }, [planner])
+
   async function onToggleChecklist(itemId) {
     setError('')
     try {
@@ -81,6 +103,31 @@ export default function ManagePlannerPage() {
     }
   }
 
+  async function onSaveEventDetails(event) {
+    event.preventDefault()
+    if (!selectedEventId) return
+    setError('')
+    setSavingDetails(true)
+    try {
+      await updateManagePlannerEventDetails(
+        selectedEventId,
+        {
+          plannerLead: detailsForm.plannerLead,
+          venueOpenTime: detailsForm.venueOpenTime,
+          showStartTime: detailsForm.showStartTime,
+        },
+        { simulateLatency: false },
+      )
+      const payload = await getManagePlanner(selectedEventId, { simulateLatency: false })
+      setPlanner(payload)
+      setEditingDetails(false)
+    } catch (detailsError) {
+      setError(detailsError?.message ?? 'Unable to update planner event details.')
+    } finally {
+      setSavingDetails(false)
+    }
+  }
+
   if (!selectedEventId) return <EmptyState message="Select an event first to open event planner." />
   if (loading) return <LoadingState label="Loading event planner..." />
   if (!canAccessPlanner) return <ErrorState message="Your current role cannot access event planner tools." />
@@ -97,6 +144,94 @@ export default function ManagePlannerPage() {
         <ManageKpiTile label="Venue Open" value={planner.eventDetails.venueOpenTime || '--:--'} />
         <ManageKpiTile label="Show Start" value={planner.eventDetails.showStartTime || '--:--'} />
       </div>
+
+      <ManageCard>
+        <ManageSectionHeader
+          title="Event Details"
+          subtitle="Update planner lead and run-of-show times. Guest target is capacity-synced."
+          actions={
+            !editingDetails
+              ? <ManageButton variant="secondary" onClick={() => setEditingDetails(true)}>Edit Details</ManageButton>
+              : null
+          }
+        />
+        {!editingDetails && (
+          <div className="mt-space-2 grid gap-space-2 md:grid-cols-2">
+            <p className="font-body text-body-sm text-mgmt-text">
+              <span className="font-barlow text-[0.75rem] uppercase tracking-wide text-mgmt-muted">Planner Lead: </span>
+              {planner.eventDetails.plannerLead || 'N/A'}
+            </p>
+            <p className="font-body text-body-sm text-mgmt-text">
+              <span className="font-barlow text-[0.75rem] uppercase tracking-wide text-mgmt-muted">Guest Target: </span>
+              {planner.eventDetails.guestTarget || 0}
+            </p>
+            <p className="font-body text-body-sm text-mgmt-text">
+              <span className="font-barlow text-[0.75rem] uppercase tracking-wide text-mgmt-muted">Venue Open: </span>
+              {planner.eventDetails.venueOpenTime || '--:--'}
+            </p>
+            <p className="font-body text-body-sm text-mgmt-text">
+              <span className="font-barlow text-[0.75rem] uppercase tracking-wide text-mgmt-muted">Show Start: </span>
+              {planner.eventDetails.showStartTime || '--:--'}
+            </p>
+          </div>
+        )}
+        {editingDetails && (
+          <form onSubmit={onSaveEventDetails} className="mt-space-3 space-y-space-2">
+            <label className="block">
+              <span className="font-barlow text-[0.75rem] uppercase tracking-[0.1em] text-mgmt-muted">Planner Lead</span>
+              <input
+                value={detailsForm.plannerLead}
+                onChange={(event) => setDetailsForm((current) => ({ ...current, plannerLead: event.target.value }))}
+                className={`mt-space-1 h-10 w-full ${inputCls}`}
+                placeholder="Name of lead planner"
+              />
+            </label>
+            <div className="grid gap-space-2 md:grid-cols-2">
+              <label className="block">
+                <span className="font-barlow text-[0.75rem] uppercase tracking-[0.1em] text-mgmt-muted">Venue Open Time</span>
+                <input
+                  type="time"
+                  value={detailsForm.venueOpenTime}
+                  onChange={(event) => setDetailsForm((current) => ({ ...current, venueOpenTime: event.target.value }))}
+                  className={`mt-space-1 h-10 w-full ${inputCls}`}
+                />
+              </label>
+              <label className="block">
+                <span className="font-barlow text-[0.75rem] uppercase tracking-[0.1em] text-mgmt-muted">Show Start Time</span>
+                <input
+                  type="time"
+                  value={detailsForm.showStartTime}
+                  onChange={(event) => setDetailsForm((current) => ({ ...current, showStartTime: event.target.value }))}
+                  className={`mt-space-1 h-10 w-full ${inputCls}`}
+                />
+              </label>
+            </div>
+            <label className="block">
+              <span className="font-barlow text-[0.75rem] uppercase tracking-[0.1em] text-mgmt-muted">Guest Target</span>
+              <input value={planner.eventDetails.guestTarget || 0} readOnly className={`mt-space-1 h-10 w-full ${inputCls} opacity-70`} />
+            </label>
+            <div className="flex items-center gap-space-2">
+              <ManageButton type="submit" disabled={savingDetails}>{savingDetails ? 'Saving...' : 'Save Details'}</ManageButton>
+              <ManageButton
+                type="button"
+                variant="secondary"
+                disabled={savingDetails}
+                onClick={() => {
+                  const details = planner.eventDetails ?? {}
+                  setDetailsForm({
+                    plannerLead: details.plannerLead ?? '',
+                    venueOpenTime: details.venueOpenTime ?? '',
+                    showStartTime: details.showStartTime ?? '',
+                  })
+                  setEditingDetails(false)
+                }}
+              >
+                Cancel
+              </ManageButton>
+            </div>
+          </form>
+        )}
+      </ManageCard>
 
       <div className="grid gap-space-3 md:grid-cols-4">
         {checklistPhases.map((phase) => (

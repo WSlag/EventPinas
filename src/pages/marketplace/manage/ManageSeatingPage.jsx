@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useDrag } from '@use-gesture/react'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
@@ -6,6 +6,8 @@ import {
   ManageBadge,
   ManageButton,
   ManageCard,
+  ManageDialog,
+  ManageFilterChip,
   ManageSectionHeader,
 } from '@/components/ui/ManagePrimitives'
 import {
@@ -14,6 +16,9 @@ import {
   listManageGuests,
   listManageTables,
   removeManageTable,
+  subscribeManageGuests,
+  subscribeManageTables,
+  updateManageTableLayout,
   updateManageTableSeats,
 } from '@/services'
 
@@ -62,6 +67,10 @@ export default function ManageSeatingPage() {
   const [removingTable, setRemovingTable] = useState(false)
   const [capacityDialog, setCapacityDialog] = useState(null)
   const [applyingCapacityDialog, setApplyingCapacityDialog] = useState(false)
+  const [layoutMode, setLayoutMode] = useState('grid')
+  const [floorplanZoom, setFloorplanZoom] = useState(1)
+  const [layoutSavingTableId, setLayoutSavingTableId] = useState('')
+  const dragLayoutStartRef = useRef({})
   const canEditSeating = permissions.includes('seating')
 
   const loadSeatingData = useCallback(async () => {
@@ -99,6 +108,20 @@ export default function ManageSeatingPage() {
       active = false
     }
   }, [selectedEventId, canEditSeating, loadSeatingData])
+
+  useEffect(() => {
+    if (!selectedEventId || !canEditSeating) return undefined
+    const unsubscribeTables = subscribeManageTables(selectedEventId, (tablePayload) => {
+      setTables(tablePayload)
+    })
+    const unsubscribeGuests = subscribeManageGuests(selectedEventId, { status: 'all' }, (guestPayload) => {
+      setGuests(guestPayload)
+    })
+    return () => {
+      unsubscribeTables?.()
+      unsubscribeGuests?.()
+    }
+  }, [selectedEventId, canEditSeating])
 
   useEffect(() => {
     if (!tables.length) return
@@ -325,6 +348,60 @@ export default function ManageSeatingPage() {
 
   const draggingGuest = guests.find((guest) => guest.id === draggingGuestId) ?? null
 
+  function getTableLayout(table) {
+    return {
+      x: Number(table?.x ?? 120),
+      y: Number(table?.y ?? 100),
+    }
+  }
+
+  async function persistTableLayout(table, x, y) {
+    if (!selectedEventId || !table) return
+    const snapped = {
+      x: Math.max(0, Math.round(x / 20) * 20),
+      y: Math.max(0, Math.round(y / 20) * 20),
+    }
+    setLayoutSavingTableId(table.id)
+    setError('')
+    try {
+      await updateManageTableLayout(
+        selectedEventId,
+        table.label,
+        snapped,
+        { simulateLatency: false },
+      )
+      await loadSeatingData()
+    } catch (layoutError) {
+      setNoticeTone('danger')
+      setNotice(layoutError?.message ?? 'Unable to save floorplan position.')
+    } finally {
+      setLayoutSavingTableId('')
+    }
+  }
+
+  const bindTableLayoutDrag = useDrag(
+    ({ args: [table], first, last, movement: [mx, my] }) => {
+      if (!table) return
+      if (first) {
+        const start = getTableLayout(table)
+        dragLayoutStartRef.current[table.id] = start
+      }
+      const base = dragLayoutStartRef.current[table.id] ?? getTableLayout(table)
+      const nextX = Math.max(0, base.x + (mx / floorplanZoom))
+      const nextY = Math.max(0, base.y + (my / floorplanZoom))
+
+      setTables((current) => current.map((entry) => (
+        entry.id === table.id ? { ...entry, x: nextX, y: nextY } : entry
+      )))
+
+      if (last) {
+        delete dragLayoutStartRef.current[table.id]
+        void persistTableLayout(table, nextX, nextY)
+      }
+    },
+    { pointer: { touch: true }, filterTaps: true },
+  )
+
   const bindGuestDrag = useDrag(
     ({ args: [guestId], first, last, xy: [x, y], active }) => {
       let computedHoveredId = ''
@@ -398,10 +475,26 @@ export default function ManageSeatingPage() {
 
       <div className="grid gap-space-3 md:grid-cols-[1.1fr_0.9fr]">
         <ManageCard>
-          <p className="font-playfair text-heading-sm text-mgmt-text">Interactive Table Grid</p>
-          <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">
-            Tap a table to inspect details, or drag unassigned guest chips onto a table to assign seats.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-space-2">
+            <div>
+              <p className="font-playfair text-heading-sm text-mgmt-text">
+                {layoutMode === 'floorplan' ? 'Floorplan Layout (v1)' : 'Interactive Table Grid'}
+              </p>
+              <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">
+                {layoutMode === 'floorplan'
+                  ? 'Drag tables to position them, snap to grid, and persist coordinates. Use zoom and scroll to pan.'
+                  : 'Tap a table to inspect details, or drag unassigned guest chips onto a table to assign seats.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-space-2">
+              <ManageFilterChip active={layoutMode === 'grid'} onClick={() => setLayoutMode('grid')}>
+                Grid
+              </ManageFilterChip>
+              <ManageFilterChip active={layoutMode === 'floorplan'} onClick={() => setLayoutMode('floorplan')}>
+                Floorplan
+              </ManageFilterChip>
+            </div>
+          </div>
           <div className="mt-space-2 flex flex-wrap gap-space-2">
             {draggableGuests.length === 0 && (
               <p className="font-body text-caption-lg text-mgmt-muted">No unassigned guests waiting for seats.</p>
@@ -447,45 +540,105 @@ export default function ManageSeatingPage() {
               </ManageBadge>
             </div>
           )}
-          <div className="mt-space-3 grid grid-cols-2 gap-space-2 md:grid-cols-3">
-            {tables.map((table) => {
-              const tone = getTableTone(table)
-              const active = selectedTableId === table.id
-              const hovered = hoveredTableId === table.id
-              const isBlockedDrop = hovered && !!hoveredDropBlockedReason
-              return (
-                <button
-                  type="button"
-                  key={table.id}
-                  id={`table-drop-${table.id}`}
-                  onClick={() => setSelectedTableId(table.id)}
-                  className={`rounded-2xl border p-space-3 text-left transition-all duration-fast ${tone.wrap} ${
-                    active ? 'ring-2 ring-mgmt-gold/40' : ''
-                  } ${
-                    hovered && !isBlockedDrop ? 'ring-2 ring-mgmt-gold/60 bg-gradient-accent-tint' : ''
-                  } ${
-                    isBlockedDrop ? 'ring-2 ring-red-700' : ''
-                  }`}
+          {layoutMode === 'grid' && (
+            <div className="mt-space-3 grid grid-cols-2 gap-space-2 md:grid-cols-3">
+              {tables.map((table) => {
+                const tone = getTableTone(table)
+                const active = selectedTableId === table.id
+                const hovered = hoveredTableId === table.id
+                const isBlockedDrop = hovered && !!hoveredDropBlockedReason
+                return (
+                  <button
+                    type="button"
+                    key={table.id}
+                    id={`table-drop-${table.id}`}
+                    onClick={() => setSelectedTableId(table.id)}
+                    className={`rounded-2xl border p-space-3 text-left transition-all duration-fast ${tone.wrap} ${
+                      active ? 'ring-2 ring-mgmt-gold/40' : ''
+                    } ${
+                      hovered && !isBlockedDrop ? 'ring-2 ring-mgmt-gold/60 bg-gradient-accent-tint' : ''
+                    } ${
+                      isBlockedDrop ? 'ring-2 ring-red-700' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{table.label}</p>
+                      <ManageBadge tone={tone.badge}>{tone.text}</ManageBadge>
+                    </div>
+                    <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">{table.seated}/{table.capacity} seated</p>
+                    <div className="mt-space-2 flex flex-wrap gap-1">
+                      {Array.from({ length: table.capacity }).map((_, index) => (
+                        <span
+                          key={`${table.id}-seat-${index + 1}`}
+                          className={`h-2.5 w-2.5 rounded-full ${
+                            index < table.seated ? 'bg-mgmt-gold' : 'border border-mgmt-border bg-mgmt-bg'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          {layoutMode === 'floorplan' && (
+            <div className="mt-space-3 rounded-xl border border-mgmt-border bg-mgmt-raised p-space-2">
+              <div className="mb-space-2 flex items-center gap-space-2">
+                <ManageBadge tone="neutral">Zoom</ManageBadge>
+                <input
+                  type="range"
+                  min="0.6"
+                  max="1.8"
+                  step="0.1"
+                  value={floorplanZoom}
+                  onChange={(event) => setFloorplanZoom(Number(event.target.value))}
+                />
+                <ManageBadge tone="info">{Math.round(floorplanZoom * 100)}%</ManageBadge>
+              </div>
+              <div className="h-[28rem] overflow-auto rounded-lg border border-mgmt-border bg-mgmt-bg">
+                <div
+                  className="relative origin-top-left"
+                  style={{
+                    width: 1400,
+                    height: 1000,
+                    transform: `scale(${floorplanZoom})`,
+                    backgroundImage: 'linear-gradient(to right, rgba(201,166,92,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(201,166,92,0.15) 1px, transparent 1px)',
+                    backgroundSize: '20px 20px',
+                  }}
                 >
-                  <div className="flex items-center justify-between">
-                    <p className="font-barlow text-[0.9375rem] font-semibold uppercase tracking-wide text-mgmt-text">{table.label}</p>
-                    <ManageBadge tone={tone.badge}>{tone.text}</ManageBadge>
-                  </div>
-                  <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">{table.seated}/{table.capacity} seated</p>
-                  <div className="mt-space-2 flex flex-wrap gap-1">
-                    {Array.from({ length: table.capacity }).map((_, index) => (
-                      <span
-                        key={`${table.id}-seat-${index + 1}`}
-                        className={`h-2.5 w-2.5 rounded-full ${
-                          index < table.seated ? 'bg-mgmt-gold' : 'border border-mgmt-border bg-mgmt-bg'
+                  {tables.map((table) => {
+                    const tone = getTableTone(table)
+                    const active = selectedTableId === table.id
+                    const hovered = hoveredTableId === table.id
+                    const isBlockedDrop = hovered && !!hoveredDropBlockedReason
+                    const x = Number(table.x ?? 120)
+                    const y = Number(table.y ?? 100)
+                    return (
+                      <button
+                        type="button"
+                        key={table.id}
+                        id={`table-drop-${table.id}`}
+                        {...bindTableLayoutDrag(table)}
+                        onClick={() => setSelectedTableId(table.id)}
+                        className={`absolute w-28 cursor-grab rounded-xl border p-space-2 text-left transition-all duration-fast active:cursor-grabbing ${tone.wrap} ${
+                          active ? 'ring-2 ring-mgmt-gold/40' : ''
+                        } ${
+                          hovered && !isBlockedDrop ? 'ring-2 ring-mgmt-gold/60 bg-gradient-accent-tint' : ''
+                        } ${
+                          isBlockedDrop ? 'ring-2 ring-red-700' : ''
                         }`}
-                      />
-                    ))}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+                        style={{ left: x, top: y }}
+                      >
+                        <p className="font-barlow text-[0.75rem] font-semibold uppercase tracking-wide text-mgmt-text">{table.label}</p>
+                        <p className="font-body text-[0.7rem] text-mgmt-muted">{table.seated}/{table.capacity}</p>
+                        {layoutSavingTableId === table.id && <p className="font-body text-[0.65rem] text-mgmt-dim">Saving...</p>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </ManageCard>
 
         <div className="space-y-space-3">
@@ -609,15 +762,14 @@ export default function ManageSeatingPage() {
         </div>
       </div>
 
-      {capacityDialog && (
-        <div className="fixed inset-0 z-50 bg-mgmt-text/40 p-space-3 backdrop-blur-sm md:p-space-6" role="presentation" onClick={() => setCapacityDialog(null)}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Capacity auto-adjust confirmation"
-            className="mx-auto mt-[8vh] w-full max-w-xl rounded-2xl border border-mgmt-border bg-mgmt-surface p-space-4 shadow-mgmt"
-            onClick={(event) => event.stopPropagation()}
-          >
+      <ManageDialog
+        isOpen={Boolean(capacityDialog)}
+        onClose={() => setCapacityDialog(null)}
+        ariaLabel="Capacity auto-adjust confirmation"
+        maxWidthClass="max-w-xl"
+      >
+        {capacityDialog && (
+          <div>
             <h3 className="font-playfair text-heading-md text-mgmt-text">Auto-adjust to Event Capacity</h3>
             <p className="mt-space-1 font-body text-body-sm text-mgmt-muted">
               This action would make total seats {capacityDialog.predictedSeats}, while event capacity is {capacityDialog.targetCapacity}.
@@ -640,8 +792,8 @@ export default function ManageSeatingPage() {
               </ManageButton>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </ManageDialog>
     </section>
   )
 }

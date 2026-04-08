@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import {
@@ -16,6 +16,8 @@ import {
   listManageScanOutcomes,
   recordManageScanOutcome,
   registerWalkIn,
+  subscribeManageGuests,
+  subscribeManageScanOutcomes,
   validateManageQrCode,
 } from '@/services'
 
@@ -60,6 +62,14 @@ export default function ManageCheckinPage() {
   const [walkInTicket, setWalkInTicket] = useState('General')
   const [walkInPhone, setWalkInPhone] = useState('')
   const [lastScan, setLastScan] = useState(null)
+  const [cameraStatus, setCameraStatus] = useState('idle')
+  const [cameraError, setCameraError] = useState('')
+  const [cameraSource, setCameraSource] = useState('none')
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
+  const scanIntervalRef = useRef(null)
+  const zxingControlsRef = useRef(null)
+  const recentCameraScanRef = useRef({ value: '', at: 0 })
   const canOperateCheckin = permissions.includes('checkin')
 
   const loadCheckInData = useCallback(async () => {
@@ -102,6 +112,25 @@ export default function ManageCheckinPage() {
     }
   }, [selectedEventId, canOperateCheckin, loadCheckInData])
 
+  useEffect(() => {
+    if (!selectedEventId || !canOperateCheckin) return undefined
+    const unsubscribeGuests = subscribeManageGuests(
+      selectedEventId,
+      { status: 'pending' },
+      setPendingGuests,
+    )
+    const unsubscribeScan = subscribeManageScanOutcomes(
+      selectedEventId,
+      50,
+      { status: scanStatus, query: scanQuery },
+      setScanOutcomes,
+    )
+    return () => {
+      unsubscribeGuests?.()
+      unsubscribeScan?.()
+    }
+  }, [selectedEventId, canOperateCheckin, scanStatus, scanQuery])
+
   const filteredPendingGuests = useMemo(() => {
     const normalized = searchQuery.trim().toLowerCase()
     if (!normalized) return pendingGuests
@@ -116,6 +145,145 @@ export default function ManageCheckinPage() {
     pendingGuests.forEach((guest) => map.set(guest.id.toLowerCase(), guest))
     return map
   }, [pendingGuests])
+
+  const stopCameraScanner = useCallback(() => {
+    if (scanIntervalRef.current) {
+      window.clearInterval(scanIntervalRef.current)
+      scanIntervalRef.current = null
+    }
+    if (zxingControlsRef.current?.stop) {
+      zxingControlsRef.current.stop()
+      zxingControlsRef.current = null
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+    setCameraStatus('idle')
+    setCameraSource('none')
+  }, [])
+
+  useEffect(() => () => {
+    stopCameraScanner()
+  }, [stopCameraScanner])
+
+  useEffect(() => {
+    stopCameraScanner()
+    setCameraError('')
+  }, [selectedEventId, stopCameraScanner])
+
+  async function processScanValue(rawValue, source = 'qr') {
+    const normalized = String(rawValue ?? '').trim()
+    if (!normalized) return
+    try {
+      const matchedGuest = await validateManageQrCode(selectedEventId, normalized, { simulateLatency: false })
+      if (!pendingById.get(matchedGuest.id.toLowerCase())) {
+        setError('Guest is already checked in.')
+        await recordManageScanOutcome(
+          selectedEventId,
+          {
+            status: 'warning',
+            source,
+            input: normalized,
+            detail: `${matchedGuest.name} already checked in.`,
+            guestId: matchedGuest.id,
+            name: matchedGuest.name,
+          },
+          { simulateLatency: false },
+        )
+        await loadCheckInData()
+        setLastScan({ status: 'warning', title: 'Already checked in', detail: `${matchedGuest.name} already entered.` })
+        return
+      }
+      setScanCode(normalized)
+      await onCheckIn(matchedGuest.id, source)
+      setScanCode('')
+    } catch (scanError) {
+      setError(scanError?.message ?? 'Invalid QR input.')
+      await recordManageScanOutcome(
+        selectedEventId,
+        {
+          status: 'error',
+          source,
+          input: normalized,
+          detail: scanError?.message ?? 'Invalid QR input.',
+        },
+        { simulateLatency: false },
+      )
+      await loadCheckInData()
+      setLastScan({ status: 'error', title: 'Invalid QR scan', detail: scanError?.message ?? 'Please rescan.' })
+    }
+  }
+
+  async function onStartCameraScanner() {
+    if (!selectedEventId) return
+    setCameraError('')
+    setError('')
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraStatus('error')
+      setCameraError('Camera access is not supported in this browser.')
+      return
+    }
+
+    stopCameraScanner()
+    setCameraStatus('starting')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+
+      if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+        const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
+        scanIntervalRef.current = window.setInterval(async () => {
+          if (!videoRef.current) return
+          try {
+            const detections = await detector.detect(videoRef.current)
+            const value = detections?.[0]?.rawValue
+            if (!value) return
+            const now = Date.now()
+            const prev = recentCameraScanRef.current
+            if (prev.value === value && now - prev.at < 1400) return
+            recentCameraScanRef.current = { value, at: now }
+            await processScanValue(value, 'camera')
+          } catch {
+            // Ignore transient detector errors while stream is active.
+          }
+        }, 450)
+        setCameraSource('barcode-detector')
+      } else {
+        const { BrowserMultiFormatReader } = await import('@zxing/browser')
+        const reader = new BrowserMultiFormatReader()
+        zxingControlsRef.current = await reader.decodeFromVideoDevice(
+          undefined,
+          videoRef.current,
+          async (result) => {
+            const value = result?.getText?.()
+            if (!value) return
+            const now = Date.now()
+            const prev = recentCameraScanRef.current
+            if (prev.value === value && now - prev.at < 1400) return
+            recentCameraScanRef.current = { value, at: now }
+            await processScanValue(value, 'camera')
+          },
+        )
+        setCameraSource('zxing')
+      }
+      setCameraStatus('running')
+    } catch (startError) {
+      stopCameraScanner()
+      setCameraStatus('error')
+      setCameraError(startError?.message ?? 'Unable to start camera scanner.')
+    }
+  }
 
   async function onCheckIn(guestId, source = 'manual') {
     if (!selectedEventId) return
@@ -138,43 +306,8 @@ export default function ManageCheckinPage() {
   async function onScanSubmit(event) {
     event.preventDefault()
     if (!scanCode.trim()) return
-    try {
-      const matchedGuest = await validateManageQrCode(selectedEventId, scanCode.trim(), { simulateLatency: false })
-      if (!pendingById.get(matchedGuest.id.toLowerCase())) {
-        setError('Guest is already checked in.')
-        await recordManageScanOutcome(
-          selectedEventId,
-          {
-            status: 'warning',
-            source: 'qr',
-            input: scanCode.trim(),
-            detail: `${matchedGuest.name} already checked in.`,
-            guestId: matchedGuest.id,
-            name: matchedGuest.name,
-          },
-          { simulateLatency: false },
-        )
-        await loadCheckInData()
-        setLastScan({ status: 'warning', title: 'Already checked in', detail: `${matchedGuest.name} already entered.` })
-        return
-      }
-      await onCheckIn(matchedGuest.id, 'qr')
-      setScanCode('')
-    } catch (scanError) {
-      setError(scanError?.message ?? 'Invalid QR input.')
-      await recordManageScanOutcome(
-        selectedEventId,
-        {
-          status: 'error',
-          source: 'qr',
-          input: scanCode.trim(),
-          detail: scanError?.message ?? 'Invalid QR input.',
-        },
-        { simulateLatency: false },
-      )
-      await loadCheckInData()
-      setLastScan({ status: 'error', title: 'Invalid QR scan', detail: scanError?.message ?? 'Please rescan.' })
-    }
+    await processScanValue(scanCode.trim(), 'qr')
+    setScanCode('')
   }
 
   async function onWalkInSubmit(event) {
@@ -239,11 +372,36 @@ export default function ManageCheckinPage() {
         <ManageCard>
           <p className="font-playfair text-heading-md text-mgmt-text">Scanner Viewfinder</p>
           <div className="relative mt-space-3 overflow-hidden rounded-2xl border border-mgmt-border bg-mgmt-raised p-space-4">
-            <div className="mx-auto grid h-44 w-44 place-items-center rounded-2xl border-2 border-dashed border-mgmt-gold/40 bg-white">
-              <span className="font-barlow text-label-sm uppercase tracking-wide text-mgmt-gold">Camera Scan Zone</span>
+            <div className="mx-auto flex h-52 w-full max-w-sm items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-mgmt-gold/40 bg-black">
+              <video
+                ref={videoRef}
+                muted
+                playsInline
+                className={`h-full w-full object-cover ${cameraStatus === 'running' ? 'block' : 'hidden'}`}
+              />
+              {cameraStatus !== 'running' && (
+                <span className="px-space-2 text-center font-barlow text-label-sm uppercase tracking-wide text-mgmt-gold">
+                  {cameraStatus === 'starting' ? 'Starting camera...' : 'Camera scan zone'}
+                </span>
+              )}
             </div>
-            <span className="absolute left-1/2 top-1/2 h-0.5 w-36 -translate-x-1/2 bg-gradient-accent-h shadow-[0_0_12px_rgba(255,107,74,0.35)]" />
+            <span className="pointer-events-none absolute left-1/2 top-1/2 h-0.5 w-36 -translate-x-1/2 bg-gradient-accent-h shadow-[0_0_12px_rgba(255,107,74,0.35)]" />
           </div>
+          <div className="mt-space-2 flex flex-wrap items-center gap-space-2">
+            <ManageButton
+              variant={cameraStatus === 'running' ? 'danger' : 'secondary'}
+              onClick={() => {
+                if (cameraStatus === 'running') stopCameraScanner()
+                else void onStartCameraScanner()
+              }}
+            >
+              {cameraStatus === 'running' ? 'Stop Camera' : 'Start Camera'}
+            </ManageButton>
+            <ManageBadge tone={cameraStatus === 'running' ? 'success' : cameraStatus === 'error' ? 'danger' : 'neutral'}>
+              {cameraStatus === 'running' ? `Live (${cameraSource})` : cameraStatus}
+            </ManageBadge>
+          </div>
+          {cameraError && <p className="mt-space-1 font-body text-caption-lg text-red-700">{cameraError}</p>}
 
           <form onSubmit={onScanSubmit} className="mt-space-3 flex gap-space-2">
             <input

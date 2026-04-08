@@ -26,6 +26,8 @@ import {
   listManageGuests,
   listManageTables,
   previewManageGuestCsvImport,
+  subscribeManageGuests,
+  subscribeManageTables,
 } from '@/services'
 
 function readCsvFileAsText(file) {
@@ -69,6 +71,15 @@ const KANBAN_COLUMNS = [
   },
 ]
 
+const quickFilterOptions = [
+  { id: 'all', label: 'All' },
+  { id: 'checkedIn', label: 'Checked-in' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'walkIn', label: 'Walk-in' },
+  { id: 'vip', label: 'VIP' },
+  { id: 'staff', label: 'Staff' },
+]
+
 export default function ManageGuestsPage() {
   const { selectedEventId, selectedEvent, permissions } = useOutletContext()
   const [activeTab, setActiveTab] = useState('pending')
@@ -82,7 +93,7 @@ export default function ManageGuestsPage() {
   const [actionMessage, setActionMessage] = useState('')
   const [actionTone, setActionTone] = useState('info')
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('all')
+  const [quickFilter, setQuickFilter] = useState('all')
   const [manualName, setManualName] = useState('')
   const [manualPhone, setManualPhone] = useState('')
   const [manualTicketType, setManualTicketType] = useState('General')
@@ -121,8 +132,14 @@ export default function ManageGuestsPage() {
 
   const loadGuestsData = useCallback(async () => {
     if (!selectedEventId) return
+    const guestFilters = { query, status: 'all' }
+    if (quickFilter === 'checkedIn') guestFilters.status = 'checkedIn'
+    if (quickFilter === 'pending') guestFilters.status = 'pending'
+    if (quickFilter === 'walkIn') guestFilters.status = 'walkIn'
+    if (quickFilter === 'vip') guestFilters.ticketType = 'VIP'
+    if (quickFilter === 'staff') guestFilters.ticketType = 'Staff'
     const [guestPayload, allGuestPayload, tablePayload, capacityPayload] = await Promise.all([
-      listManageGuests(selectedEventId, { query, status }, { simulateLatency: false }),
+      listManageGuests(selectedEventId, guestFilters, { simulateLatency: false }),
       listManageGuests(selectedEventId, { status: 'all' }, { simulateLatency: false }),
       canEditSeating
         ? listManageTables(selectedEventId, { simulateLatency: false })
@@ -133,7 +150,7 @@ export default function ManageGuestsPage() {
     setAllGuests(allGuestPayload)
     setTables(tablePayload)
     setCapacitySnapshot(capacityPayload)
-  }, [selectedEventId, query, status, canEditSeating])
+  }, [selectedEventId, query, quickFilter, canEditSeating])
 
   useEffect(() => {
     if (!selectedEventId || !canAccessGuests) { setLoading(false); return }
@@ -148,6 +165,30 @@ export default function ManageGuestsPage() {
     loadGuests()
     return () => { active = false }
   }, [selectedEventId, canAccessGuests, loadGuestsData])
+
+  useEffect(() => {
+    if (!selectedEventId || !canAccessGuests) return undefined
+    const guestFilters = { query, status: 'all' }
+    if (quickFilter === 'checkedIn') guestFilters.status = 'checkedIn'
+    if (quickFilter === 'pending') guestFilters.status = 'pending'
+    if (quickFilter === 'walkIn') guestFilters.status = 'walkIn'
+    if (quickFilter === 'vip') guestFilters.ticketType = 'VIP'
+    if (quickFilter === 'staff') guestFilters.ticketType = 'Staff'
+
+    const unsubscribeGuests = subscribeManageGuests(selectedEventId, guestFilters, () => {
+      void loadGuestsData()
+    })
+    const unsubscribeTables = canEditSeating
+      ? subscribeManageTables(selectedEventId, () => {
+        void loadGuestsData()
+      })
+      : null
+
+    return () => {
+      unsubscribeGuests?.()
+      unsubscribeTables?.()
+    }
+  }, [selectedEventId, canAccessGuests, canEditSeating, loadGuestsData, query, quickFilter])
 
   useEffect(() => {
     if (!selectedEventId) return
@@ -404,6 +445,15 @@ export default function ManageGuestsPage() {
           placeholder="Search by name, ID, table, ticket..."
           className={`h-10 flex-1 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 font-body text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none transition-colors`}
         />
+        {quickFilterOptions.map((option) => (
+          <ManageFilterChip
+            key={option.id}
+            active={quickFilter === option.id}
+            onClick={() => setQuickFilter(option.id)}
+          >
+            {option.label}
+          </ManageFilterChip>
+        ))}
       </ManageFilterBar>
 
       {/* Action message */}

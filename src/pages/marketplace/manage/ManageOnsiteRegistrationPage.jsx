@@ -13,6 +13,7 @@ import {
   createManageOnsiteWalkIn,
   getManageCapacitySnapshot,
   getManageOnsiteRegistration,
+  updateManageOnsiteBadgePrintStatus,
 } from '@/services'
 
 const steps = ['Guest Info', 'Ticket Select', 'Payment', 'Badge Print']
@@ -41,7 +42,8 @@ export default function ManageOnsiteRegistrationPage() {
   const [ticketType, setTicketType] = useState('General')
   const [paymentMethod, setPaymentMethod] = useState('Cash')
   const [amountPaid, setAmountPaid] = useState(250)
-  const [badgePrinted, setBadgePrinted] = useState(true)
+  const [autoPrintOnComplete, setAutoPrintOnComplete] = useState(true)
+  const [printingWalkInId, setPrintingWalkInId] = useState('')
   const canAccess = permissions.includes('onsiteRegistration')
   const canManageWaitlist = permissions.includes('waitlist')
 
@@ -101,8 +103,86 @@ export default function ManageOnsiteRegistrationPage() {
     setTicketType('General')
     setPaymentMethod('Cash')
     setAmountPaid(250)
-    setBadgePrinted(true)
+    setAutoPrintOnComplete(true)
     setStepIndex(0)
+  }
+
+  function buildBadgeHtml(item) {
+    return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Badge - ${item.guestName}</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background: #f5f5f5; }
+      .badge {
+        width: 3.5in;
+        height: 2.2in;
+        margin: 20px auto;
+        border: 2px solid #1f2937;
+        border-radius: 12px;
+        background: white;
+        padding: 14px;
+        box-sizing: border-box;
+      }
+      .title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; }
+      .name { margin-top: 8px; font-size: 24px; font-weight: 700; color: #111827; line-height: 1.1; }
+      .meta { margin-top: 10px; font-size: 12px; color: #374151; }
+      .pill {
+        display: inline-block;
+        margin-top: 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <article class="badge">
+      <div class="title">EventMall On-site Badge</div>
+      <div class="name">${item.guestName}</div>
+      <div class="pill">${item.ticketType}</div>
+      <div class="meta">Payment: ${item.paymentMethod} • PHP ${Number(item.amountPaid ?? 0).toLocaleString()}</div>
+      <div class="meta">Registered: ${new Date(item.createdAt).toLocaleString()}</div>
+    </article>
+    <script>window.focus(); setTimeout(() => window.print(), 150);</script>
+  </body>
+</html>`
+  }
+
+  async function onPrintBadge(item, { silent = false } = {}) {
+    if (!selectedEventId || !item?.id) return
+    setPrintingWalkInId(item.id)
+    setError('')
+    try {
+      const printWindow = window.open('', '_blank', 'width=420,height=520')
+      if (!printWindow) throw new Error('Browser blocked the print window. Please allow pop-ups for this site.')
+      printWindow.document.open()
+      printWindow.document.write(buildBadgeHtml(item))
+      printWindow.document.close()
+
+      const printSucceeded = silent ? true : window.confirm(`Did the badge print successfully for ${item.guestName}?`)
+      const updated = await updateManageOnsiteBadgePrintStatus(
+        selectedEventId,
+        item.id,
+        { badgePrinted: printSucceeded, method: 'browser-print' },
+        { simulateLatency: false },
+      )
+      await refresh()
+      setStatusTone(printSucceeded ? 'success' : 'warning')
+      setStatusMessage(
+        printSucceeded
+          ? `Badge print confirmed for ${updated.guestName}.`
+          : `Print attempt recorded as pending for ${updated.guestName}.`,
+      )
+      setStatusAction('')
+    } catch (printError) {
+      setError(printError?.message ?? 'Unable to print badge.')
+    } finally {
+      setPrintingWalkInId('')
+    }
   }
 
   async function onSubmitWalkIn(event) {
@@ -122,9 +202,16 @@ export default function ManageOnsiteRegistrationPage() {
     setStatusAction('')
     setSubmitting(true)
     try {
-      await createManageOnsiteWalkIn(
+      const createdRecord = await createManageOnsiteWalkIn(
         selectedEventId,
-        { guestName: guestNameValue, phone: phone.trim(), ticketType, paymentMethod, amountPaid, badgePrinted },
+        {
+          guestName: guestNameValue,
+          phone: phone.trim(),
+          ticketType,
+          paymentMethod,
+          amountPaid,
+          badgePrinted: false,
+        },
         { simulateLatency: false },
       )
       resetDraft()
@@ -132,6 +219,9 @@ export default function ManageOnsiteRegistrationPage() {
       setStatusTone('success')
       setStatusMessage(`${guestNameValue} registered on-site successfully.`)
       setStatusAction('')
+      if (autoPrintOnComplete) {
+        await onPrintBadge(createdRecord, { silent: false })
+      }
     } catch (submitError) {
       setError(submitError?.message ?? 'Unable to register on-site guest.')
     } finally {
@@ -289,10 +379,20 @@ export default function ManageOnsiteRegistrationPage() {
           )}
 
           {stepIndex === 3 && (
-            <label className="flex items-center gap-space-2 rounded-xl border border-mgmt-border bg-mgmt-raised p-space-2 cursor-pointer">
-              <input type="checkbox" checked={badgePrinted} onChange={(event) => setBadgePrinted(event.target.checked)} className="accent-mgmt-gold" />
-              <span className="font-body text-body-sm text-mgmt-text">Badge printed and handed to guest.</span>
-            </label>
+            <div className="space-y-space-2 rounded-xl border border-mgmt-border bg-mgmt-raised p-space-2">
+              <label className="flex cursor-pointer items-center gap-space-2">
+                <input
+                  type="checkbox"
+                  checked={autoPrintOnComplete}
+                  onChange={(event) => setAutoPrintOnComplete(event.target.checked)}
+                  className="accent-mgmt-gold"
+                />
+                <span className="font-body text-body-sm text-mgmt-text">Open print dialog after registration completes.</span>
+              </label>
+              <p className="font-body text-caption-lg text-mgmt-muted">
+                Badge print result is confirmed after the browser print dialog and saved in on-site records.
+              </p>
+            </div>
           )}
 
           <div className="flex items-center justify-between gap-space-2">
@@ -347,12 +447,27 @@ export default function ManageOnsiteRegistrationPage() {
                 <p className="font-body text-caption-lg text-mgmt-muted">
                   {item.ticketType} - {item.paymentMethod} - PHP {Number(item.amountPaid).toLocaleString()}
                 </p>
+                {item.badgePrintMethod && (
+                  <p className="font-body text-caption-lg text-mgmt-dim">
+                    Print method: {item.badgePrintMethod}
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <ManageBadge tone={item.badgePrinted ? 'success' : 'warning'}>
                   {item.badgePrinted ? 'Badge printed' : 'Pending badge'}
                 </ManageBadge>
                 <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">{formatDateTime(item.createdAt)}</p>
+                <div className="mt-space-1">
+                  <ManageButton
+                    variant="secondary"
+                    className="text-[0.7rem]"
+                    onClick={() => onPrintBadge(item)}
+                    disabled={printingWalkInId === item.id}
+                  >
+                    {printingWalkInId === item.id ? 'Printing...' : 'Print Badge'}
+                  </ManageButton>
+                </div>
               </div>
             </div>
           ))}

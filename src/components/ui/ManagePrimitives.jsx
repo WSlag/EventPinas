@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useSpring, animated } from '@react-spring/web'
 import { useMove, useHover } from '@use-gesture/react'
 
@@ -206,5 +206,90 @@ export function ManageKpiTile({ label, value, hint = '' }) {
         )}
       </div>
     </TiltCard>
+  )
+}
+
+function getFocusableElements(node) {
+  if (!node) return []
+  return [...node.querySelectorAll(
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+  )].filter((element) => !element.hasAttribute('disabled') && !element.getAttribute('aria-hidden'))
+}
+
+export function ManageDialog({
+  isOpen,
+  onClose,
+  ariaLabel,
+  children,
+  maxWidthClass = 'max-w-2xl',
+}) {
+  const dialogRef = useRef(null)
+  const lastFocusedRef = useRef(null)
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    lastFocusedRef.current = document.activeElement
+    const dialog = dialogRef.current
+    const focusables = getFocusableElements(dialog)
+    if (focusables.length > 0) {
+      focusables[0].focus()
+    } else {
+      dialog?.focus()
+    }
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose?.()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const nodes = getFocusableElements(dialogRef.current)
+      if (!nodes.length) {
+        event.preventDefault()
+        return
+      }
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (lastFocusedRef.current instanceof HTMLElement) {
+        lastFocusedRef.current.focus()
+      }
+    }
+  }, [isOpen, onClose])
+
+  if (!isOpen) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-mgmt-text/40 p-space-3 backdrop-blur-sm md:p-space-6"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose?.()
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel}
+        tabIndex={-1}
+        className={`mx-auto mt-[4vh] w-full ${maxWidthClass} rounded-xl border border-mgmt-border-bright bg-mgmt-surface p-space-4 shadow-mgmt`}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
   )
 }
