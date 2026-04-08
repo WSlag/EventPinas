@@ -59,6 +59,13 @@ describe('OrganizerManagePage smoke', () => {
     expect(await screen.findByText(/drag tiles to reorder/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
     expect(await screen.findByText(/seating snapshot/i)).toBeInTheDocument()
+    expect(screen.getByText(/change in my events/i)).toBeInTheDocument()
+
+    const activeEventCard = screen.getByText(/active event/i).closest('div')
+    expect(activeEventCard).not.toBeNull()
+    if (activeEventCard) {
+      expect(within(activeEventCard).queryByRole('combobox')).not.toBeInTheDocument()
+    }
   })
 
   it('uses lifecycle-first default module order in desktop sidebar', async () => {
@@ -321,6 +328,29 @@ describe('OrganizerManagePage smoke', () => {
 
     const events = await listManageEvents({}, { simulateLatency: false })
     expect(events.some((event) => event.title === 'Edited Reunion Name')).toBe(true)
+  })
+
+  it('switches active event from my events console action', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter future={routerFuture} initialEntries={['/manage/events?event=m-evt-001']}>
+        <Routes>
+          <Route path="/manage" element={<OrganizerManagePage />}>
+            <Route path="events" element={<ManageEventsPage />} />
+            <Route path="dashboard" element={<ManageDashboardPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: /my events/i })).toBeInTheDocument()
+    const firstConsoleButton = screen.getAllByRole('button', { name: /^console$/i })[0]
+    await user.click(firstConsoleButton)
+
+    expect(await screen.findByText(/drag tiles to reorder/i)).toBeInTheDocument()
+    expect(screen.getByText(/change in my events/i)).toBeInTheDocument()
+    expect(screen.getByText(/dela cruz wedding|davao tech summit 2026/i)).toBeInTheDocument()
   })
 
   it('handles table add, seat update, and remove controls on seating page', async () => {

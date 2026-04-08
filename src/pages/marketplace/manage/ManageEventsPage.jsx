@@ -19,6 +19,7 @@ import {
   listManageEvents,
   publishManageEvent,
   restoreManageEvent,
+  setManageSelectedEvent,
   softDeleteManageEvent,
   subscribeManageEvents,
   updateManageEvent,
@@ -252,6 +253,16 @@ export default function ManageEventsPage() {
     }
   }
 
+  async function openEventConsole(eventId) {
+    if (!eventId) return
+    try {
+      await setManageSelectedEvent(eventId, { simulateLatency: false })
+      navigate(`/manage/dashboard?event=${eventId}`)
+    } catch (selectionError) {
+      setError(selectionError?.message ?? 'Unable to open event console.')
+    }
+  }
+
   function getLifecycleActions(event) {
     if (!event || event.deletedAt) return [{ id: 'restore', label: 'Restore', variant: 'secondary' }]
     const actions = []
@@ -362,7 +373,7 @@ export default function ManageEventsPage() {
                   </ManageButton>
                   <ManageButton
                     variant={selectedEventId === event.id ? 'primary' : 'secondary'}
-                    onClick={() => navigate(`/manage/dashboard?event=${event.id}`)}
+                    onClick={() => { void openEventConsole(event.id) }}
                     className="text-center text-[0.75rem]"
                     disabled={Boolean(event.deletedAt)}
                   >
@@ -448,7 +459,7 @@ export default function ManageEventsPage() {
                       </ManageButton>
                       <ManageButton
                         variant={selectedEventId === event.id ? 'primary' : 'secondary'}
-                        onClick={() => navigate(`/manage/dashboard?event=${event.id}`)}
+                        onClick={() => { void openEventConsole(event.id) }}
                         className="text-center text-[0.75rem]"
                         disabled={Boolean(event.deletedAt)}
                       >

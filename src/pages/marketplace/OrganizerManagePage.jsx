@@ -10,7 +10,6 @@ import {
   getManageBootstrap,
   getManageRolePermissions,
   setManageOperatorRole,
-  setManageSelectedEvent,
   subscribeManageEvents,
 } from '@/services'
 
@@ -91,6 +90,7 @@ export default function OrganizerManagePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [operatorRole, setOperatorRole] = useState('admin')
+  const [bootstrapSelectedEventId, setBootstrapSelectedEventId] = useState(null)
 
   // Persisted sidebar module order
   const [navOrder, setNavOrder] = useState(() => {
@@ -104,10 +104,19 @@ export default function OrganizerManagePage() {
     }
   })
 
-  const selectedEventId = searchParams.get('event')
+  const selectedEventIdFromUrl = searchParams.get('event')
+  const resolvedSelectedEventId = useMemo(() => {
+    if (selectedEventIdFromUrl && events.some((event) => event.id === selectedEventIdFromUrl)) {
+      return selectedEventIdFromUrl
+    }
+    if (bootstrapSelectedEventId && events.some((event) => event.id === bootstrapSelectedEventId)) {
+      return bootstrapSelectedEventId
+    }
+    return events[0]?.id ?? null
+  }, [events, selectedEventIdFromUrl, bootstrapSelectedEventId])
   const selectedEvent = useMemo(
-    () => events.find((event) => event.id === selectedEventId) ?? events[0] ?? null,
-    [events, selectedEventId],
+    () => events.find((event) => event.id === resolvedSelectedEventId) ?? null,
+    [events, resolvedSelectedEventId],
   )
   const permissions = useMemo(() => getManageRolePermissions(operatorRole), [operatorRole])
 
@@ -134,6 +143,7 @@ export default function OrganizerManagePage() {
   const refreshManageBootstrap = useCallback(async () => {
     const payload = await getManageBootstrap({ simulateLatency: false })
     setEvents(payload.events)
+    setBootstrapSelectedEventId(payload.selectedEventId ?? null)
     setOperatorRole(payload.selectedOperatorRole ?? 'admin')
     return payload
   }, [])
@@ -165,16 +175,14 @@ export default function OrganizerManagePage() {
   }, [refreshManageBootstrap])
 
   useEffect(() => {
-    if (!events.length) return
-    const hasValidSelection = selectedEventId && events.some((event) => event.id === selectedEventId)
-    if (hasValidSelection) return
-    const fallbackId = events[0].id
+    if (!events.length || !resolvedSelectedEventId) return
+    if (selectedEventIdFromUrl === resolvedSelectedEventId) return
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
-      next.set('event', fallbackId)
+      next.set('event', resolvedSelectedEventId)
       return next
     }, { replace: true })
-  }, [events, selectedEventId, setSearchParams])
+  }, [events, selectedEventIdFromUrl, resolvedSelectedEventId, setSearchParams])
 
   const withEventSearch = useCallback((pathname) => {
     const nextParams = new URLSearchParams(searchParams)
@@ -191,15 +199,6 @@ export default function OrganizerManagePage() {
     if (!fallback) return
     navigate(withEventSearch(fallback.to), { replace: true })
   }, [location.pathname, permissions, visibleNavItems, navigate, withEventSearch])
-
-  async function onSelectEvent(eventId) {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.set('event', eventId)
-      return next
-    })
-    await setManageSelectedEvent(eventId, { simulateLatency: false })
-  }
 
   async function onSelectOperatorRole(nextRole) {
     setOperatorRole(nextRole)
@@ -253,22 +252,19 @@ export default function OrganizerManagePage() {
 
       {/* Event & Role selectors + KPI strip */}
       <section className="mb-space-4 grid gap-space-2 md:grid-cols-4">
-        {/* Active event selector */}
+        {/* Active event display (read-only) */}
         <div className="rounded-xl border border-mgmt-border bg-mgmt-surface p-space-3">
           <p className="font-barlow text-[0.75rem] uppercase tracking-[0.12em] text-mgmt-muted">
             Active Event
           </p>
-          <select
-            value={selectedEvent?.id ?? ''}
-            onChange={(e) => onSelectEvent(e.target.value)}
-            className="mt-space-1 h-10 w-full rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 font-body text-body-sm text-mgmt-text focus:border-mgmt-gold/60 focus:outline-none focus:ring-1 focus:ring-mgmt-gold/30"
-          >
-            {events.map((event) => (
-              <option key={event.id} value={event.id} className="bg-mgmt-raised">
-                {event.title}
-              </option>
-            ))}
-          </select>
+          <div className="mt-space-1 flex h-10 w-full items-center rounded-md border border-mgmt-border bg-mgmt-raised px-space-3">
+            <span className={`truncate font-body text-body-sm ${selectedEvent ? 'text-mgmt-text' : 'text-mgmt-dim'}`}>
+              {selectedEvent?.title ?? 'No active event selected'}
+            </span>
+          </div>
+          <p className="mt-1 font-body text-[0.75rem] text-mgmt-dim">
+            Change in My Events
+          </p>
         </div>
 
         <ManageKpiTile label="Status" value={selectedEvent?.status ?? 'N/A'} />
