@@ -71,8 +71,9 @@ describe('TopNav', () => {
     await user.click(screen.getByRole('button', { name: /open menu/i }))
 
     const panel = screen.getByRole('navigation', { name: /mobile menu/i })
-    expect(within(panel).getByRole('link', { name: /my tickets/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /discover events/i })).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: /suppliers/i })).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: /organizers/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /create events/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /^sign in$/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /^join$/i })).toBeInTheDocument()
