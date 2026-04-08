@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /organizers/{uid}/manage/{docId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /organizers/{uid}/events/{eventId} {
+      allow read, write: if isOwner(uid);
+
+      match /guests/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /scanOutcomes/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /planner/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /registration/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /onsite/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /audit/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /staff/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /incidents/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /waitlist/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /checkins/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+  }
+}

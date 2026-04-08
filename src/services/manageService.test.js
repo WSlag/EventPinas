@@ -2,16 +2,22 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   autoAssignManageSeats,
   addManageWaitlistEntry,
+  archiveManageEvent,
   assignGuestSeat,
   approveManageWaitlistEntry,
   checkInGuest,
   createManageTable,
+  createManageTicketType,
   createManageEvent,
   createManageGuest,
   createManageIncident,
   createManageOnsiteWalkIn,
+  createManageRegistrationField,
+  deleteManageRegistrationField,
+  deleteManageTicketType,
   exportManageReport,
   exportManageScanOutcomes,
+  goLiveManageEvent,
   getManageOnlineRegistration,
   getManageOnsiteRegistration,
   getManagePlanner,
@@ -27,17 +33,25 @@ import {
   listManageWaitlist,
   listManageGuests,
   listRecentCheckIns,
+  publishManageEvent,
   recordManageScanOutcome,
   importManageGuestsFromCsv,
   previewManageGuestCsvImport,
   reorderManageRegistrationField,
+  restoreManageEvent,
   removeManageWaitlistEntry,
+  softDeleteManageEvent,
   setManageRegistrationMode,
   registerWalkIn,
   removeManageTable,
   setManageOperatorRole,
   toggleManagePlannerChecklistItem,
   toggleManageRegistrationGateway,
+  updateManageOnsiteBadgePrintStatus,
+  updateManagePlannerEventDetails,
+  updateManageRegistrationField,
+  updateManageTableLayout,
+  updateManageTicketType,
   updateManageTableSeats,
   updateManageEvent,
   updateManageBudgetCategorySpend,
@@ -221,6 +235,60 @@ describe('manageService', () => {
       },
       { simulateLatency: false },
     )).rejects.toThrow(/cannot be lower than the current registered guest count/i)
+  })
+
+  it('handles event lifecycle transitions with transition guards', async () => {
+    const created = await createManageEvent(
+      {
+        title: 'Lifecycle Event',
+        date: '2026-12-30',
+        city: 'Davao City',
+        venue: 'Hall Lifecycle',
+        guestCapacity: 50,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = created.event.id
+
+    await expect(goLiveManageEvent(eventId, { simulateLatency: false })).rejects.toThrow(/cannot move event from draft to live/i)
+
+    const published = await publishManageEvent(eventId, { simulateLatency: false })
+    expect(published.status).toBe('upcoming')
+
+    const live = await goLiveManageEvent(eventId, { simulateLatency: false })
+    expect(live.status).toBe('live')
+
+    const archived = await archiveManageEvent(eventId, { simulateLatency: false })
+    expect(archived.status).toBe('past')
+  })
+
+  it('soft-deletes and restores events with list filters', async () => {
+    const created = await createManageEvent(
+      {
+        title: 'Soft Delete Event',
+        date: '2026-12-31',
+        city: 'Davao City',
+        venue: 'Hall Soft Delete',
+        guestCapacity: 40,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = created.event.id
+
+    const deleted = await softDeleteManageEvent(eventId, { simulateLatency: false })
+    expect(deleted.deletedAt).toBeTruthy()
+    expect(deleted.status).toBe('past')
+
+    const visibleEvents = await listManageEvents({}, { simulateLatency: false })
+    expect(visibleEvents.some((event) => event.id === eventId)).toBe(false)
+
+    const withDeleted = await listManageEvents({ includeDeleted: true }, { simulateLatency: false })
+    const deletedEvent = withDeleted.find((event) => event.id === eventId)
+    expect(deletedEvent?.deletedAt).toBeTruthy()
+
+    const restored = await restoreManageEvent(eventId, { simulateLatency: false })
+    expect(restored.deletedAt).toBeNull()
+    expect(restored.status).toBe('draft')
   })
 
   it('checks in a pending guest and logs activity', async () => {
@@ -847,6 +915,32 @@ describe('manageService', () => {
     expect(updatedBudget.spent).toBe(firstBudget.spent + 1000)
   })
 
+  it('updates planner event details while keeping guest target capacity-synced', async () => {
+    const bootstrap = await getManageBootstrap({ simulateLatency: false })
+    const eventId = bootstrap.selectedEventId
+    const events = await listManageEvents({}, { simulateLatency: false })
+    const event = events.find((entry) => entry.id === eventId)
+
+    const updated = await updateManagePlannerEventDetails(
+      eventId,
+      {
+        plannerLead: 'Planner QA Lead',
+        venueOpenTime: '13:30',
+        showStartTime: '16:45',
+      },
+      { simulateLatency: false },
+    )
+
+    expect(updated.plannerLead).toBe('Planner QA Lead')
+    expect(updated.venueOpenTime).toBe('13:30')
+    expect(updated.showStartTime).toBe('16:45')
+    expect(updated.guestTarget).toBe(event.guestCapacity)
+
+    const planner = await getManagePlanner(eventId, { simulateLatency: false })
+    expect(planner.eventDetails.plannerLead).toBe('Planner QA Lead')
+    expect(planner.eventDetails.guestTarget).toBe(event.guestCapacity)
+  })
+
   it('manages online registration mode, gateways, and field order', async () => {
     const bootstrap = await getManageBootstrap({ simulateLatency: false })
     const eventId = bootstrap.selectedEventId
@@ -862,6 +956,105 @@ describe('manageService', () => {
 
     const reordered = await reorderManageRegistrationField(eventId, 0, 1, { simulateLatency: false })
     expect(reordered[1].id).toBe(initial.fields[0].id)
+  })
+
+  it('supports registration field CRUD including required-name guard', async () => {
+    const created = await createManageEvent(
+      {
+        title: 'Registration Field CRUD Event',
+        date: '2027-01-01',
+        city: 'Davao City',
+        venue: 'Hall Reg Field',
+        guestCapacity: 60,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = created.event.id
+
+    const createdField = await createManageRegistrationField(
+      eventId,
+      { label: 'Company Name', type: 'text', required: false },
+      { simulateLatency: false },
+    )
+    expect(createdField.label).toBe('Company Name')
+
+    const updatedField = await updateManageRegistrationField(
+      eventId,
+      createdField.id,
+      { label: 'Organization', required: true },
+      { simulateLatency: false },
+    )
+    expect(updatedField.label).toBe('Organization')
+    expect(updatedField.required).toBe(true)
+
+    await expect(deleteManageRegistrationField(eventId, 'name', { simulateLatency: false })).rejects.toThrow(/cannot be removed/i)
+
+    const removed = await deleteManageRegistrationField(eventId, createdField.id, { simulateLatency: false })
+    expect(removed.id).toBe(createdField.id)
+  })
+
+  it('supports ticket type CRUD with sold guard on delete', async () => {
+    const created = await createManageEvent(
+      {
+        title: 'Ticket CRUD Event',
+        date: '2027-01-02',
+        city: 'Davao City',
+        venue: 'Hall Ticket',
+        guestCapacity: 30,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = created.event.id
+
+    const createdTicket = await createManageTicketType(
+      eventId,
+      { label: 'Backstage', pricePhp: 1500, sold: 0, total: 5 },
+      { simulateLatency: false },
+    )
+    expect(createdTicket.label).toBe('Backstage')
+
+    const updatedTicket = await updateManageTicketType(
+      eventId,
+      createdTicket.id,
+      { sold: 1, total: 5, pricePhp: 1800 },
+      { simulateLatency: false },
+    )
+    expect(updatedTicket.sold).toBe(1)
+    expect(updatedTicket.pricePhp).toBe(1800)
+
+    await expect(deleteManageTicketType(eventId, createdTicket.id, { simulateLatency: false })).rejects.toThrow(/sold count is greater than zero/i)
+
+    await updateManageTicketType(
+      eventId,
+      createdTicket.id,
+      { sold: 0, total: 5 },
+      { simulateLatency: false },
+    )
+    const removed = await deleteManageTicketType(eventId, createdTicket.id, { simulateLatency: false })
+    expect(removed.id).toBe(createdTicket.id)
+  })
+
+  it('persists table floorplan coordinates', async () => {
+    const created = await createManageEvent(
+      {
+        title: 'Floorplan Event',
+        date: '2027-01-03',
+        city: 'Davao City',
+        venue: 'Hall Floor',
+        guestCapacity: 20,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = created.event.id
+
+    const moved = await updateManageTableLayout(eventId, 'T1', { x: 222, y: 333 }, { simulateLatency: false })
+    expect(moved.x).toBe(222)
+    expect(moved.y).toBe(333)
+
+    const tables = await listManageTables(eventId, { simulateLatency: false })
+    const t1 = tables.find((table) => table.label === 'T1')
+    expect(t1.x).toBe(222)
+    expect(t1.y).toBe(333)
   })
 
   it('creates on-site walk-ins and logs them', async () => {
@@ -883,5 +1076,34 @@ describe('manageService', () => {
 
     const onsite = await getManageOnsiteRegistration(eventId, { simulateLatency: false })
     expect(onsite.walkIns.length).toBeGreaterThan(0)
+  })
+
+  it('updates on-site badge print status with print metadata', async () => {
+    const bootstrap = await getManageBootstrap({ simulateLatency: false })
+    const eventId = bootstrap.selectedEventId
+
+    const created = await createManageOnsiteWalkIn(
+      eventId,
+      {
+        guestName: 'Badge Print Test',
+        ticketType: 'General',
+        paymentMethod: 'Cash',
+        amountPaid: 250,
+        badgePrinted: false,
+      },
+      { simulateLatency: false },
+    )
+    expect(created.badgePrinted).toBe(false)
+
+    const updated = await updateManageOnsiteBadgePrintStatus(
+      eventId,
+      created.id,
+      { badgePrinted: true, method: 'browser-print' },
+      { simulateLatency: false },
+    )
+    expect(updated.badgePrinted).toBe(true)
+    expect(updated.badgePrintMethod).toBe('browser-print')
+    expect(updated.badgePrintedAt).toBeTruthy()
+    expect(updated.badgePrintLastAttemptAt).toBeTruthy()
   })
 })

@@ -16,9 +16,25 @@ import {
   manageEventCreatePayloadFields,
   registrationFieldLibrary,
 } from '@/data/manageContracts'
+import { auth, db, firebaseEnabled } from '@/lib/firebase'
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  setDoc,
+} from 'firebase/firestore'
 
 const STORAGE_KEY = 'eventpinas-manage-state'
 const DEFAULT_DELAY_MS = 100
+const MANAGE_STORE_MODE = firebaseEnabled && db ? 'firestore' : 'localStorage'
+const FIRESTORE_SYNC_DEBOUNCE_MS = 300
+
+let firestoreHydrationPromise = null
+let firestoreHydrated = false
+let firestoreSyncTimer = null
+const stateListeners = new Set()
 
 const operatorRolePermissions = {
   admin: ['dashboard', 'events', 'planner', 'onlineRegistration', 'onsiteRegistration', 'checkin', 'guests', 'seating', 'staff', 'qr', 'incidents', 'waitlist', 'analytics', 'audit'],
@@ -57,12 +73,178 @@ const incidentSlaMinutesBySeverity = {
   high: 30,
 }
 
+const eventLifecycleTransitions = {
+  draft: ['upcoming', 'past'],
+  upcoming: ['live', 'past'],
+  live: ['past'],
+  past: [],
+}
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value))
+}
+
+function notifyStateListeners() {
+  for (const listener of stateListeners) {
+    try {
+      listener()
+    } catch {
+      // Ignore listener errors to keep store updates resilient.
+    }
+  }
+}
+
+function getManageOwnerId() {
+  return auth?.currentUser?.uid || 'local-organizer'
+}
+
+function getManageRootRef(ownerId = getManageOwnerId()) {
+  return doc(db, 'organizers', ownerId, 'manage', 'meta')
+}
+
+function getManageEventsCollectionRef(ownerId = getManageOwnerId()) {
+  return collection(db, 'organizers', ownerId, 'events')
+}
+
+async function syncStateToFirestore(state) {
+  if (MANAGE_STORE_MODE !== 'firestore' || !db) return
+  const ownerId = getManageOwnerId()
+  await setDoc(
+    getManageRootRef(ownerId),
+    {
+      selectedEventId: state.selectedEventId ?? null,
+      selectedOperatorRole: state.selectedOperatorRole ?? 'admin',
+      updatedAt: new Date().toISOString(),
+    },
+    { merge: true },
+  )
+
+  const eventsRef = getManageEventsCollectionRef(ownerId)
+  const writeTasks = state.events.map(async (event) => {
+    const eventId = event.id
+    const eventRef = doc(eventsRef, eventId)
+    await setDoc(eventRef, { ...event, id: eventId }, { merge: true })
+    await Promise.all([
+      setDoc(doc(eventRef, 'guests', 'data'), { items: state.guestsByEvent[eventId] ?? [] }, { merge: true }),
+      setDoc(doc(eventRef, 'scanOutcomes', 'data'), { items: state.scanOutcomeLogByEvent[eventId] ?? [] }, { merge: true }),
+      setDoc(doc(eventRef, 'planner', 'data'), { value: state.plannerByEvent[eventId] ?? { eventDetails: {}, checklist: [], budget: [] } }, { merge: true }),
+      setDoc(doc(eventRef, 'registration', 'data'), { value: state.onlineRegistrationByEvent[eventId] ?? { mode: 'free', fields: [], ticketTypes: [], paymentGateways: [] } }, { merge: true }),
+      setDoc(doc(eventRef, 'onsite', 'data'), { value: state.onsiteRegistrationByEvent[eventId] ?? { walkIns: [] } }, { merge: true }),
+      setDoc(doc(eventRef, 'audit', 'data'), { items: state.auditLogByEvent[eventId] ?? [] }, { merge: true }),
+      setDoc(doc(eventRef, 'staff', 'data'), { items: state.staffByEvent[eventId] ?? [] }, { merge: true }),
+      setDoc(doc(eventRef, 'incidents', 'data'), { items: state.incidentsByEvent[eventId] ?? [] }, { merge: true }),
+      setDoc(doc(eventRef, 'waitlist', 'data'), { items: state.waitlistByEvent[eventId] ?? [] }, { merge: true }),
+      setDoc(doc(eventRef, 'checkins', 'data'), { items: state.checkInLogByEvent[eventId] ?? [] }, { merge: true }),
+    ])
+  })
+  await Promise.all(writeTasks)
+}
+
+function scheduleFirestoreSync(state) {
+  if (MANAGE_STORE_MODE !== 'firestore') return
+  if (firestoreSyncTimer) clearTimeout(firestoreSyncTimer)
+  const snapshot = clone(state)
+  firestoreSyncTimer = setTimeout(() => {
+    void syncStateToFirestore(snapshot).catch(() => {
+      // Keep local flow resilient if cloud sync fails.
+    })
+  }, FIRESTORE_SYNC_DEBOUNCE_MS)
+}
+
+async function hydrateStateFromFirestore() {
+  if (MANAGE_STORE_MODE !== 'firestore' || !db) return null
+  if (firestoreHydrated) return readState()
+  if (firestoreHydrationPromise) return firestoreHydrationPromise
+
+  firestoreHydrationPromise = (async () => {
+    const ownerId = getManageOwnerId()
+    const metaSnap = await getDoc(getManageRootRef(ownerId))
+    if (!metaSnap.exists()) {
+      firestoreHydrated = true
+      return null
+    }
+
+    const eventsSnapshot = await getDocs(getManageEventsCollectionRef(ownerId))
+    const events = []
+    const guestsByEvent = {}
+    const scanOutcomeLogByEvent = {}
+    const plannerByEvent = {}
+    const onlineRegistrationByEvent = {}
+    const onsiteRegistrationByEvent = {}
+    const auditLogByEvent = {}
+    const staffByEvent = {}
+    const incidentsByEvent = {}
+    const waitlistByEvent = {}
+    const checkInLogByEvent = {}
+
+    await Promise.all(eventsSnapshot.docs.map(async (eventDoc) => {
+      const eventId = eventDoc.id
+      events.push({ id: eventId, ...eventDoc.data() })
+      const [
+        guestsSnap,
+        scanSnap,
+        plannerSnap,
+        registrationSnap,
+        onsiteSnap,
+        auditSnap,
+        staffSnap,
+        incidentsSnap,
+        waitlistSnap,
+        checkinsSnap,
+      ] = await Promise.all([
+        getDoc(doc(eventDoc.ref, 'guests', 'data')),
+        getDoc(doc(eventDoc.ref, 'scanOutcomes', 'data')),
+        getDoc(doc(eventDoc.ref, 'planner', 'data')),
+        getDoc(doc(eventDoc.ref, 'registration', 'data')),
+        getDoc(doc(eventDoc.ref, 'onsite', 'data')),
+        getDoc(doc(eventDoc.ref, 'audit', 'data')),
+        getDoc(doc(eventDoc.ref, 'staff', 'data')),
+        getDoc(doc(eventDoc.ref, 'incidents', 'data')),
+        getDoc(doc(eventDoc.ref, 'waitlist', 'data')),
+        getDoc(doc(eventDoc.ref, 'checkins', 'data')),
+      ])
+
+      guestsByEvent[eventId] = guestsSnap.data()?.items ?? []
+      scanOutcomeLogByEvent[eventId] = scanSnap.data()?.items ?? []
+      plannerByEvent[eventId] = plannerSnap.data()?.value ?? { eventDetails: {}, checklist: [], budget: [] }
+      onlineRegistrationByEvent[eventId] = registrationSnap.data()?.value ?? { mode: 'free', fields: [], ticketTypes: [], paymentGateways: [] }
+      onsiteRegistrationByEvent[eventId] = onsiteSnap.data()?.value ?? { walkIns: [] }
+      auditLogByEvent[eventId] = auditSnap.data()?.items ?? []
+      staffByEvent[eventId] = staffSnap.data()?.items ?? []
+      incidentsByEvent[eventId] = incidentsSnap.data()?.items ?? []
+      waitlistByEvent[eventId] = waitlistSnap.data()?.items ?? []
+      checkInLogByEvent[eventId] = checkinsSnap.data()?.items ?? []
+    }))
+
+    const meta = metaSnap.data() ?? {}
+    const nextState = {
+      selectedEventId: meta.selectedEventId ?? events[0]?.id ?? null,
+      selectedOperatorRole: meta.selectedOperatorRole ?? 'admin',
+      events,
+      guestsByEvent,
+      staffByEvent,
+      incidentsByEvent,
+      waitlistByEvent,
+      plannerByEvent,
+      onlineRegistrationByEvent,
+      onsiteRegistrationByEvent,
+      checkInLogByEvent,
+      scanOutcomeLogByEvent,
+      auditLogByEvent,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState))
+    notifyStateListeners()
+    firestoreHydrated = true
+    return nextState
+  })().finally(() => {
+    firestoreHydrationPromise = null
+  })
+
+  return firestoreHydrationPromise
 }
 
 function buildDefaultState() {
@@ -84,6 +266,13 @@ function buildDefaultState() {
 }
 
 function readState() {
+  if (MANAGE_STORE_MODE === 'firestore' && !firestoreHydrated && !firestoreHydrationPromise) {
+    void hydrateStateFromFirestore().then(() => {
+      notifyStateListeners()
+    }).catch(() => {
+      // Fall back to local state when remote hydration fails.
+    })
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return buildDefaultState()
@@ -110,6 +299,8 @@ function readState() {
 
 function writeState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  scheduleFirestoreSync(state)
+  notifyStateListeners()
 }
 
 function normalizeText(value) {
@@ -214,6 +405,74 @@ function getOnsiteRegistrationForEvent(state, eventId) {
 
 function getEventFromState(state, eventId) {
   return state.events.find((event) => event.id === eventId) ?? null
+}
+
+function isSoftDeletedEvent(event) {
+  return Boolean(event?.deletedAt)
+}
+
+function assertEventEditable(event) {
+  if (!event) throw new Error('Event not found.')
+  if (isSoftDeletedEvent(event)) {
+    throw new Error('Event is deleted. Restore it before making changes.')
+  }
+}
+
+function assertValidLifecycleTransition(event, nextStatus) {
+  const current = String(event?.status ?? 'draft')
+  const normalizedNext = String(nextStatus ?? '')
+  const allowed = eventLifecycleTransitions[current] ?? []
+  if (!allowed.includes(normalizedNext)) {
+    throw new Error(`Cannot move event from ${current} to ${normalizedNext}.`)
+  }
+}
+
+function normalizeRegistrationFieldPayload(payload = {}) {
+  const label = String(payload.label ?? '').trim()
+  if (!label) throw new Error('Field label is required.')
+  const type = String(payload.type ?? 'text').trim().toLowerCase()
+  if (!type) throw new Error('Field type is required.')
+  return {
+    label,
+    type,
+    required: Boolean(payload.required),
+  }
+}
+
+function buildRegistrationFieldId(existingFields = []) {
+  const existingIds = new Set(existingFields.map((field) => String(field.id)))
+  const base = 'custom'
+  let counter = 1
+  let nextId = `${base}-${counter}`
+  while (existingIds.has(nextId)) {
+    counter += 1
+    nextId = `${base}-${counter}`
+  }
+  return nextId
+}
+
+function normalizeTicketTypePayload(payload = {}) {
+  const label = String(payload.label ?? '').trim()
+  if (!label) throw new Error('Ticket label is required.')
+  const pricePhp = Number(payload.pricePhp ?? 0)
+  const sold = Number(payload.sold ?? 0)
+  const total = Number(payload.total ?? 0)
+  if (!Number.isFinite(pricePhp) || pricePhp < 0) throw new Error('Ticket price must be zero or greater.')
+  if (!Number.isFinite(sold) || sold < 0 || !Number.isInteger(sold)) throw new Error('Ticket sold count must be a whole number >= 0.')
+  if (!Number.isFinite(total) || total < sold || !Number.isInteger(total)) throw new Error('Ticket total must be a whole number and cannot be lower than sold.')
+  return { label, pricePhp, sold, total }
+}
+
+function buildTicketTypeId(existingTickets = []) {
+  const existingIds = new Set(existingTickets.map((ticket) => String(ticket.id)))
+  const base = 'tt-custom'
+  let counter = 1
+  let nextId = `${base}-${counter}`
+  while (existingIds.has(nextId)) {
+    counter += 1
+    nextId = `${base}-${counter}`
+  }
+  return nextId
 }
 
 function getGuestFromState(state, eventId, guestId) {
@@ -532,12 +791,22 @@ function getNextManageEventId(events) {
   return `m-evt-${String(latest + 1).padStart(3, '0')}`
 }
 
+function buildDefaultTableLayout(index = 0) {
+  const column = index % 6
+  const row = Math.floor(index / 6)
+  return {
+    x: 120 + (column * 140),
+    y: 100 + (row * 120),
+  }
+}
+
 function buildDefaultTables(guestCapacity, seatsPerTable) {
   const totalTables = Math.max(Math.ceil(guestCapacity / seatsPerTable), 1)
   return Array.from({ length: totalTables }, (_, index) => ({
     id: `t-${index + 1}`,
     label: `T${index + 1}`,
     capacity: seatsPerTable,
+    ...buildDefaultTableLayout(index),
   }))
 }
 
@@ -592,7 +861,12 @@ function buildSafeTablesForCapacity(event, guests, guestCapacity) {
   for (const label of assignedTableLabels) {
     if (tables.some((table) => table.label === label)) continue
     nextIdNumber += 1
-    tables.push({ id: `t-${nextIdNumber}`, label, capacity: defaultSeatCapacity })
+    tables.push({
+      id: `t-${nextIdNumber}`,
+      label,
+      capacity: defaultSeatCapacity,
+      ...buildDefaultTableLayout(tables.length),
+    })
   }
 
   while (tables.length > 1 && getTotalSeatCapacity(tables) > guestCapacity) {
@@ -604,7 +878,12 @@ function buildSafeTablesForCapacity(event, guests, guestCapacity) {
   while (getTotalSeatCapacity(tables) < guestCapacity) {
     const nextLabel = buildNextDefaultTableLabel(tables)
     nextIdNumber += 1
-    tables.push({ id: `t-${nextIdNumber}`, label: nextLabel, capacity: defaultSeatCapacity })
+    tables.push({
+      id: `t-${nextIdNumber}`,
+      label: nextLabel,
+      capacity: defaultSeatCapacity,
+      ...buildDefaultTableLayout(tables.length),
+    })
   }
 
   return tables
@@ -916,12 +1195,87 @@ export function getManageRolePermissions(role) {
   return operatorRolePermissions[role] ? [...operatorRolePermissions[role]] : [...operatorRolePermissions.staff]
 }
 
+export function getManageStoreInfo() {
+  return {
+    mode: MANAGE_STORE_MODE,
+    hydrated: firestoreHydrated,
+  }
+}
+
+function subscribeManageData(loader, callback) {
+  let active = true
+  let pending = false
+
+  async function emit() {
+    if (!active || pending) return
+    pending = true
+    try {
+      const payload = await loader()
+      if (active) callback(payload)
+    } catch {
+      // Keep subscriptions resilient during transient read issues.
+    } finally {
+      pending = false
+    }
+  }
+
+  const onStateChange = () => {
+    void emit()
+  }
+  const onStorage = (event) => {
+    if (event.key === STORAGE_KEY) void emit()
+  }
+
+  stateListeners.add(onStateChange)
+  window.addEventListener('storage', onStorage)
+  void emit()
+
+  return () => {
+    active = false
+    stateListeners.delete(onStateChange)
+    window.removeEventListener('storage', onStorage)
+  }
+}
+
+export function subscribeManageEvents(filters = {}, callback) {
+  return subscribeManageData(
+    () => listManageEvents(filters, { simulateLatency: false }),
+    callback,
+  )
+}
+
+export function subscribeManageGuests(eventId, filters = {}, callback) {
+  return subscribeManageData(
+    () => listManageGuests(eventId, filters, { simulateLatency: false }),
+    callback,
+  )
+}
+
+export function subscribeManageTables(eventId, callback) {
+  return subscribeManageData(
+    () => listManageTables(eventId, { simulateLatency: false }),
+    callback,
+  )
+}
+
+export function subscribeManageScanOutcomes(eventId, limit = 20, filters = {}, callback) {
+  return subscribeManageData(
+    () => listManageScanOutcomes(eventId, limit, { ...filters, simulateLatency: false }),
+    callback,
+  )
+}
+
 export async function getManageBootstrap(options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
   const state = readState()
-  const events = [...state.events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  const events = [...state.events]
+    .filter((event) => !isSoftDeletedEvent(event))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  const selectedEventId = events.some((event) => event.id === state.selectedEventId)
+    ? state.selectedEventId
+    : events[0]?.id ?? null
   return {
-    selectedEventId: state.selectedEventId,
+    selectedEventId,
     selectedOperatorRole: state.selectedOperatorRole,
     events,
   }
@@ -933,8 +1287,10 @@ export async function listManageEvents(filters = {}, options = {}) {
   assertPermission(state, 'events')
   const query = normalizeText(filters.query)
   const status = filters.status ?? 'All'
+  const includeDeleted = Boolean(filters.includeDeleted || filters.showDeleted)
 
   return state.events
+    .filter((event) => (includeDeleted ? true : !isSoftDeletedEvent(event)))
     .filter((event) => (status === 'All' ? true : event.status === status))
     .filter((event) =>
       includesQuery(event.title, query) ||
@@ -960,6 +1316,8 @@ export async function createManageEvent(payload, options = {}) {
     venue: normalized.venue,
     date: normalized.date,
     status: manageEventCreateDefaults.status,
+    deletedAt: null,
+    deletedBy: null,
     guestCapacity: normalized.guestCapacity,
     tables: buildDefaultTables(normalized.guestCapacity, seatsPerTable),
   }
@@ -1002,6 +1360,7 @@ export async function updateManageEvent(eventId, payload, options = {}) {
   }
 
   const current = state.events[index]
+  assertEventEditable(current)
   const capacityChanged = normalized.guestCapacity !== current.guestCapacity
   const nextTables = capacityChanged
     ? buildSafeTablesForCapacity(current, guests, normalized.guestCapacity)
@@ -1030,11 +1389,117 @@ export async function updateManageEvent(eventId, payload, options = {}) {
   return { event: clone(updatedEvent), selectedEventId: state.selectedEventId }
 }
 
+export async function publishManageEvent(eventId, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'events')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  assertValidLifecycleTransition(event, 'upcoming')
+  const updatedEvent = { ...event, status: 'upcoming' }
+  state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
+  appendAuditLogEntry(state, eventId, {
+    module: 'events',
+    action: 'event_published',
+    summary: `Event published: ${updatedEvent.title}.`,
+  })
+  writeState(state)
+  return clone(updatedEvent)
+}
+
+export async function goLiveManageEvent(eventId, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'events')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  assertValidLifecycleTransition(event, 'live')
+  const updatedEvent = { ...event, status: 'live' }
+  state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
+  appendAuditLogEntry(state, eventId, {
+    module: 'events',
+    action: 'event_live',
+    summary: `Event moved live: ${updatedEvent.title}.`,
+  })
+  writeState(state)
+  return clone(updatedEvent)
+}
+
+export async function archiveManageEvent(eventId, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'events')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  assertValidLifecycleTransition(event, 'past')
+  const updatedEvent = { ...event, status: 'past' }
+  state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
+  appendAuditLogEntry(state, eventId, {
+    module: 'events',
+    action: 'event_archived',
+    summary: `Event archived: ${updatedEvent.title}.`,
+  })
+  writeState(state)
+  return clone(updatedEvent)
+}
+
+export async function softDeleteManageEvent(eventId, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'events')
+  const event = getEventFromState(state, eventId)
+  if (!event) throw new Error('Event not found.')
+  if (isSoftDeletedEvent(event)) return clone(event)
+  const deletedAt = new Date().toISOString()
+  const updatedEvent = {
+    ...event,
+    deletedAt,
+    deletedBy: state.selectedOperatorRole,
+    status: 'past',
+  }
+  state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
+  if (state.selectedEventId === eventId) {
+    const fallback = state.events.find((entry) => !isSoftDeletedEvent(entry) && entry.id !== eventId)
+    state.selectedEventId = fallback?.id ?? null
+  }
+  appendAuditLogEntry(state, eventId, {
+    module: 'events',
+    action: 'event_soft_deleted',
+    summary: `Event deleted: ${updatedEvent.title}.`,
+    severity: 'warning',
+  })
+  writeState(state)
+  return clone(updatedEvent)
+}
+
+export async function restoreManageEvent(eventId, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'events')
+  const event = getEventFromState(state, eventId)
+  if (!event) throw new Error('Event not found.')
+  if (!isSoftDeletedEvent(event)) return clone(event)
+  const updatedEvent = {
+    ...event,
+    deletedAt: null,
+    deletedBy: null,
+    status: event.status === 'past' ? 'draft' : event.status,
+  }
+  state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
+  appendAuditLogEntry(state, eventId, {
+    module: 'events',
+    action: 'event_restored',
+    summary: `Event restored: ${updatedEvent.title}.`,
+  })
+  writeState(state)
+  return clone(updatedEvent)
+}
+
 export async function setManageSelectedEvent(eventId, options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
   const state = readState()
   const target = getEventFromState(state, eventId)
-  if (!target) return { selectedEventId: state.selectedEventId }
+  if (!target || isSoftDeletedEvent(target)) return { selectedEventId: state.selectedEventId }
   state.selectedEventId = eventId
   writeState(state)
   return { selectedEventId: eventId }
@@ -1316,12 +1781,42 @@ export async function listManageTables(eventId, options = {}) {
   return summary.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
 }
 
+export async function updateManageTableLayout(eventId, tableLabel, layout = {}, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'seating')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  const tables = Array.isArray(event.tables) ? [...event.tables] : []
+  const tableIndex = findTableIndexByLabel(tables, tableLabel)
+  if (tableIndex < 0) throw new Error('Table not found.')
+  const x = Number(layout.x)
+  const y = Number(layout.y)
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    throw new Error('Table layout requires numeric x and y coordinates.')
+  }
+  const boundedLayout = {
+    x: Math.max(0, Math.round(x)),
+    y: Math.max(0, Math.round(y)),
+  }
+  tables[tableIndex] = { ...tables[tableIndex], ...boundedLayout }
+  const updatedEvent = { ...event, tables }
+  state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
+  appendAuditLogEntry(state, eventId, {
+    module: 'seating',
+    action: 'table_layout_updated',
+    summary: `Table ${tables[tableIndex].label} moved to (${boundedLayout.x}, ${boundedLayout.y}).`,
+  })
+  writeState(state)
+  return clone(tables[tableIndex])
+}
+
 export async function createManageTable(eventId, payload = {}, options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
   const state = readState()
   assertPermission(state, 'seating')
   const event = getEventFromState(state, eventId)
-  if (!event) throw new Error('Event not found.')
+  assertEventEditable(event)
 
   const seats = normalizeTableSeats(payload.seats)
   const tables = Array.isArray(event.tables) ? [...event.tables] : []
@@ -1336,6 +1831,7 @@ export async function createManageTable(eventId, payload = {}, options = {}) {
     id: `t-${nextTableIdNumber}`,
     label: nextLabel,
     capacity: seats,
+    ...buildDefaultTableLayout(tables.length),
   }
   const guests = getGuestsForEvent(state, eventId)
   const mergedTables = [...tables, createdTable]
@@ -1378,7 +1874,7 @@ export async function updateManageTableSeats(eventId, tableLabel, seats, options
   const state = readState()
   assertPermission(state, 'seating')
   const event = getEventFromState(state, eventId)
-  if (!event) throw new Error('Event not found.')
+  assertEventEditable(event)
 
   const nextSeats = normalizeTableSeats(seats)
   const tables = Array.isArray(event.tables) ? [...event.tables] : []
@@ -1433,7 +1929,7 @@ export async function removeManageTable(eventId, tableLabel, options = {}) {
   const state = readState()
   assertPermission(state, 'seating')
   const event = getEventFromState(state, eventId)
-  if (!event) throw new Error('Event not found.')
+  assertEventEditable(event)
 
   const tables = Array.isArray(event.tables) ? [...event.tables] : []
   const tableIndex = findTableIndexByLabel(tables, tableLabel)
@@ -1486,7 +1982,7 @@ export async function assignGuestSeat(eventId, guestId, tableLabel, options = {}
   const state = readState()
   assertPermission(state, 'seating')
   const event = getEventFromState(state, eventId)
-  if (!event) throw new Error('Event not found.')
+  assertEventEditable(event)
 
   const guests = getGuestsForEvent(state, eventId)
   const guestIndex = guests.findIndex((guest) => guest.id === guestId)
@@ -2158,6 +2654,30 @@ export async function getManagePlanner(eventId, options = {}) {
   return clone(getPlannerForEvent(state, eventId))
 }
 
+export async function updateManagePlannerEventDetails(eventId, payload = {}, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'planner')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  const planner = getPlannerForEvent(state, eventId)
+  const current = planner.eventDetails ?? {}
+  const next = {
+    plannerLead: String(payload.plannerLead ?? current.plannerLead ?? '').trim(),
+    guestTarget: Number(current.guestTarget ?? event.guestCapacity ?? 0),
+    venueOpenTime: String(payload.venueOpenTime ?? current.venueOpenTime ?? '').trim(),
+    showStartTime: String(payload.showStartTime ?? current.showStartTime ?? '').trim(),
+  }
+  state.plannerByEvent[eventId] = { ...planner, eventDetails: next }
+  appendAuditLogEntry(state, eventId, {
+    module: 'planner',
+    action: 'planner_event_details_updated',
+    summary: `Planner event details updated.`,
+  })
+  writeState(state)
+  return clone(next)
+}
+
 export async function toggleManagePlannerChecklistItem(eventId, checklistId, options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
   const state = readState()
@@ -2207,10 +2727,91 @@ export async function getManageOnlineRegistration(eventId, options = {}) {
   return clone(getOnlineRegistrationForEvent(state, eventId))
 }
 
+export async function createManageRegistrationField(eventId, payload = {}, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'onlineRegistration')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  const config = getOnlineRegistrationForEvent(state, eventId)
+  const fields = Array.isArray(config.fields) ? [...config.fields] : []
+  const nextField = normalizeRegistrationFieldPayload(payload)
+  const requestedId = String(payload.id ?? '').trim()
+  const id = requestedId || buildRegistrationFieldId(fields)
+  if (fields.some((field) => field.id === id)) {
+    throw new Error(`Field id ${id} already exists.`)
+  }
+  const newField = { id, ...nextField }
+  const insertIndexRaw = Number(payload.insertIndex)
+  const insertIndex = Number.isInteger(insertIndexRaw) ? Math.max(0, Math.min(insertIndexRaw, fields.length)) : fields.length
+  fields.splice(insertIndex, 0, newField)
+  state.onlineRegistrationByEvent[eventId] = { ...config, fields }
+  appendAuditLogEntry(state, eventId, {
+    module: 'registration',
+    action: 'registration_field_created',
+    summary: `Registration field added: ${newField.label}.`,
+  })
+  writeState(state)
+  return clone(newField)
+}
+
+export async function updateManageRegistrationField(eventId, fieldId, payload = {}, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'onlineRegistration')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  const config = getOnlineRegistrationForEvent(state, eventId)
+  const fields = Array.isArray(config.fields) ? [...config.fields] : []
+  const fieldIndex = fields.findIndex((field) => field.id === fieldId)
+  if (fieldIndex < 0) throw new Error('Registration field not found.')
+  const existing = fields[fieldIndex]
+  const normalized = normalizeRegistrationFieldPayload({
+    label: payload.label ?? existing.label,
+    type: payload.type ?? existing.type,
+    required: payload.required ?? existing.required,
+  })
+  const updated = { ...existing, ...normalized }
+  fields[fieldIndex] = updated
+  state.onlineRegistrationByEvent[eventId] = { ...config, fields }
+  appendAuditLogEntry(state, eventId, {
+    module: 'registration',
+    action: 'registration_field_updated',
+    summary: `Registration field updated: ${updated.label}.`,
+  })
+  writeState(state)
+  return clone(updated)
+}
+
+export async function deleteManageRegistrationField(eventId, fieldId, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'onlineRegistration')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  if (fieldId === 'name') throw new Error('Full Name field cannot be removed.')
+  const config = getOnlineRegistrationForEvent(state, eventId)
+  const fields = Array.isArray(config.fields) ? [...config.fields] : []
+  const fieldIndex = fields.findIndex((field) => field.id === fieldId)
+  if (fieldIndex < 0) throw new Error('Registration field not found.')
+  const [removed] = fields.splice(fieldIndex, 1)
+  state.onlineRegistrationByEvent[eventId] = { ...config, fields }
+  appendAuditLogEntry(state, eventId, {
+    module: 'registration',
+    action: 'registration_field_deleted',
+    summary: `Registration field removed: ${removed.label}.`,
+    severity: 'warning',
+  })
+  writeState(state)
+  return clone(removed)
+}
+
 export async function reorderManageRegistrationField(eventId, fromIndex, toIndex, options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
   const state = readState()
   assertPermission(state, 'onlineRegistration')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
 
   const config = getOnlineRegistrationForEvent(state, eventId)
   const fields = Array.isArray(config.fields) ? [...config.fields] : []
@@ -2235,6 +2836,8 @@ export async function setManageRegistrationMode(eventId, mode, options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
   const state = readState()
   assertPermission(state, 'onlineRegistration')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
   const config = getOnlineRegistrationForEvent(state, eventId)
   const normalized = mode === 'free' ? 'free' : 'ticketed'
   state.onlineRegistrationByEvent[eventId] = { ...config, mode: normalized }
@@ -2251,6 +2854,8 @@ export async function toggleManageRegistrationGateway(eventId, gatewayId, option
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
   const state = readState()
   assertPermission(state, 'onlineRegistration')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
   const config = getOnlineRegistrationForEvent(state, eventId)
   const gateways = Array.isArray(config.paymentGateways) ? [...config.paymentGateways] : []
   const index = gateways.findIndex((gateway) => gateway.id === gatewayId)
@@ -2266,6 +2871,90 @@ export async function toggleManageRegistrationGateway(eventId, gatewayId, option
   return clone(gateways[index])
 }
 
+export async function createManageTicketType(eventId, payload = {}, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'onlineRegistration')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  const config = getOnlineRegistrationForEvent(state, eventId)
+  const ticketTypes = Array.isArray(config.ticketTypes) ? [...config.ticketTypes] : []
+  const normalized = normalizeTicketTypePayload(payload)
+  const id = String(payload.id ?? '').trim() || buildTicketTypeId(ticketTypes)
+  if (ticketTypes.some((ticket) => ticket.id === id)) {
+    throw new Error(`Ticket type id ${id} already exists.`)
+  }
+  ticketTypes.push({ id, ...normalized })
+  const syncedTickets = syncTicketTotalsToCapacity(ticketTypes, Number(event.guestCapacity ?? 0))
+  state.onlineRegistrationByEvent[eventId] = { ...config, ticketTypes: syncedTickets }
+  appendAuditLogEntry(state, eventId, {
+    module: 'registration',
+    action: 'registration_ticket_created',
+    summary: `Ticket type created: ${normalized.label}.`,
+  })
+  writeState(state)
+  return clone(syncedTickets.find((ticket) => ticket.id === id))
+}
+
+export async function updateManageTicketType(eventId, ticketTypeId, payload = {}, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'onlineRegistration')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  const config = getOnlineRegistrationForEvent(state, eventId)
+  const ticketTypes = Array.isArray(config.ticketTypes) ? [...config.ticketTypes] : []
+  const ticketIndex = ticketTypes.findIndex((ticket) => ticket.id === ticketTypeId)
+  if (ticketIndex < 0) throw new Error('Ticket type not found.')
+  const existing = ticketTypes[ticketIndex]
+  const normalized = normalizeTicketTypePayload({
+    label: payload.label ?? existing.label,
+    pricePhp: payload.pricePhp ?? existing.pricePhp,
+    sold: payload.sold ?? existing.sold,
+    total: payload.total ?? existing.total,
+  })
+  ticketTypes[ticketIndex] = { ...existing, ...normalized }
+  const syncedTickets = syncTicketTotalsToCapacity(ticketTypes, Number(event.guestCapacity ?? 0))
+  state.onlineRegistrationByEvent[eventId] = { ...config, ticketTypes: syncedTickets }
+  appendAuditLogEntry(state, eventId, {
+    module: 'registration',
+    action: 'registration_ticket_updated',
+    summary: `Ticket type updated: ${normalized.label}.`,
+  })
+  writeState(state)
+  return clone(syncedTickets.find((ticket) => ticket.id === ticketTypeId))
+}
+
+export async function deleteManageTicketType(eventId, ticketTypeId, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'onlineRegistration')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  const config = getOnlineRegistrationForEvent(state, eventId)
+  const ticketTypes = Array.isArray(config.ticketTypes) ? [...config.ticketTypes] : []
+  const ticketIndex = ticketTypes.findIndex((ticket) => ticket.id === ticketTypeId)
+  if (ticketIndex < 0) throw new Error('Ticket type not found.')
+  const target = ticketTypes[ticketIndex]
+  if (Number(target.sold ?? 0) > 0) {
+    throw new Error(`Cannot delete ${target.label}: sold count is greater than zero.`)
+  }
+  ticketTypes.splice(ticketIndex, 1)
+  const fallbackTickets = ticketTypes.length > 0
+    ? ticketTypes
+    : [{ id: 'tt-general', label: 'General', pricePhp: 0, sold: 0, total: Number(event.guestCapacity ?? 0) }]
+  const syncedTickets = syncTicketTotalsToCapacity(fallbackTickets, Number(event.guestCapacity ?? 0))
+  state.onlineRegistrationByEvent[eventId] = { ...config, ticketTypes: syncedTickets }
+  appendAuditLogEntry(state, eventId, {
+    module: 'registration',
+    action: 'registration_ticket_deleted',
+    summary: `Ticket type removed: ${target.label}.`,
+    severity: 'warning',
+  })
+  writeState(state)
+  return clone(target)
+}
+
 export async function getManageOnsiteRegistration(eventId, options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
   const state = readState()
@@ -2279,7 +2968,7 @@ export async function createManageOnsiteWalkIn(eventId, payload, options = {}) {
   const state = readState()
   assertAnyPermission(state, ['onsiteRegistration', 'checkin'])
   const event = getEventFromState(state, eventId)
-  if (!event) throw new Error('Event not found.')
+  assertEventEditable(event)
   if (!payload?.guestName) throw new Error('Guest name is required.')
 
   const guests = getGuestsForEvent(state, eventId)
@@ -2340,6 +3029,8 @@ export async function createManageOnsiteWalkIn(eventId, payload, options = {}) {
     amountPaid: Number(payload.amountPaid ?? 0),
     createdAt: checkedInAt,
     badgePrinted: Boolean(payload.badgePrinted),
+    badgePrintedAt: payload.badgePrinted ? checkedInAt : null,
+    badgePrintMethod: payload.badgePrinted ? (payload.badgePrintMethod ?? 'manual') : null,
   }
   walkIns.unshift(record)
   state.onsiteRegistrationByEvent[eventId] = { ...onsite, walkIns: walkIns.slice(0, 200) }
@@ -2350,6 +3041,36 @@ export async function createManageOnsiteWalkIn(eventId, payload, options = {}) {
   })
   writeState(state)
   return clone(record)
+}
+
+export async function updateManageOnsiteBadgePrintStatus(eventId, onsiteId, payload = {}, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertAnyPermission(state, ['onsiteRegistration', 'checkin'])
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+  const onsite = getOnsiteRegistrationForEvent(state, eventId)
+  const walkIns = Array.isArray(onsite.walkIns) ? [...onsite.walkIns] : []
+  const index = walkIns.findIndex((entry) => entry.id === onsiteId)
+  if (index < 0) throw new Error('On-site registration record not found.')
+  const markPrinted = payload.badgePrinted == null ? true : Boolean(payload.badgePrinted)
+  const printedAt = markPrinted ? (payload.printedAt ?? new Date().toISOString()) : null
+  const method = markPrinted ? String(payload.method ?? 'browser-print') : null
+  walkIns[index] = {
+    ...walkIns[index],
+    badgePrinted: markPrinted,
+    badgePrintedAt: printedAt,
+    badgePrintMethod: method,
+    badgePrintLastAttemptAt: new Date().toISOString(),
+  }
+  state.onsiteRegistrationByEvent[eventId] = { ...onsite, walkIns }
+  appendAuditLogEntry(state, eventId, {
+    module: 'onsite',
+    action: 'onsite_badge_print_updated',
+    summary: `Badge print ${markPrinted ? 'completed' : 'reset'} for ${walkIns[index].guestName}.`,
+  })
+  writeState(state)
+  return clone(walkIns[index])
 }
 
 export async function getManageDashboard(eventId, options = {}) {
