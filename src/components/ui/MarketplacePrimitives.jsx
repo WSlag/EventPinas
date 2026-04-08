@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
 
 const heroToneClasses = {
-  blue: 'from-info via-info to-primary-700',
+  blue: 'from-info via-blue-500 to-primary-600',
   dark: 'from-neutral-900 via-neutral-800 to-primary-700',
-  teal: 'from-secondary-700 via-secondary-600 to-primary-600',
+  teal: 'from-secondary-700 via-secondary-500 to-info',
+  sunset: 'from-orange-500 via-primary-500 to-pink-600',
   soft: 'from-info/85 via-info/75 to-primary-600/80',
 }
 
@@ -20,9 +21,9 @@ export function HeroBanner({ eyebrow, title, description, tone = 'blue', actions
 
   return (
     <section className={`rounded-3xl border border-white/10 bg-gradient-to-r ${toneClass} p-space-6 text-white shadow-md ${className}`}>
-      {eyebrow && <p className="font-display text-overline uppercase tracking-wide text-blue-100">{eyebrow}</p>}
+      {eyebrow && <p className="font-display text-overline uppercase tracking-wide text-white/85">{eyebrow}</p>}
       <h1 className="mt-space-2 font-display text-display-lg leading-tight md:text-display-xl">{title}</h1>
-      {description && <p className="mt-space-2 max-w-3xl font-body text-body-sm text-blue-50 md:text-body-md">{description}</p>}
+      {description && <p className="mt-space-2 max-w-3xl font-body text-body-sm text-white/90 md:text-body-md">{description}</p>}
       {actions && <div className="mt-space-4 flex flex-wrap gap-space-2">{actions}</div>}
     </section>
   )

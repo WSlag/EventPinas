@@ -110,7 +110,7 @@ export default function EventsPage() {
         eyebrow="Event Discovery"
         title="Find events your community will remember."
         description="Browse public events across Mindanao, Visayas, and beyond. Save what you like and book fast."
-        tone="dark"
+        tone="sunset"
       />
 
       <FilterPanel title="Filter events" showReset={hasFilters} onReset={resetFilters}>
