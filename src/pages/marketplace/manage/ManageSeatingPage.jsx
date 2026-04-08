@@ -54,6 +54,7 @@ export default function ManageSeatingPage() {
   const [guests, setGuests] = useState([])
   const [selectedGuestId, setSelectedGuestId] = useState('')
   const [selectedTableLabel, setSelectedTableLabel] = useState('')
+  const [selectedSeatNumber, setSelectedSeatNumber] = useState('auto')
   const [selectedTableId, setSelectedTableId] = useState('')
   const [draggingGuestId, setDraggingGuestId] = useState('')
   const [hoveredTableId, setHoveredTableId] = useState('')
@@ -148,17 +149,30 @@ export default function ManageSeatingPage() {
   )
   const eventCapacity = Number(selectedEvent?.guestCapacity ?? totalSeats)
 
-  async function assignSeat(guestId, tableLabel) {
+  useEffect(() => {
+    setSelectedSeatNumber('auto')
+  }, [selectedTableLabel])
+
+  async function assignSeat(guestId, tableLabel, seatNumber = null) {
     if (!selectedEventId || !guestId) return
     setError('')
     setNotice('')
     setAssigningGuestId(guestId)
     try {
-      await assignGuestSeat(selectedEventId, guestId, tableLabel || null, { simulateLatency: false })
+      await assignGuestSeat(
+        selectedEventId,
+        guestId,
+        tableLabel || null,
+        {
+          simulateLatency: false,
+          seatNumber: tableLabel ? (seatNumber ?? undefined) : undefined,
+        },
+      )
       await loadSeatingData()
       if (selectedGuestId === guestId) {
         setSelectedGuestId('')
         setSelectedTableLabel('')
+        setSelectedSeatNumber('auto')
       }
     } catch (assignmentError) {
       setError(assignmentError?.message ?? 'Unable to assign table seat.')
@@ -170,7 +184,10 @@ export default function ManageSeatingPage() {
   async function onAssignSeat(event) {
     event.preventDefault()
     if (!selectedGuestId) return
-    await assignSeat(selectedGuestId, selectedTableLabel)
+    const parsedSeat = selectedTableLabel && selectedSeatNumber !== 'auto'
+      ? Number(selectedSeatNumber)
+      : null
+    await assignSeat(selectedGuestId, selectedTableLabel, parsedSeat)
   }
 
   async function refreshAfterTableMutation(preferredLabel = '') {
@@ -316,19 +333,36 @@ export default function ManageSeatingPage() {
 
   const selectedGuest = guests.find((guest) => guest.id === selectedGuestId) ?? null
   const selectedTable = tables.find((table) => table.id === selectedTableId) ?? null
+  const quickAssignTable = tables.find((table) => table.label === selectedTableLabel) ?? null
+  const quickAssignSeatOptions = useMemo(() => {
+    if (!quickAssignTable) return []
+    const occupiedSeats = new Set(
+      (quickAssignTable.guests ?? [])
+        .filter((guest) => guest.id !== selectedGuestId)
+        .map((guest) => Number(guest.seatNumber))
+        .filter(Number.isInteger),
+    )
+    return Array.from({ length: quickAssignTable.capacity }, (_, index) => index + 1)
+      .filter((seat) => !occupiedSeats.has(seat))
+  }, [quickAssignTable, selectedGuestId])
   const draggableGuests = useMemo(
-    () => guests.filter((guest) => !guest.tableLabel && !guest.checkedInAt),
+    () => guests.filter((guest) => (!guest.tableLabel || !guest.seatNumber) && !guest.checkedInAt),
     [guests],
   )
   const lockedUnassignedGuests = useMemo(
-    () => guests.filter((guest) => !guest.tableLabel && !!guest.checkedInAt),
+    () => guests.filter((guest) => (!guest.tableLabel || !guest.seatNumber) && !!guest.checkedInAt),
     [guests],
   )
   const unassignedGuestsCount = draggableGuests.length + lockedUnassignedGuests.length
   const selectedTableSeatedCount = selectedTable?.seated ?? 0
+  const selectedTableHighestSeat = selectedTable
+    ? selectedTable.guests.reduce((max, guest) => Math.max(max, Number(guest.seatNumber) || 0), 0)
+    : 0
   const parsedEditSeats = Number(editTableSeats)
   const seatsInputInvalid = !Number.isInteger(parsedEditSeats) || parsedEditSeats < 1
-  const downsizeBlocked = selectedTable ? parsedEditSeats < selectedTableSeatedCount : false
+  const downsizeBlocked = selectedTable
+    ? parsedEditSeats < Math.max(selectedTableSeatedCount, selectedTableHighestSeat)
+    : false
   const saveSeatsDisabled = !selectedTable || seatsInputInvalid || downsizeBlocked || savingSeats
   const removeTableDisabled = !selectedTable || removingTable || tables.length <= 1 || selectedTableSeatedCount > 0
 
@@ -547,6 +581,11 @@ export default function ManageSeatingPage() {
                 const active = selectedTableId === table.id
                 const hovered = hoveredTableId === table.id
                 const isBlockedDrop = hovered && !!hoveredDropBlockedReason
+                const occupiedSeats = new Set(
+                  (table.occupiedSeatNumbers ?? [])
+                    .map((seatNumber) => Number(seatNumber))
+                    .filter(Number.isInteger),
+                )
                 return (
                   <button
                     type="button"
@@ -567,14 +606,20 @@ export default function ManageSeatingPage() {
                     </div>
                     <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">{table.seated}/{table.capacity} seated</p>
                     <div className="mt-space-2 flex flex-wrap gap-1">
-                      {Array.from({ length: table.capacity }).map((_, index) => (
+                      {Array.from({ length: table.capacity }).map((_, index) => {
+                        const seatNumber = index + 1
+                        const occupied = occupiedSeats.has(seatNumber)
+                        return (
                         <span
-                          key={`${table.id}-seat-${index + 1}`}
-                          className={`h-2.5 w-2.5 rounded-full ${
-                            index < table.seated ? 'bg-mgmt-gold' : 'border border-mgmt-border bg-mgmt-bg'
+                          key={`${table.id}-seat-${seatNumber}`}
+                          className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold ${
+                            occupied ? 'bg-mgmt-gold/90 text-mgmt-bg' : 'border border-mgmt-border bg-mgmt-bg text-mgmt-muted'
                           }`}
-                        />
-                      ))}
+                        >
+                          {seatNumber}
+                        </span>
+                        )
+                      })}
                     </div>
                   </button>
                 )
@@ -699,6 +744,19 @@ export default function ManageSeatingPage() {
                   </option>
                 ))}
               </select>
+              <select
+                value={selectedSeatNumber}
+                onChange={(event) => setSelectedSeatNumber(event.target.value)}
+                className={`w-full ${inputCls}`}
+                disabled={!quickAssignTable}
+              >
+                <option value="auto">Auto (lowest open seat)</option>
+                {quickAssignSeatOptions.map((seat) => (
+                  <option key={`quick-seat-${seat}`} value={seat}>
+                    Seat {seat}
+                  </option>
+                ))}
+              </select>
               <ManageButton type="submit" className="w-full">
                 {selectedGuest?.tableLabel ? 'Reassign Seat' : 'Assign Seat'}
               </ManageButton>
@@ -723,8 +781,14 @@ export default function ManageSeatingPage() {
                 {selectedTable.guests.length === 0 && <p className="font-body text-body-sm text-mgmt-muted">No guests assigned.</p>}
                 {selectedTable.guests.map((guest) => (
                   <div key={guest.id} className="flex items-center justify-between rounded-xl border border-mgmt-border p-space-2">
-                    <p className="font-body text-body-sm text-mgmt-text">{guest.name}</p>
-                    <ManageBadge tone="neutral">{guest.ticketType}</ManageBadge>
+                    <div>
+                      <p className="font-body text-body-sm text-mgmt-text">{guest.name}</p>
+                      <p className="font-body text-caption-lg text-mgmt-muted">Seat {guest.seatNumber ?? '-'}</p>
+                    </div>
+                    <div className="flex items-center gap-space-1">
+                      <ManageBadge tone="info">Seat {guest.seatNumber ?? '-'}</ManageBadge>
+                      <ManageBadge tone="neutral">{guest.ticketType}</ManageBadge>
+                    </div>
                   </div>
                 ))}
                 <form onSubmit={onSaveTableSeats} className="mt-space-2 space-y-space-2 rounded-xl border border-mgmt-border bg-mgmt-raised p-space-2">
@@ -741,7 +805,7 @@ export default function ManageSeatingPage() {
                   </label>
                   {downsizeBlocked && (
                     <p className="font-body text-caption-lg text-warning">
-                      Seats cannot be lower than currently seated guests.
+                      Seats cannot be lower than current assigned guests or seat numbers.
                     </p>
                   )}
                   <div className="flex flex-wrap gap-space-2">

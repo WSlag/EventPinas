@@ -72,6 +72,43 @@ describe('manageService', () => {
     expect(bootstrap.selectedEventId).toBeTruthy()
   })
 
+  it('backfills legacy table assignments with deterministic seat numbers', async () => {
+    const createdEvent = await createManageEvent(
+      {
+        title: 'Legacy Seat Backfill Event',
+        date: '2026-12-01',
+        city: 'Davao City',
+        venue: 'Hall Legacy',
+        guestCapacity: 12,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = createdEvent.event.id
+    await createManageGuest(eventId, { name: 'Legacy A', ticketType: 'General', tableLabel: 'T1' }, { simulateLatency: false })
+    await createManageGuest(eventId, { name: 'Legacy B', ticketType: 'General', tableLabel: 'T1' }, { simulateLatency: false })
+    await createManageGuest(eventId, { name: 'Legacy C', ticketType: 'General', tableLabel: 'T1' }, { simulateLatency: false })
+
+    const rawState = JSON.parse(localStorage.getItem(MANAGE_STORAGE_KEY))
+    const guests = rawState.guestsByEvent[eventId]
+    const assignedIndexes = guests
+      .map((guest, index) => ({ guest, index }))
+      .filter((entry) => entry.guest.tableLabel === 'T1')
+      .map((entry) => entry.index)
+
+    guests[assignedIndexes[0]] = { ...guests[assignedIndexes[0]], seatNumber: 1 }
+    guests[assignedIndexes[1]] = { ...guests[assignedIndexes[1]], seatNumber: 1 }
+    guests[assignedIndexes[2]] = { ...guests[assignedIndexes[2]], seatNumber: null }
+    localStorage.setItem(MANAGE_STORAGE_KEY, JSON.stringify(rawState))
+
+    const normalizedGuests = await listManageGuests(eventId, { status: 'all' }, { simulateLatency: false })
+    const t1Guests = normalizedGuests.filter((guest) => guest.tableLabel === 'T1')
+    const seatNumbers = t1Guests.map((guest) => guest.seatNumber)
+    const uniqueSeatNumbers = new Set(seatNumbers)
+
+    expect(t1Guests.every((guest) => Number.isInteger(guest.seatNumber))).toBe(true)
+    expect(uniqueSeatNumbers.size).toBe(seatNumbers.length)
+  })
+
   it('creates events with initialized defaults and selects the new event', async () => {
     const beforeEvents = await listManageEvents({}, { simulateLatency: false })
 
@@ -349,6 +386,7 @@ describe('manageService', () => {
 
     expect(created.isWalkIn).toBe(true)
     expect(created.checkedInAt).toBeTruthy()
+    expect(Number.isInteger(created.seatNumber)).toBe(true)
     expect(allAfter.length).toBe(allBefore.length + 1)
   })
 
@@ -390,6 +428,65 @@ describe('manageService', () => {
 
     const assigned = await assignGuestSeat(eventId, firstPending.id, openTable.label, { simulateLatency: false })
     expect(assigned.tableLabel).toBe(openTable.label)
+    expect(Number.isInteger(assigned.seatNumber)).toBe(true)
+    expect(assigned.seatNumber).toBeGreaterThan(0)
+  })
+
+  it('supports explicit seat assignment and validates seat conflicts', async () => {
+    const createdEvent = await createManageEvent(
+      {
+        title: 'Explicit Seat Event',
+        date: '2026-12-19',
+        city: 'Davao City',
+        venue: 'Hall Explicit',
+        guestCapacity: 12,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = createdEvent.event.id
+
+    const guestOne = await createManageGuest(eventId, { name: 'Seat Guest One', ticketType: 'General' }, { simulateLatency: false })
+    const guestTwo = await createManageGuest(eventId, { name: 'Seat Guest Two', ticketType: 'General' }, { simulateLatency: false })
+
+    const assignedOne = await assignGuestSeat(eventId, guestOne.id, 'T1', { simulateLatency: false, seatNumber: 3 })
+    expect(assignedOne.tableLabel).toBe('T1')
+    expect(assignedOne.seatNumber).toBe(3)
+
+    await expect(assignGuestSeat(
+      eventId,
+      guestTwo.id,
+      'T1',
+      { simulateLatency: false, seatNumber: 3 },
+    )).rejects.toThrow(/already occupied/i)
+
+    await expect(assignGuestSeat(
+      eventId,
+      guestTwo.id,
+      'T1',
+      { simulateLatency: false, seatNumber: 999 },
+    )).rejects.toThrow(/outside the valid range/i)
+  })
+
+  it('clears seat number when unassigning a guest', async () => {
+    const createdEvent = await createManageEvent(
+      {
+        title: 'Seat Clear Event',
+        date: '2026-12-19',
+        city: 'Davao City',
+        venue: 'Hall Clear',
+        guestCapacity: 12,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = createdEvent.event.id
+    const guest = await createManageGuest(eventId, { name: 'Clear Seat Guest', ticketType: 'General' }, { simulateLatency: false })
+    const assigned = await assignGuestSeat(eventId, guest.id, 'T1', { simulateLatency: false })
+    expect(assigned.tableLabel).toBe('T1')
+    expect(Number.isInteger(assigned.seatNumber)).toBe(true)
+
+    const unassigned = await assignGuestSeat(eventId, guest.id, null, { simulateLatency: false })
+    expect(unassigned.tableLabel).toBeNull()
+    expect(unassigned.seatNumber).toBeNull()
   })
 
   it('adds a table and auto-adjusts other tables while keeping event capacity fixed', async () => {
@@ -493,6 +590,33 @@ describe('manageService', () => {
       1,
       { simulateLatency: false },
     )).rejects.toThrow(/seats cannot be lower than currently seated guests/i)
+  })
+
+  it('blocks table seat downsize below highest assigned seat number', async () => {
+    const createdEvent = await createManageEvent(
+      {
+        title: 'Seat Position Guard Event',
+        date: '2026-12-22',
+        city: 'Davao City',
+        venue: 'Hall Seat Guard',
+        guestCapacity: 20,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = createdEvent.event.id
+    const guest = await createManageGuest(
+      eventId,
+      { name: 'High Seat Guest', ticketType: 'General' },
+      { simulateLatency: false },
+    )
+    await assignGuestSeat(eventId, guest.id, 'T1', { simulateLatency: false, seatNumber: 8 })
+
+    await expect(updateManageTableSeats(
+      eventId,
+      'T1',
+      7,
+      { simulateLatency: false },
+    )).rejects.toThrow(/highest assigned seat number/i)
   })
 
   it('blocks removing a table that still has assigned guests', async () => {
@@ -634,6 +758,7 @@ describe('manageService', () => {
     expect(created.name).toBe('Manual Guest')
     expect(created.ticketType).toBe('VIP')
     expect(created.tableLabel).toBe('T1')
+    expect(Number.isInteger(created.seatNumber)).toBe(true)
     expect(created.checkedInAt).toBeNull()
   })
 
@@ -666,10 +791,44 @@ describe('manageService', () => {
     expect(result.warningCount).toBe(1)
     expect(importedGuests.length).toBe(3)
     expect(importedGuests.filter((guest) => guest.tableLabel === 'T1').length).toBe(2)
+    expect(importedGuests.filter((guest) => guest.tableLabel === 'T1').every((guest) => Number.isInteger(guest.seatNumber))).toBe(true)
     expect(result.blankNameRows).toBe(1)
     expect(result.capacitySkippedCount).toBe(1)
     expect(result.invalidTableWarningCount).toBe(1)
     expect(result.fullTableWarningCount).toBe(0)
+  })
+
+  it('imports csv seatNumber values with fallback for invalid or occupied seats', async () => {
+    const createdEvent = await createManageEvent(
+      {
+        title: 'Import Seat Number Event',
+        date: '2026-12-03',
+        city: 'Davao City',
+        venue: 'Hall Seat CSV',
+        guestCapacity: 6,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = createdEvent.event.id
+    const csv = [
+      'name,ticketType,phone,tableLabel,seatNumber',
+      'Seat CSV 1,VIP,+63 911 200 0001,T1,5',
+      'Seat CSV 2,General,+63 911 200 0002,T1,5',
+      'Seat CSV 3,General,+63 911 200 0003,T1,abc',
+    ].join('\n')
+
+    const result = await importManageGuestsFromCsv(eventId, csv, { simulateLatency: false })
+    const guests = await listManageGuests(eventId, { status: 'all' }, { simulateLatency: false })
+    const seatCsvGuests = guests.filter((guest) => guest.name.startsWith('Seat CSV'))
+    const occupiedSeats = new Set(seatCsvGuests.map((guest) => guest.seatNumber))
+
+    expect(result.addedCount).toBe(3)
+    expect(result.warningCount).toBe(2)
+    expect(result.invalidSeatWarningCount).toBe(1)
+    expect(result.occupiedSeatWarningCount).toBe(1)
+    expect(occupiedSeats.has(5)).toBe(true)
+    expect(seatCsvGuests.every((guest) => Number.isInteger(guest.seatNumber))).toBe(true)
+    expect(occupiedSeats.size).toBe(3)
   })
 
   it('previews csv import readiness and blocks missing required headers', async () => {
@@ -748,6 +907,7 @@ describe('manageService', () => {
     expect(assignment.assignedCount).toBe(3)
     expect(assignment.remainingUnassigned).toBe(0)
     expect(guests.every((guest) => Boolean(guest.tableLabel))).toBe(true)
+    expect(guests.every((guest) => Number.isInteger(guest.seatNumber))).toBe(true)
   })
 
   it('validates generated QR payloads', async () => {
@@ -826,6 +986,9 @@ describe('manageService', () => {
 
     const afterCapacity = await getManageCapacitySnapshot(eventId, { simulateLatency: false })
     expect(afterCapacity.registered).toBe(beforeCapacity.registered + 1)
+    const guests = await listManageGuests(eventId, { status: 'all' }, { simulateLatency: false })
+    const approvedGuest = guests.find((guest) => guest.id === approved.approvedGuestId)
+    expect(Number.isInteger(approvedGuest?.seatNumber)).toBe(true)
 
     const removed = await removeManageWaitlistEntry(eventId, 'wl-001', { simulateLatency: false })
     expect(removed.status).toBe('removed')
@@ -843,6 +1006,7 @@ describe('manageService', () => {
     const attendanceCsv = await exportManageReport(eventId, 'attendance', { simulateLatency: false })
     expect(attendanceCsv.filename).toMatch(/-attendance\.csv$/)
     expect(attendanceCsv.content).toContain('guestId,name,ticketType')
+    expect(attendanceCsv.content).toContain('tableLabel,seatNumber,phone')
 
     const incidentsCsv = await exportManageReport(eventId, 'incidents', { simulateLatency: false })
     expect(incidentsCsv.filename).toMatch(/-incidents\.csv$/)
@@ -1076,6 +1240,9 @@ describe('manageService', () => {
 
     const onsite = await getManageOnsiteRegistration(eventId, { simulateLatency: false })
     expect(onsite.walkIns.length).toBeGreaterThan(0)
+    const guests = await listManageGuests(eventId, { status: 'all' }, { simulateLatency: false })
+    const onsiteGuest = guests.find((guest) => guest.name === 'Onsite Walkin Test')
+    expect(Number.isInteger(onsiteGuest?.seatNumber)).toBe(true)
   })
 
   it('updates on-site badge print status with print metadata', async () => {

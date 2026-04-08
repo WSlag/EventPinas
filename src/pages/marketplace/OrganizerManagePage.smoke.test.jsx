@@ -246,7 +246,7 @@ describe('OrganizerManagePage smoke', () => {
     await user.selectOptions(carlosTableSelect, 'T3')
     const selectContainer = carlosTableSelect.closest('div')
     await user.click(within(selectContainer).getByRole('button', { name: /^set$/i }))
-    expect(await screen.findByText(/seat assigned for carlos reyes: t3/i)).toBeInTheDocument()
+    expect(await screen.findByText(/seat assigned for carlos reyes: t3.*seat 1/i)).toBeInTheDocument()
 
     expect(screen.queryByRole('combobox', { name: /seat for ana reyes/i })).not.toBeInTheDocument()
   })

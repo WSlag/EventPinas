@@ -50,6 +50,12 @@ function ticketTypeTone(type) {
   return 'neutral'
 }
 
+function formatGuestSeatText(guest) {
+  if (!guest?.tableLabel) return 'No seat'
+  if (guest?.seatNumber) return `Table ${guest.tableLabel} - Seat ${guest.seatNumber}`
+  return `Table ${guest.tableLabel}`
+}
+
 const KANBAN_COLUMNS = [
   {
     id: 'pending',
@@ -98,7 +104,7 @@ export default function ManageGuestsPage() {
   const [manualPhone, setManualPhone] = useState('')
   const [manualTicketType, setManualTicketType] = useState('General')
   const [manualTableLabel, setManualTableLabel] = useState('')
-  const [csvText, setCsvText] = useState('name,ticketType,phone,tableLabel\n')
+  const [csvText, setCsvText] = useState('name,ticketType,phone,tableLabel,seatNumber\n')
   const [csvPreview, setCsvPreview] = useState(null)
   const [csvPreviewLoading, setCsvPreviewLoading] = useState(false)
   const [csvFileName, setCsvFileName] = useState('')
@@ -216,7 +222,7 @@ export default function ManageGuestsPage() {
     return { total: allGuests.length, checkedIn, pending, vip, walkIns }
   }, [allGuests])
 
-  const unassignedCount = useMemo(() => allGuests.filter((g) => !g.tableLabel).length, [allGuests])
+  const unassignedCount = useMemo(() => allGuests.filter((g) => !g.tableLabel || !g.seatNumber).length, [allGuests])
   const availableSlots = capacitySnapshot?.availableSlots ?? Math.max((selectedEvent?.guestCapacity ?? 0) - stats.total, 0)
 
   const suggestionByGuestId = useMemo(() => {
@@ -340,7 +346,10 @@ export default function ManageGuestsPage() {
     try {
       const updated = await assignGuestSeat(selectedEventId, guest.id, targetTableLabel, { simulateLatency: false })
       await loadGuestsData()
-      setActionTone('success'); setActionMessage(`Seat assigned for ${updated.name}: ${updated.tableLabel ?? 'Unassigned'}.`)
+      const assignedLabel = updated.tableLabel
+        ? `${updated.tableLabel}${updated.seatNumber ? ` - Seat ${updated.seatNumber}` : ''}`
+        : 'Unassigned'
+      setActionTone('success'); setActionMessage(`Seat assigned for ${updated.name}: ${assignedLabel}.`)
     } catch (err) {
       setActionTone('danger'); setActionMessage(err?.message ?? 'Unable to assign seat.')
     } finally { setAssigningGuestId('') }
@@ -442,7 +451,7 @@ export default function ManageGuestsPage() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name, ID, table, ticket..."
+          placeholder="Search by name, ID, table, seat, ticket..."
           className={`h-10 flex-1 rounded-md border border-mgmt-border bg-mgmt-raised px-space-3 font-body text-body-sm text-mgmt-text placeholder:text-mgmt-dim focus:border-mgmt-gold/60 focus:outline-none transition-colors`}
         />
         {quickFilterOptions.map((option) => (
@@ -507,14 +516,14 @@ export default function ManageGuestsPage() {
             <div>
               <p className="font-playfair text-heading-sm font-bold text-mgmt-text">Import Guest List (CSV)</p>
               <p className="mt-space-1 font-body text-caption-lg text-mgmt-muted">
-                Required header: <code className="text-mgmt-gold">name</code>. Optional: <code className="text-mgmt-gold">ticketType</code>, <code className="text-mgmt-gold">phone</code>, <code className="text-mgmt-gold">tableLabel</code>.
+                Required header: <code className="text-mgmt-gold">name</code>. Optional: <code className="text-mgmt-gold">ticketType</code>, <code className="text-mgmt-gold">phone</code>, <code className="text-mgmt-gold">tableLabel</code>, <code className="text-mgmt-gold">seatNumber</code>.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-space-2">
               <ManageButton variant="secondary" onClick={() => csvFileInputRef.current?.click()} disabled={uploadingCsvFile}>
                 {uploadingCsvFile ? 'Uploading...' : 'Upload CSV'}
               </ManageButton>
-              <ManageButton variant="ghost" onClick={() => { setCsvText('name,ticketType,phone,tableLabel\n'); setCsvFileName('') }}>
+              <ManageButton variant="ghost" onClick={() => { setCsvText('name,ticketType,phone,tableLabel,seatNumber\n'); setCsvFileName('') }}>
                 Reset
               </ManageButton>
             </div>
@@ -679,7 +688,7 @@ export default function ManageGuestsPage() {
                 <ManageBadge tone={ticketTypeTone(guest.ticketType)}>{guest.ticketType}</ManageBadge>
               </div>
               <p className="mt-space-1 font-body text-[0.8125rem] text-mgmt-muted">
-                {guest.tableLabel ? `Table ${guest.tableLabel}` : 'No seat'}
+                {formatGuestSeatText(guest)}
                 {guest.phone ? ` · ${guest.phone}` : ''}
               </p>
               {guest.checkedInAt && (
@@ -767,7 +776,7 @@ export default function ManageGuestsPage() {
                         </ManageBadge>
                       </div>
                       <p className="mt-space-1 font-body text-[0.75rem] text-mgmt-muted">
-                        {guest.tableLabel ? `Table ${guest.tableLabel}` : 'No seat'}
+                        {formatGuestSeatText(guest)}
                         {guest.phone ? ` · ${guest.phone}` : ''}
                       </p>
                       {guest.checkedInAt && (

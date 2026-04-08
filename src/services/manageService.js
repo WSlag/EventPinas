@@ -236,10 +236,14 @@ async function hydrateStateFromFirestore() {
       scanOutcomeLogByEvent,
       auditLogByEvent,
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState))
+    const normalized = normalizeSeatAssignmentsInState(nextState)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized.state))
+    if (normalized.changed) {
+      scheduleFirestoreSync(normalized.state)
+    }
     notifyStateListeners()
     firestoreHydrated = true
-    return nextState
+    return normalized.state
   })().finally(() => {
     firestoreHydrationPromise = null
   })
@@ -275,25 +279,36 @@ function readState() {
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return buildDefaultState()
-    const parsed = JSON.parse(raw)
-    return {
-      selectedEventId: parsed.selectedEventId ?? manageEvents[0]?.id ?? null,
-      selectedOperatorRole: parsed.selectedOperatorRole ?? 'admin',
-      events: Array.isArray(parsed.events) ? parsed.events : clone(manageEvents),
-      guestsByEvent: parsed.guestsByEvent && typeof parsed.guestsByEvent === 'object' ? parsed.guestsByEvent : clone(manageGuestsByEvent),
-      staffByEvent: parsed.staffByEvent && typeof parsed.staffByEvent === 'object' ? parsed.staffByEvent : clone(manageStaffByEvent),
-      incidentsByEvent: parsed.incidentsByEvent && typeof parsed.incidentsByEvent === 'object' ? parsed.incidentsByEvent : clone(manageIncidentsByEvent),
-      waitlistByEvent: parsed.waitlistByEvent && typeof parsed.waitlistByEvent === 'object' ? parsed.waitlistByEvent : clone(manageWaitlistByEvent),
-      plannerByEvent: parsed.plannerByEvent && typeof parsed.plannerByEvent === 'object' ? parsed.plannerByEvent : clone(managePlannerByEvent),
-      onlineRegistrationByEvent: parsed.onlineRegistrationByEvent && typeof parsed.onlineRegistrationByEvent === 'object' ? parsed.onlineRegistrationByEvent : clone(manageOnlineRegistrationByEvent),
-      onsiteRegistrationByEvent: parsed.onsiteRegistrationByEvent && typeof parsed.onsiteRegistrationByEvent === 'object' ? parsed.onsiteRegistrationByEvent : clone(manageOnsiteRegistrationByEvent),
-      checkInLogByEvent: parsed.checkInLogByEvent && typeof parsed.checkInLogByEvent === 'object' ? parsed.checkInLogByEvent : {},
-      scanOutcomeLogByEvent: parsed.scanOutcomeLogByEvent && typeof parsed.scanOutcomeLogByEvent === 'object' ? parsed.scanOutcomeLogByEvent : {},
-      auditLogByEvent: parsed.auditLogByEvent && typeof parsed.auditLogByEvent === 'object' ? parsed.auditLogByEvent : clone(manageAuditLogByEvent),
+    const parsed = raw ? JSON.parse(raw) : null
+    const baseState = parsed
+      ? {
+        selectedEventId: parsed.selectedEventId ?? manageEvents[0]?.id ?? null,
+        selectedOperatorRole: parsed.selectedOperatorRole ?? 'admin',
+        events: Array.isArray(parsed.events) ? parsed.events : clone(manageEvents),
+        guestsByEvent: parsed.guestsByEvent && typeof parsed.guestsByEvent === 'object' ? parsed.guestsByEvent : clone(manageGuestsByEvent),
+        staffByEvent: parsed.staffByEvent && typeof parsed.staffByEvent === 'object' ? parsed.staffByEvent : clone(manageStaffByEvent),
+        incidentsByEvent: parsed.incidentsByEvent && typeof parsed.incidentsByEvent === 'object' ? parsed.incidentsByEvent : clone(manageIncidentsByEvent),
+        waitlistByEvent: parsed.waitlistByEvent && typeof parsed.waitlistByEvent === 'object' ? parsed.waitlistByEvent : clone(manageWaitlistByEvent),
+        plannerByEvent: parsed.plannerByEvent && typeof parsed.plannerByEvent === 'object' ? parsed.plannerByEvent : clone(managePlannerByEvent),
+        onlineRegistrationByEvent: parsed.onlineRegistrationByEvent && typeof parsed.onlineRegistrationByEvent === 'object' ? parsed.onlineRegistrationByEvent : clone(manageOnlineRegistrationByEvent),
+        onsiteRegistrationByEvent: parsed.onsiteRegistrationByEvent && typeof parsed.onsiteRegistrationByEvent === 'object' ? parsed.onsiteRegistrationByEvent : clone(manageOnsiteRegistrationByEvent),
+        checkInLogByEvent: parsed.checkInLogByEvent && typeof parsed.checkInLogByEvent === 'object' ? parsed.checkInLogByEvent : {},
+        scanOutcomeLogByEvent: parsed.scanOutcomeLogByEvent && typeof parsed.scanOutcomeLogByEvent === 'object' ? parsed.scanOutcomeLogByEvent : {},
+        auditLogByEvent: parsed.auditLogByEvent && typeof parsed.auditLogByEvent === 'object' ? parsed.auditLogByEvent : clone(manageAuditLogByEvent),
+      }
+      : buildDefaultState()
+    const normalized = normalizeSeatAssignmentsInState(baseState)
+    if (!raw || normalized.changed) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized.state))
+      if (normalized.changed && MANAGE_STORE_MODE === 'firestore') {
+        scheduleFirestoreSync(normalized.state)
+      }
     }
+    return normalized.state
   } catch {
-    return buildDefaultState()
+    const fallback = normalizeSeatAssignmentsInState(buildDefaultState())
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fallback.state))
+    return fallback.state
   }
 }
 
@@ -310,6 +325,125 @@ function normalizeText(value) {
 function includesQuery(value, query) {
   if (!query) return true
   return normalizeText(value).includes(query)
+}
+
+function normalizeSeatAssignmentsForEvent(event, guests) {
+  if (!event || !Array.isArray(guests) || guests.length === 0) {
+    return { guests, changed: false }
+  }
+
+  const working = guests.map((guest) => ({ ...guest }))
+  const tableByLabel = new Map((event.tables ?? []).map((table) => [table.label, table]))
+  const guestIndexesByTable = new Map()
+  let changed = false
+
+  working.forEach((guest, index) => {
+    const matchedTable = guest.tableLabel ? resolveEventTableLabel(event, guest.tableLabel) : null
+    if (!matchedTable) {
+      if (guest.tableLabel != null || normalizeSeatNumber(guest.seatNumber) != null) {
+        changed = true
+      }
+      working[index] = {
+        ...guest,
+        tableLabel: null,
+        seatNumber: null,
+      }
+      return
+    }
+
+    const currentSeat = normalizeSeatNumber(guest.seatNumber)
+    if (guest.tableLabel !== matchedTable.label || guest.seatNumber !== currentSeat) {
+      changed = true
+    }
+
+    working[index] = {
+      ...guest,
+      tableLabel: matchedTable.label,
+      seatNumber: currentSeat,
+    }
+
+    const indexes = guestIndexesByTable.get(matchedTable.label) ?? []
+    indexes.push(index)
+    guestIndexesByTable.set(matchedTable.label, indexes)
+  })
+
+  for (const [tableLabel, indexes] of guestIndexesByTable.entries()) {
+    const table = tableByLabel.get(tableLabel)
+    if (!table) continue
+    const capacity = Math.max(Number(table.capacity) || 0, 0)
+    const occupiedSeats = new Set()
+    const unresolvedIndexes = []
+
+    for (const guestIndex of indexes) {
+      const guest = working[guestIndex]
+      const seatNumber = normalizeSeatNumber(guest.seatNumber)
+      if (seatNumber != null && seatNumber <= capacity && !occupiedSeats.has(seatNumber)) {
+        occupiedSeats.add(seatNumber)
+        if (guest.seatNumber !== seatNumber) {
+          working[guestIndex] = { ...guest, seatNumber }
+          changed = true
+        }
+        continue
+      }
+      unresolvedIndexes.push(guestIndex)
+    }
+
+    for (const guestIndex of unresolvedIndexes) {
+      const nextSeat = findLowestAvailableSeat(capacity, occupiedSeats)
+      const guest = working[guestIndex]
+      if (nextSeat == null) {
+        if (guest.tableLabel != null || guest.seatNumber != null) {
+          changed = true
+        }
+        working[guestIndex] = {
+          ...guest,
+          tableLabel: null,
+          seatNumber: null,
+        }
+        continue
+      }
+      occupiedSeats.add(nextSeat)
+      if (guest.seatNumber !== nextSeat) {
+        changed = true
+      }
+      working[guestIndex] = {
+        ...guest,
+        seatNumber: nextSeat,
+      }
+    }
+  }
+
+  return { guests: changed ? working : guests, changed }
+}
+
+function normalizeSeatAssignmentsInState(state) {
+  if (!state || typeof state !== 'object') return { state, changed: false }
+  const events = Array.isArray(state.events) ? state.events : []
+  const guestsByEvent = state.guestsByEvent && typeof state.guestsByEvent === 'object'
+    ? state.guestsByEvent
+    : {}
+
+  const nextGuestsByEvent = { ...guestsByEvent }
+  let changed = false
+
+  for (const event of events) {
+    const eventId = event?.id
+    if (!eventId) continue
+    const currentGuests = Array.isArray(guestsByEvent[eventId]) ? guestsByEvent[eventId] : []
+    const normalized = normalizeSeatAssignmentsForEvent(event, currentGuests)
+    if (!normalized.changed) continue
+    nextGuestsByEvent[eventId] = normalized.guests
+    changed = true
+  }
+
+  if (!changed) return { state, changed: false }
+  return {
+    state: {
+      ...state,
+      guestsByEvent: nextGuestsByEvent,
+    },
+    changed: true,
+  }
 }
 
 function getGuestsForEvent(state, eventId) {
@@ -561,16 +695,29 @@ function assertAnyPermission(state, permissions) {
 function computeTableSummary(event, guests) {
   if (!event?.tables?.length) return []
   return event.tables.map((table) => {
-    const seatedGuests = guests.filter((guest) => guest.tableLabel === table.label)
+    const seatedGuests = guests
+      .filter((guest) => guest.tableLabel === table.label)
+      .map((guest) => ({
+        id: guest.id,
+        name: guest.name,
+        ticketType: guest.ticketType,
+        seatNumber: normalizeSeatNumber(guest.seatNumber),
+      }))
+      .sort((left, right) => {
+        const leftSeat = normalizeSeatNumber(left.seatNumber) ?? Number.MAX_SAFE_INTEGER
+        const rightSeat = normalizeSeatNumber(right.seatNumber) ?? Number.MAX_SAFE_INTEGER
+        if (leftSeat !== rightSeat) return leftSeat - rightSeat
+        return String(left.name ?? '').localeCompare(String(right.name ?? ''))
+      })
+    const occupiedSeatNumbers = seatedGuests
+      .map((guest) => normalizeSeatNumber(guest.seatNumber))
+      .filter((value) => value != null)
     return {
       ...table,
       seated: seatedGuests.length,
       available: Math.max(table.capacity - seatedGuests.length, 0),
-      guests: seatedGuests.map((guest) => ({
-        id: guest.id,
-        name: guest.name,
-        ticketType: guest.ticketType,
-      })),
+      occupiedSeatNumbers,
+      guests: seatedGuests,
     }
   })
 }
@@ -664,6 +811,7 @@ function getCsvImportColumnIndexes(header) {
     ticketColumnIndex: getColumnIndex('tickettype', 'ticket', 'type'),
     phoneColumnIndex: getColumnIndex('phone', 'mobile', 'mobilenumber'),
     tableColumnIndex: getColumnIndex('tablelabel', 'table', 'tableid'),
+    seatColumnIndex: getColumnIndex('seatnumber', 'seat', 'seatno'),
   }
 }
 
@@ -722,12 +870,108 @@ function normalizeManageGuestPayload(payload = {}) {
       : 'General'
 
   const tableLabel = String(payload.tableLabel ?? '').trim() || null
+  const parsedSeat = parseOptionalSeatNumber(payload.seatNumber)
+  if (parsedSeat.invalid) {
+    throw new Error('Seat number must be an integer greater than or equal to 1.')
+  }
   return {
     name,
     ticketType,
     phone: String(payload.phone ?? '').trim(),
     tableLabel,
+    seatNumber: parsedSeat.value,
   }
+}
+
+function normalizeSeatNumber(value) {
+  const numeric = Number(value)
+  if (!Number.isInteger(numeric) || numeric < 1) return null
+  return numeric
+}
+
+function parseOptionalSeatNumber(value) {
+  if (value == null) return { provided: false, invalid: false, value: null }
+  const trimmed = String(value).trim()
+  if (!trimmed) return { provided: false, invalid: false, value: null }
+  const seatNumber = normalizeSeatNumber(trimmed)
+  if (seatNumber == null) return { provided: true, invalid: true, value: null }
+  return { provided: true, invalid: false, value: seatNumber }
+}
+
+function findLowestAvailableSeat(capacity, occupiedSeats) {
+  const safeCapacity = Math.max(Number(capacity) || 0, 0)
+  for (let seatNumber = 1; seatNumber <= safeCapacity; seatNumber += 1) {
+    if (!occupiedSeats.has(seatNumber)) return seatNumber
+  }
+  return null
+}
+
+function buildTableSeatState(event, guests, options = {}) {
+  const excludeGuestId = options.excludeGuestId ?? null
+  const seatState = new Map()
+  const tables = Array.isArray(event?.tables) ? event.tables : []
+  tables.forEach((table) => {
+    seatState.set(table.label, {
+      table,
+      occupiedCount: 0,
+      occupiedSeats: new Set(),
+    })
+  })
+
+  guests.forEach((guest) => {
+    if (!guest?.tableLabel) return
+    if (excludeGuestId && guest.id === excludeGuestId) return
+    const stateForTable = seatState.get(guest.tableLabel)
+    if (!stateForTable) return
+    stateForTable.occupiedCount += 1
+    const seatNumber = normalizeSeatNumber(guest.seatNumber)
+    if (seatNumber == null) return
+    if (seatNumber > stateForTable.table.capacity) return
+    stateForTable.occupiedSeats.add(seatNumber)
+  })
+
+  return seatState
+}
+
+function assignSeatForTable(table, tableState, requestedSeatNumber = null) {
+  const capacity = Number(table?.capacity) || 0
+  if (!table || capacity < 1) {
+    throw new Error('Table capacity must be at least 1.')
+  }
+  const occupiedCount = Number(tableState?.occupiedCount) || 0
+  const occupiedSeats = tableState?.occupiedSeats instanceof Set ? tableState.occupiedSeats : new Set()
+
+  if (requestedSeatNumber != null) {
+    if (!Number.isInteger(requestedSeatNumber) || requestedSeatNumber < 1 || requestedSeatNumber > capacity) {
+      throw new Error(`Seat ${requestedSeatNumber} is outside the valid range for table ${table.label}.`)
+    }
+    if (occupiedSeats.has(requestedSeatNumber)) {
+      throw new Error(`Seat ${requestedSeatNumber} in table ${table.label} is already occupied.`)
+    }
+    if (occupiedCount >= capacity) {
+      throw new Error(`Table ${table.label} is already full.`)
+    }
+    occupiedSeats.add(requestedSeatNumber)
+    tableState.occupiedCount = occupiedCount + 1
+    return requestedSeatNumber
+  }
+
+  if (occupiedCount >= capacity) {
+    throw new Error(`Table ${table.label} is already full.`)
+  }
+  const nextSeatNumber = findLowestAvailableSeat(capacity, occupiedSeats)
+  if (nextSeatNumber == null) {
+    throw new Error(`Table ${table.label} is already full.`)
+  }
+  occupiedSeats.add(nextSeatNumber)
+  tableState.occupiedCount = occupiedCount + 1
+  return nextSeatNumber
+}
+
+function formatSeatAssignmentLabel(tableLabel, seatNumber) {
+  if (!tableLabel) return 'no table'
+  if (!Number.isInteger(seatNumber) || seatNumber < 1) return tableLabel
+  return `${tableLabel} seat ${seatNumber}`
 }
 
 function getNextGuestNumber(guests) {
@@ -742,21 +986,11 @@ function formatGuestId(number, minWidth = 3) {
   return `g-${String(number).padStart(width, '0')}`
 }
 
-function buildTableOccupancyMap(event, guests) {
-  const occupancy = new Map()
-  const tables = Array.isArray(event?.tables) ? event.tables : []
-  tables.forEach((table) => occupancy.set(table.label, 0))
-  guests.forEach((guest) => {
-    if (!guest.tableLabel) return
-    occupancy.set(guest.tableLabel, (occupancy.get(guest.tableLabel) ?? 0) + 1)
-  })
-  return occupancy
-}
-
 function resolveEventTableLabel(event, value) {
   const requested = String(value ?? '').trim()
   if (!requested) return null
-  return event.tables.find((table) => normalizeText(table.label) === normalizeText(requested)) ?? null
+  const tables = Array.isArray(event?.tables) ? event.tables : []
+  return tables.find((table) => normalizeText(table.label) === normalizeText(requested)) ?? null
 }
 
 function getCapacitySnapshotFromState(state, eventId) {
@@ -1036,9 +1270,13 @@ function reconcileTablesToEventCapacity(event, sourceTables, guests, options = {
     capacity: Math.max(Number(table.capacity) || 0, 1),
   }))
   const seatedByLabel = new Map()
+  const highestSeatByLabel = new Map()
   guests.forEach((guest) => {
     if (!guest.tableLabel) return
     seatedByLabel.set(guest.tableLabel, (seatedByLabel.get(guest.tableLabel) ?? 0) + 1)
+    const seatNumber = normalizeSeatNumber(guest.seatNumber)
+    if (seatNumber == null) return
+    highestSeatByLabel.set(guest.tableLabel, Math.max(highestSeatByLabel.get(guest.tableLabel) ?? 0, seatNumber))
   })
 
   const totalBefore = getTotalSeatCapacity(working)
@@ -1053,7 +1291,8 @@ function reconcileTablesToEventCapacity(event, sourceTables, guests, options = {
       if (currentIndex < 0) continue
       const current = working[currentIndex]
       const seated = seatedByLabel.get(current.label) ?? 0
-      const minimumCapacity = Math.max(seated, 1)
+      const highestSeat = highestSeatByLabel.get(current.label) ?? 0
+      const minimumCapacity = Math.max(seated, highestSeat, 1)
       const reducible = Math.max(current.capacity - minimumCapacity, 0)
       if (reducible <= 0) continue
       const reduceBy = Math.min(reducible, remainingOver)
@@ -1535,6 +1774,7 @@ export async function listManageGuests(eventId, filters = {}, options = {}) {
       includesQuery(guest.id, query) ||
       includesQuery(guest.name, query) ||
       includesQuery(guest.tableLabel, query) ||
+      includesQuery(guest.seatNumber, query) ||
       includesQuery(guest.ticketType, query),
     )
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -1553,17 +1793,19 @@ export async function createManageGuest(eventId, payload, options = {}) {
   }
 
   const normalized = normalizeManageGuestPayload(payload)
-  const occupancy = buildTableOccupancyMap(event, guests)
+  if (!normalized.tableLabel && normalized.seatNumber != null) {
+    throw new Error('Seat number cannot be assigned without selecting a table.')
+  }
+  const seatStateByLabel = buildTableSeatState(event, guests)
   let tableLabel = null
+  let seatNumber = null
   if (normalized.tableLabel) {
     const matchedTable = resolveEventTableLabel(event, normalized.tableLabel)
     if (!matchedTable) {
       throw new Error(`Table ${normalized.tableLabel} not found.`)
     }
-    const occupied = occupancy.get(matchedTable.label) ?? 0
-    if (occupied >= matchedTable.capacity) {
-      throw new Error(`Table ${matchedTable.label} is already full.`)
-    }
+    const tableState = seatStateByLabel.get(matchedTable.label)
+    seatNumber = assignSeatForTable(matchedTable, tableState, normalized.seatNumber)
     tableLabel = matchedTable.label
   }
 
@@ -1573,6 +1815,7 @@ export async function createManageGuest(eventId, payload, options = {}) {
     name: normalized.name,
     ticketType: normalized.ticketType,
     tableLabel,
+    seatNumber,
     phone: normalized.phone,
     checkedInAt: null,
     checkInSource: null,
@@ -1629,12 +1872,13 @@ export async function importManageGuestsFromCsv(eventId, csvText, options = {}) 
     ticketColumnIndex,
     phoneColumnIndex,
     tableColumnIndex,
+    seatColumnIndex,
   } = columnIndexes
   if (guests.length >= (event.guestCapacity ?? 0)) {
     throw new Error('Event is already at full capacity. Increase event capacity or remove guests before importing.')
   }
 
-  const occupancy = buildTableOccupancyMap(event, guests)
+  const seatStateByLabel = buildTableSeatState(event, guests)
   let nextGuestNumber = getNextGuestNumber(guests)
   let availableSlots = Math.max((event.guestCapacity ?? 0) - guests.length, 0)
   let warningCount = 0
@@ -1642,6 +1886,8 @@ export async function importManageGuestsFromCsv(eventId, csvText, options = {}) 
   let capacitySkippedCount = 0
   let invalidTableWarningCount = 0
   let fullTableWarningCount = 0
+  let invalidSeatWarningCount = 0
+  let occupiedSeatWarningCount = 0
   const importedGuests = []
 
   for (const row of rows.slice(1)) {
@@ -1660,27 +1906,45 @@ export async function importManageGuestsFromCsv(eventId, csvText, options = {}) 
     const ticketType = ticketColumnIndex >= 0 ? row[ticketColumnIndex] : 'General'
     const phone = phoneColumnIndex >= 0 ? row[phoneColumnIndex] : ''
     const preferredTable = tableColumnIndex >= 0 ? row[tableColumnIndex] : ''
+    const preferredSeatRaw = seatColumnIndex >= 0 ? row[seatColumnIndex] : ''
     const normalized = normalizeManageGuestPayload({
       name: normalizedName,
       ticketType,
       phone,
       tableLabel: preferredTable,
+      seatNumber: null,
     })
+    const parsedSeat = parseOptionalSeatNumber(preferredSeatRaw)
 
     let tableLabel = null
+    let seatNumber = null
     if (normalized.tableLabel) {
       const matchedTable = resolveEventTableLabel(event, normalized.tableLabel)
       if (!matchedTable) {
         warningCount += 1
         invalidTableWarningCount += 1
       } else {
-        const occupied = occupancy.get(matchedTable.label) ?? 0
-        if (occupied >= matchedTable.capacity) {
+        const tableState = seatStateByLabel.get(matchedTable.label)
+        if ((tableState?.occupiedCount ?? 0) >= matchedTable.capacity) {
           warningCount += 1
           fullTableWarningCount += 1
         } else {
+          let requestedSeat = parsedSeat.value
+          if (parsedSeat.invalid) {
+            warningCount += 1
+            invalidSeatWarningCount += 1
+            requestedSeat = null
+          } else if (requestedSeat != null && requestedSeat > matchedTable.capacity) {
+            warningCount += 1
+            invalidSeatWarningCount += 1
+            requestedSeat = null
+          } else if (requestedSeat != null && tableState.occupiedSeats.has(requestedSeat)) {
+            warningCount += 1
+            occupiedSeatWarningCount += 1
+            requestedSeat = null
+          }
+          seatNumber = assignSeatForTable(matchedTable, tableState, requestedSeat)
           tableLabel = matchedTable.label
-          occupancy.set(matchedTable.label, occupied + 1)
         }
       }
     }
@@ -1691,6 +1955,7 @@ export async function importManageGuestsFromCsv(eventId, csvText, options = {}) 
       name: normalized.name,
       ticketType: normalized.ticketType,
       tableLabel,
+      seatNumber,
       phone: normalized.phone,
       checkedInAt: null,
       checkInSource: null,
@@ -1721,6 +1986,8 @@ export async function importManageGuestsFromCsv(eventId, csvText, options = {}) 
     capacitySkippedCount,
     invalidTableWarningCount,
     fullTableWarningCount,
+    invalidSeatWarningCount,
+    occupiedSeatWarningCount,
     guests: clone(importedGuests),
   }
 }
@@ -1735,21 +2002,22 @@ export async function autoAssignManageSeats(eventId, options = {}) {
   const guests = getGuestsForEvent(state, eventId)
   const unassignedGuestIndexes = guests
     .map((guest, index) => ({ guest, index }))
-    .filter((entry) => !entry.guest.tableLabel)
+    .filter((entry) => !entry.guest.tableLabel || normalizeSeatNumber(entry.guest.seatNumber) == null)
 
   if (!unassignedGuestIndexes.length) {
     return { assignedCount: 0, totalUnassigned: 0, remainingUnassigned: 0 }
   }
 
-  const occupancy = buildTableOccupancyMap(event, guests)
+  const seatStateByLabel = buildTableSeatState(event, guests)
   const tables = Array.isArray(event.tables) ? event.tables : []
   let assignedCount = 0
 
   for (const entry of unassignedGuestIndexes) {
-    const openTable = tables.find((table) => (occupancy.get(table.label) ?? 0) < table.capacity)
+    const openTable = tables.find((table) => (seatStateByLabel.get(table.label)?.occupiedCount ?? 0) < table.capacity)
     if (!openTable) break
-    guests[entry.index] = { ...entry.guest, tableLabel: openTable.label }
-    occupancy.set(openTable.label, (occupancy.get(openTable.label) ?? 0) + 1)
+    const tableState = seatStateByLabel.get(openTable.label)
+    const seatNumber = assignSeatForTable(openTable, tableState)
+    guests[entry.index] = { ...entry.guest, tableLabel: openTable.label, seatNumber }
     assignedCount += 1
   }
 
@@ -1886,6 +2154,15 @@ export async function updateManageTableSeats(eventId, tableLabel, seats, options
   if (nextSeats < seatedCount) {
     throw new Error(`Seats cannot be lower than currently seated guests (${seatedCount}).`)
   }
+  const highestAssignedSeat = guests.reduce((max, guest) => {
+    if (guest.tableLabel !== targetTable.label) return max
+    const seatNumber = normalizeSeatNumber(guest.seatNumber)
+    if (seatNumber == null) return max
+    return Math.max(max, seatNumber)
+  }, 0)
+  if (nextSeats < highestAssignedSeat) {
+    throw new Error(`Seats cannot be lower than highest assigned seat number (${highestAssignedSeat}).`)
+  }
 
   const nextTables = tables.map((table, index) => (
     index === tableIndex ? { ...table, capacity: nextSeats } : table
@@ -1987,27 +2264,33 @@ export async function assignGuestSeat(eventId, guestId, tableLabel, options = {}
   const guests = getGuestsForEvent(state, eventId)
   const guestIndex = guests.findIndex((guest) => guest.id === guestId)
   if (guestIndex < 0) throw new Error('Guest not found.')
-  const nextTableLabel = tableLabel || null
-
-  if (nextTableLabel) {
-    const table = event.tables.find((item) => item.label === nextTableLabel)
+  const requestedTableLabel = tableLabel || null
+  const requestedSeat = parseOptionalSeatNumber(options.seatNumber)
+  if (requestedSeat.invalid) {
+    throw new Error('Seat number must be an integer greater than or equal to 1.')
+  }
+  let nextTableLabel = null
+  let seatNumber = null
+  if (requestedTableLabel) {
+    const table = resolveEventTableLabel(event, requestedTableLabel)
     if (!table) throw new Error('Table not found.')
-    const occupiedCount = guests.filter((guest) => guest.tableLabel === nextTableLabel && guest.id !== guestId).length
-    if (occupiedCount >= table.capacity) {
-      throw new Error(`Table ${nextTableLabel} is already full.`)
-    }
+    nextTableLabel = table.label
+    const seatStateByLabel = buildTableSeatState(event, guests, { excludeGuestId: guestId })
+    const tableState = seatStateByLabel.get(table.label)
+    seatNumber = assignSeatForTable(table, tableState, requestedSeat.value)
   }
 
   const updatedGuest = {
     ...guests[guestIndex],
     tableLabel: nextTableLabel,
+    seatNumber,
   }
   guests[guestIndex] = updatedGuest
   state.guestsByEvent[eventId] = guests
   appendAuditLogEntry(state, eventId, {
     module: 'seating',
     action: 'seat_assigned',
-    summary: `${updatedGuest.name} assigned to ${nextTableLabel || 'no table'}.`,
+    summary: `${updatedGuest.name} assigned to ${formatSeatAssignmentLabel(nextTableLabel, seatNumber)}.`,
   })
   writeState(state)
   return clone(updatedGuest)
@@ -2137,15 +2420,20 @@ export async function registerWalkIn(eventId, payload, options = {}) {
     return match ? Math.max(max, Number(match[1])) : max
   }, 0)
 
-  const tableSummary = computeTableSummary(event, guests)
-  const openTable = tableSummary.find((table) => table.available > 0)
+  const seatStateByLabel = buildTableSeatState(event, guests)
+  const tables = Array.isArray(event.tables) ? event.tables : []
+  const openTable = tables.find((table) => (seatStateByLabel.get(table.label)?.occupiedCount ?? 0) < table.capacity)
   const checkedInAt = new Date().toISOString()
+  const seatNumber = openTable
+    ? assignSeatForTable(openTable, seatStateByLabel.get(openTable.label))
+    : null
 
   const newGuest = {
     id: `g-${latestId + 1}`,
     name: payload.name,
     ticketType: payload.ticketType ?? 'General',
     tableLabel: openTable?.label ?? null,
+    seatNumber,
     phone: payload.phone ?? '',
     checkedInAt,
     checkInSource: 'walk-in',
@@ -2466,14 +2754,19 @@ export async function approveManageWaitlistEntry(eventId, waitlistId, options = 
   }, 0)
 
   const event = getEventFromState(state, eventId)
-  const tableSummary = computeTableSummary(event, guests)
-  const openTable = tableSummary.find((table) => table.available > 0)
+  const seatStateByLabel = buildTableSeatState(event, guests)
+  const tables = Array.isArray(event.tables) ? event.tables : []
+  const openTable = tables.find((table) => (seatStateByLabel.get(table.label)?.occupiedCount ?? 0) < table.capacity)
+  const seatNumber = openTable
+    ? assignSeatForTable(openTable, seatStateByLabel.get(openTable.label))
+    : null
 
   const approvedGuest = {
     id: `g-${latestId + 1}`,
     name: entry.name,
     ticketType: entry.ticketType,
     tableLabel: openTable?.label ?? null,
+    seatNumber,
     phone: entry.phone,
     checkedInAt: null,
     checkInSource: null,
@@ -2607,12 +2900,13 @@ export async function exportManageReport(eventId, type = 'attendance', options =
 
   const guests = getGuestsForEvent(state, eventId)
   const csv = toCsv([
-    ['guestId', 'name', 'ticketType', 'tableLabel', 'phone', 'checkedInAt', 'checkInSource', 'isWalkIn'],
+    ['guestId', 'name', 'ticketType', 'tableLabel', 'seatNumber', 'phone', 'checkedInAt', 'checkInSource', 'isWalkIn'],
     ...guests.map((guest) => [
       guest.id,
       guest.name,
       guest.ticketType,
       guest.tableLabel ?? '',
+      normalizeSeatNumber(guest.seatNumber) ?? '',
       guest.phone ?? '',
       guest.checkedInAt ?? '',
       guest.checkInSource ?? '',
@@ -2981,17 +3275,22 @@ export async function createManageOnsiteWalkIn(eventId, payload, options = {}) {
     return match ? Math.max(max, Number(match[1])) : max
   }, 0)
 
-  const tableSummary = computeTableSummary(event, guests)
-  const openTable = tableSummary.find((table) => table.available > 0)
+  const seatStateByLabel = buildTableSeatState(event, guests)
+  const tables = Array.isArray(event.tables) ? event.tables : []
+  const openTable = tables.find((table) => (seatStateByLabel.get(table.label)?.occupiedCount ?? 0) < table.capacity)
   const checkedInAt = new Date().toISOString()
   const ticketType = payload.ticketType ?? 'General'
   const phone = payload.phone ?? ''
+  const seatNumber = openTable
+    ? assignSeatForTable(openTable, seatStateByLabel.get(openTable.label))
+    : null
 
   const newGuest = {
     id: `g-${latestId + 1}`,
     name: payload.guestName,
     ticketType,
     tableLabel: openTable?.label ?? null,
+    seatNumber,
     phone,
     checkedInAt,
     checkInSource: 'onsite',
@@ -3085,7 +3384,7 @@ export async function getManageDashboard(eventId, options = {}) {
   const pending = guests.length - checkedIn
   const walkIns = guests.filter((guest) => guest.isWalkIn).length
   const tableSummary = computeTableSummary(event, guests)
-  const seated = guests.filter((guest) => guest.tableLabel).length
+  const seated = guests.filter((guest) => guest.tableLabel && normalizeSeatNumber(guest.seatNumber) != null).length
   const capacity = getCapacitySnapshotFromState(state, eventId)
   const incidents = getIncidentsForEvent(state, eventId).map(withIncidentDefaults)
 
