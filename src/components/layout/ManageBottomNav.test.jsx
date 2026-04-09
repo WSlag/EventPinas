@@ -53,6 +53,10 @@ describe('ManageBottomNav', () => {
     await screen.findByRole('link', { name: /dashboard/i })
 
     const nav = screen.getByRole('navigation', { name: /manage navigation/i })
+    expect(nav.className).toContain('fixed')
+    expect(nav.className).toContain('bottom-0')
+    expect(nav.className).toContain('pb-[env(safe-area-inset-bottom)]')
+    expect(nav.className).not.toContain('pb-safe')
     const labels = within(nav).getAllByRole('link').map((link) => (link.textContent ?? '').trim())
     expect(labels).toEqual(['Dashboard', 'Check-in', 'Guests', 'Seating'])
     expect(within(nav).queryByRole('link', { name: /my events/i })).not.toBeInTheDocument()
@@ -67,6 +71,7 @@ describe('ManageBottomNav', () => {
     await user.click(screen.getByRole('button', { name: /more modules/i }))
 
     const panel = await screen.findByRole('dialog', { name: /more manage modules/i })
+    expect(panel.className).toContain('bottom-[calc(64px+env(safe-area-inset-bottom))]')
     const labels = within(panel).getAllByRole('link').map((link) => (link.textContent ?? '').trim())
     expect(labels.slice(0, 2)).toEqual(['My Events', 'Event Planner'])
     expect(within(panel).getByRole('link', { name: /my events/i })).toBeInTheDocument()

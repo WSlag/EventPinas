@@ -48,7 +48,7 @@ function ManageLayout({ children }) {
   return (
     <div className="min-h-screen bg-neutral-100">
       <TopNav />
-      <main className="pb-24 md:pb-space-8">{children}</main>
+      <main className="pb-safe md:pb-space-8">{children}</main>
       <ManageBottomNav />
     </div>
   )

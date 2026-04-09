@@ -58,7 +58,7 @@ export default function ManageBottomNav() {
     <>
       <nav
         aria-label="Manage navigation"
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-mgmt-border bg-mgmt-surface pb-safe shadow-mgmt md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-mgmt-border bg-mgmt-surface pb-[env(safe-area-inset-bottom)] shadow-mgmt md:hidden"
       >
         <div className="grid grid-cols-5">
           {coreItems.map((item) => {
@@ -109,7 +109,7 @@ export default function ManageBottomNav() {
         >
           <div
             id={morePanelId}
-            className="absolute bottom-16 left-0 right-0 rounded-t-2xl border-l border-r border-t border-mgmt-border bg-mgmt-surface p-space-4 shadow-mgmt"
+            className="absolute bottom-[calc(64px+env(safe-area-inset-bottom))] left-0 right-0 rounded-t-2xl border-l border-r border-t border-mgmt-border bg-mgmt-surface p-space-4 shadow-mgmt"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label="More manage modules"
