@@ -100,10 +100,10 @@ describe('Marketplace pages smoke', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /get quote/i })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /get quote/i })).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('button', { name: /message/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /message/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /portfolio/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /packages/i })).toBeInTheDocument()
@@ -124,12 +124,12 @@ describe('Marketplace pages smoke', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /hire this organizer/i })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /hire this organizer/i })).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('button', { name: /message/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /message/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /about/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /overview/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /pricing/i })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /pricing/i }))

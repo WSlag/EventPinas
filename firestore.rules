@@ -13,6 +13,18 @@ service cloud.firestore {
       allow read, write: if isOwner(uid);
     }
 
+    match /supplierProfiles/{profileId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /organizerProfiles/{profileId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
     match /organizers/{uid}/manage/{docId} {
       allow read, write: if isOwner(uid);
     }

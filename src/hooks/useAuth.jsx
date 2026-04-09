@@ -13,6 +13,16 @@ const AuthContext = createContext(null)
 const LOCAL_AUTH_KEY = 'eventpinas-local-auth'
 const LOCAL_USERS_KEY = 'eventpinas-local-users'
 
+function buildMarketplaceProfile(role) {
+  if (role === 'supplier') {
+    return { type: 'supplier', profileId: 'sup-001' }
+  }
+  if (role === 'organizer') {
+    return { type: 'organizer', profileId: 'org-001' }
+  }
+  return null
+}
+
 function readLocalJSON(key, fallback) {
   try {
     const raw = localStorage.getItem(key)
@@ -68,6 +78,7 @@ export function AuthProvider({ children }) {
           displayName: session.displayName,
           email: session.email,
           subscription: session.subscription ?? null,
+          marketplaceProfile: session.marketplaceProfile ?? null,
         })
       } else {
         setUser(null)
@@ -113,6 +124,7 @@ export function AuthProvider({ children }) {
           displayName: matched.displayName,
           email: matched.email,
           subscription: matched.subscription ?? null,
+          marketplaceProfile: matched.marketplaceProfile ?? null,
         })
         return toLocalSession(matched)
       }
@@ -145,6 +157,7 @@ export function AuthProvider({ children }) {
           subscription: role === 'organizer'
             ? { status: 'inactive', planId: null, expiresAt: null }
             : null,
+          marketplaceProfile: buildMarketplaceProfile(role ?? 'attendee'),
         }
 
         writeLocalJSON(LOCAL_USERS_KEY, [...users, localUser])
@@ -156,6 +169,7 @@ export function AuthProvider({ children }) {
           displayName: localUser.displayName,
           email: localUser.email,
           subscription: localUser.subscription,
+          marketplaceProfile: localUser.marketplaceProfile,
         })
         return toLocalSession(localUser)
       }
@@ -173,6 +187,7 @@ export function AuthProvider({ children }) {
         subscription: role === 'organizer'
           ? { status: 'inactive', planId: null, expiresAt: null }
           : null,
+        marketplaceProfile: buildMarketplaceProfile(role ?? 'attendee'),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
@@ -184,6 +199,7 @@ export function AuthProvider({ children }) {
         displayName: profilePayload.displayName,
         email: profilePayload.email,
         subscription: profilePayload.subscription,
+        marketplaceProfile: profilePayload.marketplaceProfile,
       })
 
       return credentials.user
@@ -232,6 +248,7 @@ export function AuthProvider({ children }) {
           displayName: current?.displayName ?? '',
           email: current?.email ?? user.email ?? '',
           subscription,
+          marketplaceProfile: current?.marketplaceProfile ?? buildMarketplaceProfile('organizer'),
         }))
         return subscription
       }
@@ -247,6 +264,7 @@ export function AuthProvider({ children }) {
         displayName: current?.displayName ?? user.displayName ?? '',
         email: current?.email ?? user.email ?? '',
         subscription,
+        marketplaceProfile: current?.marketplaceProfile ?? buildMarketplaceProfile('organizer'),
       }))
       return subscription
     } finally {
@@ -295,5 +313,17 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-  return useContext(AuthContext)
+  return useContext(AuthContext) ?? {
+    user: null,
+    profile: null,
+    loading: false,
+    authBusy: false,
+    login: async () => {},
+    register: async () => {},
+    logout: async () => {},
+    activateSubscription: async () => {},
+    isOrganizer: false,
+    hasActiveSubscription: false,
+    authMode: firebaseEnabled ? 'firebase' : 'local',
+  }
 }

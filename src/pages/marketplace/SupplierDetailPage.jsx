@@ -1,8 +1,18 @@
+
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useBeforeUnload, useParams } from 'react-router-dom'
+import { useAuth } from '@/hooks/useAuth'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
-import { getSavedItems, getSupplierById, toggleSavedItem } from '@/services'
+import {
+  canEditProfile,
+  getSavedItems,
+  getSupplierProfileById,
+  toggleSavedItem,
+  uploadMarketplaceProfileImage,
+  updateSupplierProfile,
+  validateSupplierProfile,
+} from '@/services'
 import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const supplierImageByCategory = {
@@ -13,23 +23,119 @@ const supplierImageByCategory = {
 }
 
 const tabs = [
+  { id: 'overview', label: 'Overview' },
   { id: 'portfolio', label: 'Portfolio' },
   { id: 'packages', label: 'Packages' },
   { id: 'reviews', label: 'Reviews' },
-  { id: 'info', label: 'Info' },
+  { id: 'info', label: 'Business Info' },
 ]
 
 function formatPrice(value) {
   return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(value)
 }
 
+function formatLastUpdated(value) {
+  if (!value) return 'Not yet updated'
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return 'Not yet updated'
+
+  return new Intl.DateTimeFormat('en-PH', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(parsed)
+}
+
+function splitListInput(value) {
+  return String(value ?? '')
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function normalizePhoneHref(value) {
+  return `tel:${String(value ?? '').replace(/\s+/g, '')}`
+}
+
+function toExternalHref(value) {
+  const normalized = String(value ?? '').trim()
+  if (!normalized) return ''
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized
+  return `https://${normalized}`
+}
+
+function buildFormState(supplier) {
+  return {
+    name: supplier?.name ?? '',
+    category: supplier?.category ?? '',
+    city: supplier?.city ?? '',
+    priceRangeLabel: supplier?.priceRangeLabel ?? '',
+    startingPricePhp: String(supplier?.startingPricePhp ?? 0),
+    responseTime: supplier?.responseTime ?? '',
+    tag: supplier?.tag ?? '',
+    imageUrl: supplier?.imageUrl ?? '',
+    bio: supplier?.bio ?? '',
+    specializations: (supplier?.specializations ?? []).join('\n'),
+    coverageAreas: (supplier?.coverageAreas ?? []).join('\n'),
+    paymentMethods: (supplier?.paymentMethods ?? []).join('\n'),
+    portfolio: (supplier?.portfolio ?? []).join('\n'),
+    businessType: supplier?.businessInfo?.businessType ?? '',
+    operatingSince: supplier?.businessInfo?.operatingSince ?? '',
+    contact: supplier?.businessInfo?.contact ?? '',
+    email: supplier?.businessInfo?.email ?? '',
+    facebook: supplier?.businessInfo?.facebook ?? '',
+  }
+}
+
+function buildPayloadFromForm(form) {
+  return {
+    name: form.name,
+    category: form.category,
+    city: form.city,
+    priceRangeLabel: form.priceRangeLabel,
+    startingPricePhp: Number(form.startingPricePhp),
+    responseTime: form.responseTime,
+    tag: form.tag,
+    imageUrl: form.imageUrl,
+    bio: form.bio,
+    specializations: splitListInput(form.specializations),
+    coverageAreas: splitListInput(form.coverageAreas),
+    paymentMethods: splitListInput(form.paymentMethods),
+    portfolio: splitListInput(form.portfolio),
+    businessInfo: {
+      businessType: form.businessType,
+      operatingSince: form.operatingSince,
+      contact: form.contact,
+      email: form.email,
+      facebook: form.facebook,
+    },
+  }
+}
+
+function formHasChanges(form, baseline) {
+  return JSON.stringify(form) !== JSON.stringify(baseline)
+}
+
 export default function SupplierDetailPage() {
   const { id } = useParams()
+  const { user, profile: viewerProfile } = useAuth()
   const [supplier, setSupplier] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [savedMap, setSavedMap] = useState(() => getSavedItems())
-  const [activeTab, setActiveTab] = useState('portfolio')
+  const [activeTab, setActiveTab] = useState('overview')
+  const [isEditing, setIsEditing] = useState(false)
+  const [form, setForm] = useState(() => buildFormState(null))
+  const [saveError, setSaveError] = useState('')
+  const [saveMessage, setSaveMessage] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [isUploadingPortfolio, setIsUploadingPortfolio] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [showValidation, setShowValidation] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -39,7 +145,7 @@ export default function SupplierDetailPage() {
       setError('')
 
       try {
-        const item = await getSupplierById(id)
+        const item = await getSupplierProfileById(id)
         if (active) setSupplier(item)
       } catch {
         if (active) setError('Unable to load supplier details right now.')
@@ -55,11 +161,61 @@ export default function SupplierDetailPage() {
   }, [id])
 
   useEffect(() => {
-    setActiveTab('portfolio')
+    setActiveTab('overview')
+    setIsEditing(false)
+    setShowValidation(false)
+    setSaveError('')
+    setSaveMessage('')
+    setUploadError('')
   }, [id])
+
+  const baselineForm = useMemo(() => buildFormState(supplier), [supplier])
+
+  useEffect(() => {
+    setForm(baselineForm)
+  }, [baselineForm])
+
+  const isDirty = useMemo(() => formHasChanges(form, baselineForm), [form, baselineForm])
+
+  useBeforeUnload(
+    (event) => {
+      if (!isEditing || !isDirty) return
+      event.preventDefault()
+      event.returnValue = ''
+    },
+    { capture: true },
+  )
 
   const isSaved = useMemo(() => (savedMap.suppliers ?? []).includes(id), [savedMap.suppliers, id])
   const fallbackImage = supplier ? supplierImageByCategory[supplier.category] || supplierImageByCategory.Photography : supplierImageByCategory.Photography
+
+  const canEdit = useMemo(
+    () => canEditProfile({
+      viewerUid: user?.uid,
+      viewerRole: viewerProfile?.role,
+      profileType: 'supplier',
+      ownerUid: supplier?.ownerUid ?? null,
+      profileId: supplier?.id ?? id,
+      viewerMarketplaceProfile: viewerProfile?.marketplaceProfile ?? null,
+    }),
+    [id, supplier?.id, supplier?.ownerUid, user?.uid, viewerProfile?.marketplaceProfile, viewerProfile?.role],
+  )
+
+  const validation = useMemo(() => {
+    if (!supplier) {
+      return { isValid: false, errors: [], fieldErrors: {} }
+    }
+
+    const payload = buildPayloadFromForm(form)
+    return validateSupplierProfile({
+      ...supplier,
+      ...payload,
+      businessInfo: {
+        ...(supplier.businessInfo ?? {}),
+        ...(payload.businessInfo ?? {}),
+      },
+    })
+  }, [form, supplier])
 
   const reviewStats = useMemo(() => {
     const reviewList = supplier?.reviewList ?? []
@@ -72,9 +228,153 @@ export default function SupplierDetailPage() {
     })
   }, [supplier])
 
+  const contactHref = supplier?.businessInfo?.email
+    ? `mailto:${supplier.businessInfo.email}?subject=${encodeURIComponent(`Quote request for ${supplier?.name ?? 'supplier'}`)}`
+    : supplier?.businessInfo?.contact
+      ? normalizePhoneHref(supplier.businessInfo.contact)
+      : toExternalHref(supplier?.businessInfo?.facebook)
+
+  const messageHref = toExternalHref(supplier?.businessInfo?.facebook) || (supplier?.businessInfo?.email ? `mailto:${supplier.businessInfo.email}` : '')
+
   function onToggleSaved() {
     const updated = toggleSavedItem('suppliers', id)
     setSavedMap(updated)
+  }
+
+  function onBackClick(event) {
+    if (isEditing && isDirty && !window.confirm('You have unsaved profile changes. Leave this page anyway?')) {
+      event.preventDefault()
+    }
+  }
+
+  function onTabChange(nextTab) {
+    if (nextTab === activeTab) return
+    if (isEditing && isDirty && !window.confirm('You have unsaved profile changes. Switch tabs anyway?')) {
+      return
+    }
+    setActiveTab(nextTab)
+  }
+
+  function onStartEditing() {
+    setSaveError('')
+    setSaveMessage('')
+    setUploadError('')
+    setShowValidation(false)
+    setIsEditing(true)
+  }
+
+  function onCancelEditing() {
+    if (isDirty && !window.confirm('Discard unsaved profile changes?')) {
+      return
+    }
+
+    setForm(baselineForm)
+    setShowValidation(false)
+    setSaveError('')
+    setUploadError('')
+    setIsEditing(false)
+  }
+
+  async function onUploadMainImage(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !user?.uid) return
+
+    setUploadError('')
+    setSaveMessage('')
+    setIsUploadingImage(true)
+
+    try {
+      const uploadedUrl = await uploadMarketplaceProfileImage({
+        profileType: 'supplier',
+        profileId: id,
+        actorUid: user.uid,
+        file,
+        purpose: 'main',
+      })
+      setForm((current) => ({ ...current, imageUrl: uploadedUrl }))
+      setSaveMessage('Main photo uploaded. Save profile to publish this change.')
+    } catch (uploadFailure) {
+      setUploadError(uploadFailure?.message ?? 'Unable to upload image right now.')
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  async function onUploadPortfolioImages(event) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    if (files.length === 0 || !user?.uid) return
+
+    setUploadError('')
+    setSaveMessage('')
+    setIsUploadingPortfolio(true)
+
+    try {
+      const uploadedUrls = await Promise.all(
+        files.map((file) => uploadMarketplaceProfileImage({
+          profileType: 'supplier',
+          profileId: id,
+          actorUid: user.uid,
+          file,
+          purpose: 'portfolio',
+        })),
+      )
+      setForm((current) => {
+        const existing = splitListInput(current.portfolio)
+        const merged = Array.from(new Set([...existing, ...uploadedUrls]))
+        return { ...current, portfolio: merged.join('\n') }
+      })
+      setSaveMessage('Portfolio image(s) uploaded. Save profile to publish these changes.')
+    } catch (uploadFailure) {
+      setUploadError(uploadFailure?.message ?? 'Unable to upload portfolio images right now.')
+    } finally {
+      setIsUploadingPortfolio(false)
+    }
+  }
+
+  async function onSaveProfile(event) {
+    event.preventDefault()
+    setShowValidation(true)
+    setSaveError('')
+    setSaveMessage('')
+
+    if (!supplier || !user?.uid) {
+      setSaveError('Please sign in as the profile owner before saving.')
+      return
+    }
+
+    if (!validation.isValid) {
+      return
+    }
+
+    const payload = buildPayloadFromForm(form)
+    const previous = supplier
+    const optimistic = {
+      ...supplier,
+      ...payload,
+      businessInfo: {
+        ...(supplier.businessInfo ?? {}),
+        ...(payload.businessInfo ?? {}),
+      },
+      updatedAt: new Date().toISOString(),
+    }
+
+    setIsSaving(true)
+    setSupplier(optimistic)
+
+    try {
+      const updated = await updateSupplierProfile(id, payload, user.uid)
+      setSupplier(updated)
+      setIsEditing(false)
+      setShowValidation(false)
+      setSaveMessage('Supplier profile updated successfully.')
+    } catch (submitError) {
+      setSupplier(previous)
+      setSaveError(submitError?.message ?? 'Unable to save supplier profile right now.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -85,11 +385,24 @@ export default function SupplierDetailPage() {
         description={supplier ? `${supplier.category} - ${supplier.city}` : 'Fetching supplier profile and pricing details.'}
         tone="teal"
         actions={(
-          <Link to="/suppliers" className="rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-secondary-700">
-            Back to suppliers
-          </Link>
+          <>
+            <Link to="/suppliers" onClick={onBackClick} className="rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-secondary-700">
+              Back to suppliers
+            </Link>
+            {canEdit && !isEditing && (
+              <button
+                type="button"
+                onClick={onStartEditing}
+                className="rounded-full border border-white/60 bg-transparent px-space-4 py-space-2 font-display text-label-md text-white"
+              >
+                Edit profile
+              </button>
+            )}
+          </>
         )}
       />
+
+      <p className="sr-only" aria-live="polite">{saveError || saveMessage}</p>
 
       {loading && <LoadingState label="Loading supplier details..." />}
       {error && <ErrorState message={error} />}
@@ -97,6 +410,217 @@ export default function SupplierDetailPage() {
 
       {!loading && !error && supplier && (
         <>
+          {isEditing && canEdit && (
+            <SurfaceCard className="space-y-space-3 border-primary-200">
+              <SectionHeader title="Edit Supplier Profile" subtitle="Update your public profile details. Changes are only saved when you tap Save." />
+              {saveError && <ErrorState message={saveError} />}
+              {uploadError && <ErrorState message={uploadError} />}
+
+              {showValidation && validation.errors.length > 0 && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-space-3">
+                  <p className="font-display text-label-md text-red-700">Please fix the following before saving:</p>
+                  <ul className="mt-space-2 space-y-1 font-body text-body-sm text-red-700">
+                    {validation.errors.map((message) => (
+                      <li key={message}>- {message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <form onSubmit={onSaveProfile} className="space-y-space-4">
+                <div className="grid gap-space-3 md:grid-cols-2">
+                  <label className="block">
+                    <span className="font-body text-label-sm text-neutral-700">Supplier Name</span>
+                    <input
+                      value={form.name}
+                      onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                      className="mt-space-1 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                    />
+                    {showValidation && validation.fieldErrors.name && <p className="mt-space-1 text-caption-lg text-red-600">{validation.fieldErrors.name}</p>}
+                  </label>
+
+                  <label className="block">
+                    <span className="font-body text-label-sm text-neutral-700">Category</span>
+                    <input
+                      value={form.category}
+                      onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
+                      className="mt-space-1 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                    />
+                    {showValidation && validation.fieldErrors.category && <p className="mt-space-1 text-caption-lg text-red-600">{validation.fieldErrors.category}</p>}
+                  </label>
+
+                  <label className="block">
+                    <span className="font-body text-label-sm text-neutral-700">City</span>
+                    <input
+                      value={form.city}
+                      onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
+                      className="mt-space-1 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                    />
+                    {showValidation && validation.fieldErrors.city && <p className="mt-space-1 text-caption-lg text-red-600">{validation.fieldErrors.city}</p>}
+                  </label>
+
+                  <label className="block">
+                    <span className="font-body text-label-sm text-neutral-700">Starting Price (PHP)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.startingPricePhp}
+                      onChange={(event) => setForm((current) => ({ ...current, startingPricePhp: event.target.value }))}
+                      className="mt-space-1 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                    />
+                  </label>
+
+                  <label className="block md:col-span-2">
+                    <span className="font-body text-label-sm text-neutral-700">Price Label</span>
+                    <input
+                      value={form.priceRangeLabel}
+                      onChange={(event) => setForm((current) => ({ ...current, priceRangeLabel: event.target.value }))}
+                      className="mt-space-1 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                    />
+                  </label>
+
+                  <label className="block md:col-span-2">
+                    <span className="font-body text-label-sm text-neutral-700">Main Photo URL</span>
+                    <input
+                      value={form.imageUrl}
+                      onChange={(event) => setForm((current) => ({ ...current, imageUrl: event.target.value }))}
+                      className="mt-space-1 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                    />
+                    <div className="mt-space-2 flex flex-wrap items-center gap-space-2">
+                      <label className="rounded-full border border-neutral-300 bg-white px-space-3 py-space-1 font-display text-label-sm text-neutral-700">
+                        <span>{isUploadingImage ? 'Uploading...' : 'Upload Main Photo'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploadingImage || isSaving}
+                          onChange={onUploadMainImage}
+                          className="sr-only"
+                        />
+                      </label>
+                      <span className="font-body text-caption-lg text-neutral-500">Upload from your device, then save profile.</span>
+                    </div>
+                  </label>
+
+                  <label className="block md:col-span-2">
+                    <span className="font-body text-label-sm text-neutral-700">Bio</span>
+                    <textarea
+                      value={form.bio}
+                      onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))}
+                      rows={4}
+                      className="mt-space-1 w-full rounded-md border border-neutral-200 bg-white px-space-3 py-space-2 text-body-sm"
+                    />
+                  </label>
+
+                  <label className="block md:col-span-2">
+                    <span className="font-body text-label-sm text-neutral-700">Specializations (one per line)</span>
+                    <textarea
+                      value={form.specializations}
+                      onChange={(event) => setForm((current) => ({ ...current, specializations: event.target.value }))}
+                      rows={3}
+                      className="mt-space-1 w-full rounded-md border border-neutral-200 bg-white px-space-3 py-space-2 text-body-sm"
+                    />
+                    {showValidation && validation.fieldErrors.specializations && <p className="mt-space-1 text-caption-lg text-red-600">{validation.fieldErrors.specializations}</p>}
+                  </label>
+
+                  <label className="block md:col-span-2">
+                    <span className="font-body text-label-sm text-neutral-700">Portfolio Image URLs (one per line)</span>
+                    <textarea
+                      value={form.portfolio}
+                      onChange={(event) => setForm((current) => ({ ...current, portfolio: event.target.value }))}
+                      rows={3}
+                      className="mt-space-1 w-full rounded-md border border-neutral-200 bg-white px-space-3 py-space-2 text-body-sm"
+                    />
+                    <div className="mt-space-2 flex flex-wrap items-center gap-space-2">
+                      <label className="rounded-full border border-neutral-300 bg-white px-space-3 py-space-1 font-display text-label-sm text-neutral-700">
+                        <span>{isUploadingPortfolio ? 'Uploading...' : 'Upload Portfolio Photos'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          disabled={isUploadingPortfolio || isSaving}
+                          onChange={onUploadPortfolioImages}
+                          className="sr-only"
+                        />
+                      </label>
+                      <span className="font-body text-caption-lg text-neutral-500">You can select multiple images.</span>
+                    </div>
+                    {showValidation && validation.fieldErrors.portfolio && <p className="mt-space-1 text-caption-lg text-red-600">{validation.fieldErrors.portfolio}</p>}
+                  </label>
+
+                  <label className="block">
+                    <span className="font-body text-label-sm text-neutral-700">Business Contact</span>
+                    <input
+                      value={form.contact}
+                      onChange={(event) => setForm((current) => ({ ...current, contact: event.target.value }))}
+                      className="mt-space-1 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="font-body text-label-sm text-neutral-700">Business Email</span>
+                    <input
+                      value={form.email}
+                      onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                      className="mt-space-1 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                    />
+                    {showValidation && validation.fieldErrors.email && <p className="mt-space-1 text-caption-lg text-red-600">{validation.fieldErrors.email}</p>}
+                  </label>
+
+                  <label className="block md:col-span-2">
+                    <span className="font-body text-label-sm text-neutral-700">Facebook</span>
+                    <input
+                      value={form.facebook}
+                      onChange={(event) => setForm((current) => ({ ...current, facebook: event.target.value }))}
+                      className="mt-space-1 h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                    />
+                    {showValidation && validation.fieldErrors.contact && <p className="mt-space-1 text-caption-lg text-red-600">{validation.fieldErrors.contact}</p>}
+                  </label>
+                </div>
+
+                <div className="hidden items-center justify-end gap-space-2 md:flex">
+                  <button
+                    type="button"
+                    onClick={onCancelEditing}
+                    disabled={isSaving}
+                    className="rounded-full border border-neutral-300 bg-white px-space-4 py-space-2 font-display text-label-md text-neutral-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving || isUploadingImage || isUploadingPortfolio || !isDirty || !validation.isValid}
+                    className="rounded-full bg-primary-500 px-space-4 py-space-2 font-display text-label-md text-white disabled:opacity-60"
+                  >
+                    {isSaving ? 'Saving...' : 'Save profile'}
+                  </button>
+                </div>
+              </form>
+            </SurfaceCard>
+          )}
+
+          {isEditing && canEdit && (
+            <div className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-200 bg-white p-space-3 shadow-lg md:hidden">
+              <div className="mx-auto flex w-full max-w-[1280px] gap-space-2">
+                <button
+                  type="button"
+                  onClick={onCancelEditing}
+                  disabled={isSaving}
+                  className="h-11 flex-1 rounded-full border border-neutral-300 bg-white font-display text-label-md text-neutral-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={onSaveProfile}
+                  disabled={isSaving || isUploadingImage || isUploadingPortfolio || !isDirty || !validation.isValid}
+                  className="h-11 flex-1 rounded-full bg-primary-500 font-display text-label-md text-white disabled:opacity-60"
+                >
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          )}
+
           <SurfaceCard className="overflow-hidden p-0">
             <img
               src={supplier.imageUrl || fallbackImage}
@@ -120,6 +644,9 @@ export default function SupplierDetailPage() {
                       Featured
                     </span>
                   )}
+                  <span className="inline-flex rounded-full bg-neutral-100 px-space-2 py-space-1 font-display text-overline uppercase text-neutral-700">
+                    {supplier.completeness?.percent ?? 0}% complete
+                  </span>
                 </div>
                 <h1 className="mt-space-1 font-display text-heading-xl text-neutral-900">{supplier.name}</h1>
               </div>
@@ -127,6 +654,8 @@ export default function SupplierDetailPage() {
               <p className="font-body text-body-md text-neutral-600">{supplier.category} - {supplier.city}</p>
               <p className="font-body text-body-md text-neutral-600">Rating: {supplier.rating} ({supplier.reviews} reviews)</p>
               <p className="font-display text-display-lg text-info">{supplier.priceRangeLabel || `Starts at ${formatPrice(supplier.startingPricePhp)}`}</p>
+              <p className="font-body text-body-sm text-neutral-500">Last updated: {formatLastUpdated(supplier.updatedAt)}</p>
+              {saveMessage && <p className="font-body text-body-sm text-secondary-700">{saveMessage}</p>}
               {supplier.tag && <p className="font-body text-body-sm text-primary-600">{supplier.tag}</p>}
 
               {(supplier.specializations ?? []).length > 0 && (
@@ -140,12 +669,28 @@ export default function SupplierDetailPage() {
               )}
 
               <div className="flex flex-wrap gap-space-2 pt-space-1">
-                <button type="button" className="rounded-full bg-primary-500 px-space-4 py-space-2 font-display text-label-md text-white">
-                  Get Quote
-                </button>
-                <button type="button" className="rounded-full border border-neutral-300 bg-white px-space-4 py-space-2 font-display text-label-md text-neutral-700">
-                  Message
-                </button>
+                {contactHref
+                  ? (
+                    <a href={contactHref} className="rounded-full bg-primary-500 px-space-4 py-space-2 font-display text-label-md text-white">
+                      Get Quote
+                    </a>
+                  )
+                  : (
+                    <Link to="/login" className="rounded-full bg-primary-500 px-space-4 py-space-2 font-display text-label-md text-white">
+                      Sign in to Quote
+                    </Link>
+                  )}
+                {messageHref
+                  ? (
+                    <a href={messageHref} className="rounded-full border border-neutral-300 bg-white px-space-4 py-space-2 font-display text-label-md text-neutral-700">
+                      Message
+                    </a>
+                  )
+                  : (
+                    <Link to="/login" className="rounded-full border border-neutral-300 bg-white px-space-4 py-space-2 font-display text-label-md text-neutral-700">
+                      Sign in to Message
+                    </Link>
+                  )}
                 <button
                   type="button"
                   onClick={onToggleSaved}
@@ -175,7 +720,7 @@ export default function SupplierDetailPage() {
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => onTabChange(tab.id)}
                     className={`rounded-full border px-space-3 py-space-1 text-label-sm transition-all duration-fast ${
                       activeTab === tab.id
                         ? 'border-primary-400 bg-primary-50 text-primary-600'
@@ -188,19 +733,32 @@ export default function SupplierDetailPage() {
               </div>
             </div>
 
+            {activeTab === 'overview' && (
+              <div className="space-y-space-3">
+                <p className="font-body text-body-sm text-neutral-700">{supplier.bio}</p>
+                <div className="grid gap-space-2 sm:grid-cols-2 md:grid-cols-4">
+                  <StatChip label="Profile" value={`${supplier.completeness?.percent ?? 0}%`} />
+                  <StatChip label="Response" value={supplier.responseTime || 'N/A'} />
+                  <StatChip label="Reviews" value={supplier.reviews} />
+                  <StatChip label="Coverage" value={(supplier.coverageAreas ?? []).length} />
+                </div>
+                {(supplier.specializations ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-space-2">
+                    {supplier.specializations.map((item) => (
+                      <span key={item} className="rounded-full bg-secondary-50 px-space-3 py-space-1 font-body text-caption-lg text-secondary-700">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'portfolio' && (
               <div className="space-y-space-3">
                 <div className="grid gap-space-2 sm:grid-cols-2 lg:grid-cols-3">
                   {(supplier.portfolio ?? []).map((image, index) => (
                     <img key={`${image}-${index}`} src={image} alt={`${supplier.name} portfolio ${index + 1}`} className="h-40 w-full rounded-xl object-cover" />
-                  ))}
-                </div>
-                <p className="font-body text-body-sm text-neutral-600">{supplier.bio}</p>
-                <div className="flex flex-wrap gap-space-2">
-                  {(supplier.specializations ?? []).map((item) => (
-                    <span key={item} className="rounded-full bg-secondary-50 px-space-3 py-space-1 font-body text-caption-lg text-secondary-700">
-                      {item}
-                    </span>
                   ))}
                 </div>
               </div>
