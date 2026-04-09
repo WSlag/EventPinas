@@ -63,6 +63,47 @@ const categoryShowcase = [
   { key: 'Debut', label: 'Debut', image: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=700&q=80' },
 ]
 
+const whyUseCards = [
+  {
+    title: 'Plan events in one workspace',
+    description: 'Build event pages, send RSVP links, and keep guest tracking in one clear flow from setup to launch.',
+    image: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80',
+    alt: 'Organizer team planning an event timeline together',
+    ctaLabel: 'Create your event',
+    ctaTo: '/register',
+    toneClass: 'from-primary-500/70 via-primary-600/35 to-transparent',
+  },
+  {
+    title: 'Book trusted suppliers faster',
+    description: 'Compare featured vendors, shortlist the right fit, and move from discovery to booking-ready conversations quickly.',
+    image: 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=1200&q=80',
+    alt: 'Event supplier preparing catering service setup',
+    ctaLabel: 'Browse suppliers',
+    ctaTo: '/suppliers',
+    toneClass: 'from-secondary-600/70 via-secondary-700/35 to-transparent',
+  },
+  {
+    title: 'Run event day with control',
+    description: 'Coordinate check-in and onsite operations with organizer-ready tools built to keep teams aligned during live events.',
+    image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&q=80',
+    alt: 'Event team coordinating guests during live event operations',
+    ctaLabel: 'Meet organizers',
+    ctaTo: '/organizers',
+    toneClass: 'from-info/75 via-info/40 to-transparent',
+  },
+  {
+    title: 'Track performance and grow',
+    description: 'Follow attendance and event momentum with practical insights that help you improve your next launch.',
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+    alt: 'Analytics dashboard showing event performance trends',
+    ctaLabel: 'Explore events',
+    ctaTo: '/events',
+    toneClass: 'from-neutral-800/80 via-neutral-700/45 to-transparent',
+  },
+]
+
+const whyUseFallbackImage = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80'
+
 function formatPhp(value) {
   if (value === 0) return 'Free'
   return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(value)
@@ -173,7 +214,49 @@ export default function HomePage() {
       </section>
 
       <PageShell className="space-y-space-8">
-        <section className="relative -mt-space-16 z-10">
+        <section className="relative z-10 -mt-space-16 space-y-space-4">
+          <div className="rounded-3xl border border-white/65 bg-white/95 p-space-5 shadow-lg backdrop-blur md:p-space-6">
+            <p className="font-display text-overline uppercase tracking-wide text-secondary-700">Built for practical wins</p>
+            <h2 className="mt-space-2 font-display text-heading-xl text-neutral-900 md:text-display-lg">Why Use EventPinas</h2>
+            <p className="mt-space-2 max-w-3xl font-body text-body-sm text-neutral-600 md:text-body-md">
+              From planning and supplier booking to event-day coordination and performance tracking, EventPinas helps teams move faster with less friction.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-space-4 md:grid-cols-2">
+            {whyUseCards.map((card) => (
+              <SurfaceCard
+                key={card.title}
+                className="group overflow-hidden border border-neutral-200/90 bg-white p-0 shadow-sm transition-all duration-fast hover:-translate-y-1 hover:shadow-md"
+              >
+                <div className="relative h-52 overflow-hidden">
+                  <img
+                    src={card.image}
+                    alt={card.alt}
+                    onError={getFallbackImageHandler(whyUseFallbackImage)}
+                    className="h-full w-full object-cover transition-transform duration-slow group-hover:scale-[1.03]"
+                  />
+                  <div className={`absolute inset-0 bg-gradient-to-t ${card.toneClass}`} />
+                  <div className="absolute inset-x-space-4 bottom-space-3">
+                    <h3 className="font-display text-heading-lg text-white">{card.title}</h3>
+                  </div>
+                </div>
+
+                <div className="space-y-space-3 p-space-4">
+                  <p className="font-body text-body-sm text-neutral-600">{card.description}</p>
+                  <Link
+                    to={card.ctaTo}
+                    className="inline-flex items-center rounded-full border border-info/20 bg-info px-space-4 py-space-2 font-display text-label-sm text-white transition-colors duration-fast hover:bg-info/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 focus-visible:ring-offset-2"
+                  >
+                    {card.ctaLabel}
+                  </Link>
+                </div>
+              </SurfaceCard>
+            ))}
+          </div>
+        </section>
+
+        <section>
           <SurfaceCard className="space-y-space-4 border border-white/70 bg-white/95 p-space-4 shadow-lg backdrop-blur">
             <div className="flex items-center justify-between gap-space-2">
               <h2 className="font-display text-heading-lg text-neutral-900">Discover fast</h2>
