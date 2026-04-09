@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { FilterPanel, HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
 import { getMarketplaceFilterOptions, getSavedItems, listSuppliers, toggleSavedItem } from '@/services'
+import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const supplierSortOptions = [
   { id: 'featuredFirst', label: 'Featured First' },
@@ -244,71 +245,76 @@ export default function SuppliersPage() {
         <section className="space-y-space-3">
           <SectionHeader title="Results" subtitle="Compare quality, pricing, and availability at a glance." />
           <div className="grid gap-space-3 md:grid-cols-2">
-            {suppliers.map((supplier) => (
-              <SurfaceCard
-                key={supplier.id}
-                className={`overflow-hidden p-0 ${supplier.isFeatured ? 'border-primary-300 shadow-primary' : ''}`}
-              >
-                <div className="relative">
-                  <img
-                    src={supplier.imageUrl || supplierImageByCategory[supplier.category] || supplierImageByCategory.Photography}
-                    alt={supplier.name}
-                    className="h-44 w-full object-cover"
-                  />
-                  {supplier.isFeatured && (
-                    <span className="absolute left-space-2 top-space-2 rounded-full bg-primary-500 px-space-2 py-1 font-display text-overline uppercase text-white">
-                      Featured
-                    </span>
-                  )}
-                </div>
+            {suppliers.map((supplier) => {
+              const fallbackImage = supplierImageByCategory[supplier.category] || supplierImageByCategory.Photography
 
-                <div className="p-space-4">
-                  <div className="flex items-start justify-between gap-space-3">
-                    <div>
-                      <div className="mb-space-1 flex items-center gap-space-1">
-                        <span className="rounded-full bg-secondary-50 px-space-2 py-1 font-display text-overline uppercase text-secondary-700">
-                          {supplier.category}
-                        </span>
-                        {supplier.isVerified && (
-                          <span className="rounded-full bg-primary-50 px-space-2 py-1 font-display text-overline uppercase text-primary-600">
-                            Verified
+              return (
+                <SurfaceCard
+                  key={supplier.id}
+                  className={`overflow-hidden p-0 ${supplier.isFeatured ? 'border-primary-300 shadow-primary' : ''}`}
+                >
+                  <div className="relative">
+                    <img
+                      src={supplier.imageUrl || fallbackImage}
+                      alt={supplier.name}
+                      onError={getFallbackImageHandler(fallbackImage)}
+                      className="h-44 w-full object-cover"
+                    />
+                    {supplier.isFeatured && (
+                      <span className="absolute left-space-2 top-space-2 rounded-full bg-primary-500 px-space-2 py-1 font-display text-overline uppercase text-white">
+                        Featured
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-space-4">
+                    <div className="flex items-start justify-between gap-space-3">
+                      <div>
+                        <div className="mb-space-1 flex items-center gap-space-1">
+                          <span className="rounded-full bg-secondary-50 px-space-2 py-1 font-display text-overline uppercase text-secondary-700">
+                            {supplier.category}
                           </span>
-                        )}
+                          {supplier.isVerified && (
+                            <span className="rounded-full bg-primary-50 px-space-2 py-1 font-display text-overline uppercase text-primary-600">
+                              Verified
+                            </span>
+                          )}
+                        </div>
+                        <Link to={`/suppliers/${supplier.id}`} className="font-display text-heading-lg text-neutral-900 hover:text-info">
+                          {supplier.name}
+                        </Link>
+                        <p className="font-body text-body-sm text-neutral-500">{supplier.category} - {supplier.city}</p>
+                        <p className="font-body text-body-sm text-neutral-500">Rating: {supplier.rating} ({supplier.reviews} reviews)</p>
                       </div>
-                      <Link to={`/suppliers/${supplier.id}`} className="font-display text-heading-lg text-neutral-900 hover:text-info">
-                        {supplier.name}
-                      </Link>
-                      <p className="font-body text-body-sm text-neutral-500">{supplier.category} - {supplier.city}</p>
-                      <p className="font-body text-body-sm text-neutral-500">Rating: {supplier.rating} ({supplier.reviews} reviews)</p>
+                      <button
+                        type="button"
+                        onClick={() => onToggleSaved(supplier.id)}
+                        className={`rounded-full border px-space-2 py-space-1 text-label-sm ${
+                          savedSuppliers.has(supplier.id)
+                            ? 'border-secondary-500 bg-secondary-50 text-secondary-700'
+                            : 'border-neutral-300 text-neutral-500'
+                        }`}
+                      >
+                        {savedSuppliers.has(supplier.id) ? 'Saved' : 'Save'}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => onToggleSaved(supplier.id)}
-                      className={`rounded-full border px-space-2 py-space-1 text-label-sm ${
-                        savedSuppliers.has(supplier.id)
-                          ? 'border-secondary-500 bg-secondary-50 text-secondary-700'
-                          : 'border-neutral-300 text-neutral-500'
-                      }`}
-                    >
-                      {savedSuppliers.has(supplier.id) ? 'Saved' : 'Save'}
-                    </button>
-                  </div>
 
-                  {supplier.tag && (
-                    <p className="mt-space-2 font-body text-caption-lg text-primary-600">{supplier.tag}</p>
-                  )}
+                    {supplier.tag && (
+                      <p className="mt-space-2 font-body text-caption-lg text-primary-600">{supplier.tag}</p>
+                    )}
 
-                  <div className="mt-space-3 flex items-center justify-between">
-                    <p className="font-display text-heading-md text-info">
-                      {supplier.priceRangeLabel || `Starts at ${formatPrice(supplier.startingPricePhp)}`}
-                    </p>
-                    <Link to={`/suppliers/${supplier.id}`} className="text-label-sm text-secondary-700 hover:text-secondary-800">
-                      View Profile
-                    </Link>
+                    <div className="mt-space-3 flex items-center justify-between">
+                      <p className="font-display text-heading-md text-info">
+                        {supplier.priceRangeLabel || `Starts at ${formatPrice(supplier.startingPricePhp)}`}
+                      </p>
+                      <Link to={`/suppliers/${supplier.id}`} className="text-label-sm text-secondary-700 hover:text-secondary-800">
+                        View Profile
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              </SurfaceCard>
-            ))}
+                </SurfaceCard>
+              )
+            })}
           </div>
         </section>
       )}

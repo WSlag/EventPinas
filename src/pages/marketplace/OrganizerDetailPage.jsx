@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
 import { getOrganizerById, getSavedItems, toggleSavedItem } from '@/services'
+import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const organizerImageByCity = {
   'Davao City': 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1400&q=80',
@@ -57,6 +58,7 @@ export default function OrganizerDetailPage() {
   }, [id])
 
   const isSaved = useMemo(() => (savedMap.organizers ?? []).includes(id), [savedMap.organizers, id])
+  const fallbackImage = organizer ? organizerImageByCity[organizer.city] || organizerImageByCity['Davao City'] : organizerImageByCity['Davao City']
 
   const reviewStats = useMemo(() => {
     const reviewList = organizer?.reviewList ?? []
@@ -96,8 +98,9 @@ export default function OrganizerDetailPage() {
         <>
           <SurfaceCard className="overflow-hidden p-0">
             <img
-              src={organizer.avatarUrl || organizerImageByCity[organizer.city] || organizerImageByCity['Davao City']}
+              src={organizer.avatarUrl || fallbackImage}
               alt={organizer.name}
+              onError={getFallbackImageHandler(fallbackImage)}
               className="h-64 w-full object-cover"
             />
             <div className="space-y-space-3 p-space-4">

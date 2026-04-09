@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { FilterPanel, HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
 import { getMarketplaceFilterOptions, getSavedItems, listEvents, toggleSavedItem } from '@/services'
+import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const sortOptions = [
   { id: 'dateAsc', label: 'Soonest' },
@@ -178,62 +179,67 @@ export default function EventsPage() {
         <section className="space-y-space-3">
           <SectionHeader title="Results" subtitle="Book what fits your audience and budget." />
           <div className="grid gap-space-3 md:grid-cols-2">
-            {events.map((event) => (
-              <SurfaceCard key={event.id} className="overflow-hidden p-0">
-                <img
-                  src={eventImageByCategory[event.category] || eventImageByCategory.Festival}
-                  alt={event.title}
-                  className="h-44 w-full object-cover"
-                />
-                <div className="p-space-4">
-                  <div className="flex items-start justify-between gap-space-3">
-                    <div>
-                      <span className="inline-flex rounded-full bg-primary-50 px-space-2 py-1 font-display text-overline uppercase text-primary-600">
-                        {event.category}
-                      </span>
-                      <Link to={`/events/${event.id}`} className="mt-space-1 block font-display text-heading-lg text-neutral-900 hover:text-info">
-                        {event.title}
-                      </Link>
-                      <p className="font-body text-body-sm text-neutral-500">{event.venue}</p>
-                      <p className="font-body text-body-sm text-neutral-500">{event.city} - {formatDate(event.date)}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onToggleSaved(event.id)}
-                      className={`rounded-full border px-space-2 py-1 text-label-sm ${
-                        savedEvents.has(event.id)
-                          ? 'border-secondary-500 bg-secondary-50 text-secondary-700'
-                          : 'border-neutral-300 text-neutral-500'
-                      }`}
-                    >
-                      {savedEvents.has(event.id) ? 'Saved' : 'Save'}
-                    </button>
-                  </div>
+            {events.map((event) => {
+              const fallbackImage = eventImageByCategory[event.category] || eventImageByCategory.Festival
 
-                  {event.tags?.length > 0 && (
-                    <div className="mt-space-2 flex flex-wrap gap-space-1">
-                      {event.tags.map((tag) => (
-                        <span key={`${event.id}-${tag}`} className="rounded-full bg-neutral-100 px-space-2 py-1 font-body text-caption-lg text-neutral-600">
-                          {tag}
+              return (
+                <SurfaceCard key={event.id} className="overflow-hidden p-0">
+                  <img
+                    src={event.imageUrl || fallbackImage}
+                    alt={event.title}
+                    onError={getFallbackImageHandler(fallbackImage)}
+                    className="h-44 w-full object-cover"
+                  />
+                  <div className="p-space-4">
+                    <div className="flex items-start justify-between gap-space-3">
+                      <div>
+                        <span className="inline-flex rounded-full bg-primary-50 px-space-2 py-1 font-display text-overline uppercase text-primary-600">
+                          {event.category}
                         </span>
-                      ))}
+                        <Link to={`/events/${event.id}`} className="mt-space-1 block font-display text-heading-lg text-neutral-900 hover:text-info">
+                          {event.title}
+                        </Link>
+                        <p className="font-body text-body-sm text-neutral-500">{event.venue}</p>
+                        <p className="font-body text-body-sm text-neutral-500">{event.city} - {formatDate(event.date)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onToggleSaved(event.id)}
+                        className={`rounded-full border px-space-2 py-1 text-label-sm ${
+                          savedEvents.has(event.id)
+                            ? 'border-secondary-500 bg-secondary-50 text-secondary-700'
+                            : 'border-neutral-300 text-neutral-500'
+                        }`}
+                      >
+                        {savedEvents.has(event.id) ? 'Saved' : 'Save'}
+                      </button>
                     </div>
-                  )}
 
-                  <div className="mt-space-3">
-                    <div className="mb-space-1 flex items-center justify-between">
-                      <span className="font-body text-caption-lg text-neutral-500">Tickets sold</span>
-                      <span className="font-display text-caption-lg text-neutral-700">{event.soldPercent}%</span>
+                    {event.tags?.length > 0 && (
+                      <div className="mt-space-2 flex flex-wrap gap-space-1">
+                        {event.tags.map((tag) => (
+                          <span key={`${event.id}-${tag}`} className="rounded-full bg-neutral-100 px-space-2 py-1 font-body text-caption-lg text-neutral-600">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-space-3">
+                      <div className="mb-space-1 flex items-center justify-between">
+                        <span className="font-body text-caption-lg text-neutral-500">Tickets sold</span>
+                        <span className="font-display text-caption-lg text-neutral-700">{event.soldPercent}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
+                        <div className="h-full rounded-full bg-primary-400" style={{ width: `${event.soldPercent}%` }} />
+                      </div>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
-                      <div className="h-full rounded-full bg-primary-400" style={{ width: `${event.soldPercent}%` }} />
-                    </div>
+
+                    <p className="mt-space-3 font-display text-heading-md text-info">{formatPrice(event.pricePhp)}</p>
                   </div>
-
-                  <p className="mt-space-3 font-display text-heading-md text-info">{formatPrice(event.pricePhp)}</p>
-                </div>
-              </SurfaceCard>
-            ))}
+                </SurfaceCard>
+              )
+            })}
           </div>
         </section>
       )}

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/MarketplacePrimitives'
 import { marketplaceCategories } from '@/data'
 import { getHomeFeed, getMarketplaceFilterOptions, getSavedItems, toggleSavedItem } from '@/services'
+import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const heroImageUrl = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2200&q=80'
 
@@ -244,70 +245,75 @@ export default function HomePage() {
 
           {!loading && !error && featuredEvents.length > 0 && (
             <div className="grid gap-space-4 md:grid-cols-3">
-              {featuredEvents.map((event) => (
-                <SurfaceCard key={event.id} className="overflow-hidden p-0">
-                  <div className="relative">
-                    <img
-                      src={eventImageByCategory[event.category] || eventImageByCategory.Festival}
-                      alt={event.title}
-                      className="h-48 w-full object-cover"
-                    />
-                    {event.tags[0] && (
-                      <span className={`absolute left-space-3 top-space-3 rounded-full px-space-2 py-0.5 font-display text-caption-sm text-white ${tagBadgeClass(event.tags[0])}`}>
-                        {event.tags[0]}
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-space-4">
-                    <div className="mb-space-2 flex items-center justify-between gap-space-3">
-                      <p className="font-display text-heading-sm text-info">{formatDate(event.date)}</p>
-                      <button
-                        type="button"
-                        onClick={() => onToggleSavedEvent(event.id)}
-                        className={`rounded-full border px-space-2 py-1 text-label-sm ${
-                          savedEvents.has(event.id)
-                            ? 'border-secondary-500 bg-secondary-50 text-secondary-700'
-                            : 'border-neutral-300 text-neutral-500'
-                        }`}
-                      >
-                        {savedEvents.has(event.id) ? 'Saved' : 'Save'}
-                      </button>
-                    </div>
+              {featuredEvents.map((event) => {
+                const fallbackImage = eventImageByCategory[event.category] || eventImageByCategory.Festival
 
-                    <Link to={`/events/${event.id}`} className="line-clamp-2 font-display text-heading-xl text-neutral-900 hover:text-info">
-                      {event.title}
-                    </Link>
-
-                    <div className="mt-space-3 flex items-center justify-between gap-space-2">
-                      <p className="flex items-center gap-1 font-body text-body-sm text-neutral-600">
-                        <PinIcon />
-                        {event.city}
-                      </p>
-                      <Link to={`/events/${event.id}`} className="rounded-full bg-info px-space-4 py-1 font-display text-label-sm text-white">
-                        Let&apos;s go
-                      </Link>
-                    </div>
-
-                    <div className="mt-space-3 flex flex-wrap gap-space-1">
-                      {event.tags.map((tag) => (
-                        <span key={`${event.id}-${tag}`} className="rounded-full bg-neutral-100 px-space-2 py-1 font-body text-caption-sm text-neutral-600">
-                          {tag}
+                return (
+                  <SurfaceCard key={event.id} className="overflow-hidden p-0">
+                    <div className="relative">
+                      <img
+                        src={event.imageUrl || fallbackImage}
+                        alt={event.title}
+                        onError={getFallbackImageHandler(fallbackImage)}
+                        className="h-48 w-full object-cover"
+                      />
+                      {event.tags[0] && (
+                        <span className={`absolute left-space-3 top-space-3 rounded-full px-space-2 py-0.5 font-display text-caption-sm text-white ${tagBadgeClass(event.tags[0])}`}>
+                          {event.tags[0]}
                         </span>
-                      ))}
+                      )}
                     </div>
-                    <p className="mt-space-3 font-display text-heading-sm text-info">{formatPhp(event.pricePhp)}</p>
-                    <div className="mt-space-2">
-                      <p className="font-body text-caption-sm text-neutral-500">{event.soldPercent}% sold</p>
-                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100">
-                        <div
-                          className={`h-full rounded-full ${event.soldPercent >= 80 ? 'bg-red-500' : event.soldPercent >= 50 ? 'bg-amber-400' : 'bg-secondary-500'}`}
-                          style={{ width: `${event.soldPercent}%` }}
-                        />
+                    <div className="p-space-4">
+                      <div className="mb-space-2 flex items-center justify-between gap-space-3">
+                        <p className="font-display text-heading-sm text-info">{formatDate(event.date)}</p>
+                        <button
+                          type="button"
+                          onClick={() => onToggleSavedEvent(event.id)}
+                          className={`rounded-full border px-space-2 py-1 text-label-sm ${
+                            savedEvents.has(event.id)
+                              ? 'border-secondary-500 bg-secondary-50 text-secondary-700'
+                              : 'border-neutral-300 text-neutral-500'
+                          }`}
+                        >
+                          {savedEvents.has(event.id) ? 'Saved' : 'Save'}
+                        </button>
+                      </div>
+
+                      <Link to={`/events/${event.id}`} className="line-clamp-2 font-display text-heading-xl text-neutral-900 hover:text-info">
+                        {event.title}
+                      </Link>
+
+                      <div className="mt-space-3 flex items-center justify-between gap-space-2">
+                        <p className="flex items-center gap-1 font-body text-body-sm text-neutral-600">
+                          <PinIcon />
+                          {event.city}
+                        </p>
+                        <Link to={`/events/${event.id}`} className="rounded-full bg-info px-space-4 py-1 font-display text-label-sm text-white">
+                          Let&apos;s go
+                        </Link>
+                      </div>
+
+                      <div className="mt-space-3 flex flex-wrap gap-space-1">
+                        {event.tags.map((tag) => (
+                          <span key={`${event.id}-${tag}`} className="rounded-full bg-neutral-100 px-space-2 py-1 font-body text-caption-sm text-neutral-600">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="mt-space-3 font-display text-heading-sm text-info">{formatPhp(event.pricePhp)}</p>
+                      <div className="mt-space-2">
+                        <p className="font-body text-caption-sm text-neutral-500">{event.soldPercent}% sold</p>
+                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                          <div
+                            className={`h-full rounded-full ${event.soldPercent >= 80 ? 'bg-red-500' : event.soldPercent >= 50 ? 'bg-amber-400' : 'bg-secondary-500'}`}
+                            style={{ width: `${event.soldPercent}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </SurfaceCard>
-              ))}
+                  </SurfaceCard>
+                )
+              })}
             </div>
           )}
 
@@ -335,11 +341,18 @@ export default function HomePage() {
                 <Link key={supplier.id} to={`/suppliers/${supplier.id}`} className="w-56 flex-shrink-0">
                   <SurfaceCard className="h-full overflow-hidden p-0">
                     <div className="relative">
-                      <img
-                        src={supplierImageByCategory[supplier.category] || supplierFallbackImage}
-                        alt={supplier.name}
-                        className="h-36 w-full object-cover"
-                      />
+                      {(() => {
+                        const fallbackImage = supplierImageByCategory[supplier.category] || supplierFallbackImage
+
+                        return (
+                          <img
+                            src={supplier.imageUrl || fallbackImage}
+                            alt={supplier.name}
+                            onError={getFallbackImageHandler(fallbackImage)}
+                            className="h-36 w-full object-cover"
+                          />
+                        )
+                      })()}
                       {supplier.isFeatured && (
                         <span className="absolute right-space-2 top-space-2 rounded-full bg-info px-space-2 py-0.5 font-display text-caption-sm text-white">
                           Featured
@@ -384,11 +397,18 @@ export default function HomePage() {
                 <Link key={org.id} to={`/organizers/${org.id}`} className="w-56 flex-shrink-0">
                   <SurfaceCard className="h-full overflow-hidden p-0">
                     <div className="relative">
-                      <img
-                        src={organizerImageBySpecialty[org.specialties[0]] || organizerFallbackImage}
-                        alt={org.name}
-                        className="h-36 w-full object-cover"
-                      />
+                      {(() => {
+                        const fallbackImage = organizerImageBySpecialty[org.specialties[0]] || organizerFallbackImage
+
+                        return (
+                          <img
+                            src={org.avatarUrl || fallbackImage}
+                            alt={org.name}
+                            onError={getFallbackImageHandler(fallbackImage)}
+                            className="h-36 w-full object-cover"
+                          />
+                        )
+                      })()}
                       {org.isVerified && (
                         <span className="absolute right-space-2 top-space-2 rounded-full bg-info px-space-2 py-0.5 font-display text-caption-sm text-white">
                           Verified

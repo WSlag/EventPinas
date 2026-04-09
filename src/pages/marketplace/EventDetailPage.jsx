@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
 import { getEventById, getSavedItems, toggleSavedItem } from '@/services'
+import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const eventImageByCategory = {
   Wedding: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1400&q=80',
@@ -55,6 +56,7 @@ export default function EventDetailPage() {
   }, [id])
 
   const isSaved = useMemo(() => (savedMap.events ?? []).includes(id), [savedMap.events, id])
+  const fallbackImage = event ? eventImageByCategory[event.category] || eventImageByCategory.Festival : eventImageByCategory.Festival
 
   function onToggleSaved() {
     const updated = toggleSavedItem('events', id)
@@ -83,8 +85,9 @@ export default function EventDetailPage() {
         <>
           <SurfaceCard className="overflow-hidden p-0">
             <img
-              src={eventImageByCategory[event.category] || eventImageByCategory.Festival}
+              src={event.imageUrl || fallbackImage}
               alt={event.title}
+              onError={getFallbackImageHandler(fallbackImage)}
               className="h-64 w-full object-cover"
             />
             <div className="space-y-space-3 p-space-4">

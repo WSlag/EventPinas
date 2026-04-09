@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
 import { getSavedItems, getSupplierById, toggleSavedItem } from '@/services'
+import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const supplierImageByCategory = {
   Florist: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1400&q=80',
@@ -58,6 +59,7 @@ export default function SupplierDetailPage() {
   }, [id])
 
   const isSaved = useMemo(() => (savedMap.suppliers ?? []).includes(id), [savedMap.suppliers, id])
+  const fallbackImage = supplier ? supplierImageByCategory[supplier.category] || supplierImageByCategory.Photography : supplierImageByCategory.Photography
 
   const reviewStats = useMemo(() => {
     const reviewList = supplier?.reviewList ?? []
@@ -97,8 +99,9 @@ export default function SupplierDetailPage() {
         <>
           <SurfaceCard className="overflow-hidden p-0">
             <img
-              src={supplier.imageUrl || supplierImageByCategory[supplier.category] || supplierImageByCategory.Photography}
+              src={supplier.imageUrl || fallbackImage}
               alt={supplier.name}
+              onError={getFallbackImageHandler(fallbackImage)}
               className="h-64 w-full object-cover"
             />
             <div className="space-y-space-3 p-space-4">

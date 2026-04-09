@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { FilterPanel, HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
 import { getMarketplaceFilterOptions, listOrganizers } from '@/services'
+import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const organizerSortOptions = [
   { id: 'ratingDesc', label: 'Top Rated' },
@@ -170,46 +171,51 @@ export default function OrganizersPage() {
         <section className="space-y-space-3">
           <SectionHeader title="Results" subtitle="Browse teams with strong delivery history." />
           <div className="grid gap-space-3 md:grid-cols-2">
-            {organizers.map((organizer) => (
-              <SurfaceCard key={organizer.id} className={`overflow-hidden p-0 ${organizer.badge ? 'border-primary-300 shadow-primary' : ''}`}>
-                <img
-                  src={organizer.avatarUrl || organizerImageByCity[organizer.city] || organizerImageByCity['Davao City']}
-                  alt={organizer.name}
-                  className="h-40 w-full object-cover"
-                />
-                <div className="space-y-space-2 p-space-4">
-                  <div className="flex items-start justify-between gap-space-2">
-                    <div>
-                      <Link to={`/organizers/${organizer.id}`} className="font-display text-heading-lg text-neutral-900 hover:text-info">
-                        {organizer.name}
-                      </Link>
-                      <p className="mt-space-1 font-body text-body-sm text-neutral-500">{organizer.city}</p>
-                    </div>
-                    {organizer.badge && (
-                      <span className="rounded-full bg-primary-50 px-space-2 py-space-1 font-display text-overline uppercase text-primary-600">
-                        {organizer.badge}
-                      </span>
-                    )}
-                  </div>
+            {organizers.map((organizer) => {
+              const fallbackImage = organizerImageByCity[organizer.city] || organizerImageByCity['Davao City']
 
-                  <p className="font-body text-body-sm text-neutral-500">Specialties: {organizer.specialties.join(', ')}</p>
-                  <div className="flex flex-wrap items-center gap-space-2">
-                    {organizer.isVerified && (
-                      <span className="rounded-full bg-secondary-50 px-space-2 py-space-1 font-display text-overline uppercase text-secondary-700">
-                        Verified
+              return (
+                <SurfaceCard key={organizer.id} className={`overflow-hidden p-0 ${organizer.badge ? 'border-primary-300 shadow-primary' : ''}`}>
+                  <img
+                    src={organizer.avatarUrl || fallbackImage}
+                    alt={organizer.name}
+                    onError={getFallbackImageHandler(fallbackImage)}
+                    className="h-40 w-full object-cover"
+                  />
+                  <div className="space-y-space-2 p-space-4">
+                    <div className="flex items-start justify-between gap-space-2">
+                      <div>
+                        <Link to={`/organizers/${organizer.id}`} className="font-display text-heading-lg text-neutral-900 hover:text-info">
+                          {organizer.name}
+                        </Link>
+                        <p className="mt-space-1 font-body text-body-sm text-neutral-500">{organizer.city}</p>
+                      </div>
+                      {organizer.badge && (
+                        <span className="rounded-full bg-primary-50 px-space-2 py-space-1 font-display text-overline uppercase text-primary-600">
+                          {organizer.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="font-body text-body-sm text-neutral-500">Specialties: {organizer.specialties.join(', ')}</p>
+                    <div className="flex flex-wrap items-center gap-space-2">
+                      {organizer.isVerified && (
+                        <span className="rounded-full bg-secondary-50 px-space-2 py-space-1 font-display text-overline uppercase text-secondary-700">
+                          Verified
+                        </span>
+                      )}
+                      <span className="rounded-full bg-neutral-100 px-space-2 py-space-1 font-body text-caption-lg text-neutral-600">
+                        {organizer.eventsHandled} events handled
                       </span>
-                    )}
-                    <span className="rounded-full bg-neutral-100 px-space-2 py-space-1 font-body text-caption-lg text-neutral-600">
-                      {organizer.eventsHandled} events handled
-                    </span>
+                    </div>
+                    <p className="font-body text-body-sm text-neutral-600">
+                      Rating: {organizer.rating} ({organizer.reviewsCount} reviews)
+                    </p>
+                    <p className="font-display text-heading-md text-info">{organizer.priceRangeLabel}</p>
                   </div>
-                  <p className="font-body text-body-sm text-neutral-600">
-                    Rating: {organizer.rating} ({organizer.reviewsCount} reviews)
-                  </p>
-                  <p className="font-display text-heading-md text-info">{organizer.priceRangeLabel}</p>
-                </div>
-              </SurfaceCard>
-            ))}
+                </SurfaceCard>
+              )
+            })}
           </div>
         </section>
       )}
