@@ -183,6 +183,11 @@ export default function TopNav() {
     setIsMobileMenuOpen(false)
   }
 
+  async function onMobileBypassManage() {
+    setIsMobileMenuOpen(false)
+    await onBypassManage()
+  }
+
   async function onMobileLogout() {
     setIsMobileMenuOpen(false)
     await onLogout()
@@ -191,6 +196,10 @@ export default function TopNav() {
   const mobileMenuPanelStateClass = isMobileMenuOpen
     ? 'max-h-[36rem] translate-y-0 opacity-100'
     : 'pointer-events-none max-h-0 -translate-y-1 opacity-0'
+  const mobileDevManageClass =
+    tone === 'discover'
+      ? 'border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900'
+      : 'border-white/50 text-white/80 hover:border-white hover:text-white'
 
   return (
     <header className={`sticky top-0 z-50 transition-all duration-normal ${scrolled ? styles.headerScrolled : ''}`}>
@@ -280,6 +289,13 @@ export default function TopNav() {
       >
         <div className="mx-auto w-full max-w-[1680px] px-space-4 pb-space-3 pt-space-2 md:px-space-6">
             <div className="flex flex-col gap-space-1">
+              <button
+                type="button"
+                onClick={onMobileBypassManage}
+                className={`w-full rounded-full border border-dashed px-space-3 py-space-2 text-left font-display text-label-md ${mobileDevManageClass}`}
+              >
+                [dev] manage
+              </button>
               {primaryNavItems.map((item) => {
                 const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))
                 return (
