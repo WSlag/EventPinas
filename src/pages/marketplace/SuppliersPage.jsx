@@ -5,10 +5,10 @@ import { FilterPanel, HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCar
 import { getMarketplaceFilterOptions, getSavedItems, listSuppliers, toggleSavedItem } from '@/services'
 
 const supplierSortOptions = [
+  { id: 'featuredFirst', label: 'Featured First' },
   { id: 'ratingDesc', label: 'Top Rated' },
-  { id: 'priceAsc', label: 'Lowest Price' },
-  { id: 'priceDesc', label: 'Highest Price' },
   { id: 'reviewsDesc', label: 'Most Reviews' },
+  { id: 'bookingsDesc', label: 'Most Booked' },
 ]
 
 const supplierImageByCategory = {
@@ -16,6 +16,10 @@ const supplierImageByCategory = {
   Catering: 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=1000&q=80',
   Photography: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1000&q=80',
   'Audio-Visual': 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=1000&q=80',
+  'Live Band': 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1000&q=80',
+  DJ: 'https://images.unsplash.com/photo-1571266028243-d220c9f7b6ca?auto=format&fit=crop&w=1000&q=80',
+  'Party Rental': 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=1000&q=80',
+  'Event Styling': 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=1000&q=80',
 }
 
 function formatPrice(value) {
@@ -46,7 +50,7 @@ export default function SuppliersPage() {
   const [city, setCity] = useState(searchDefaults.city)
   const [query, setQuery] = useState(searchDefaults.query)
   const [featuredOnly, setFeaturedOnly] = useState(false)
-  const [sortBy, setSortBy] = useState('ratingDesc')
+  const [sortBy, setSortBy] = useState('featuredFirst')
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -66,7 +70,7 @@ export default function SuppliersPage() {
       setError('')
 
       try {
-        const items = await listSuppliers({ category, city, query, featuredOnly })
+        const items = await listSuppliers({ category, city, query, featuredOnly, sortBy })
         if (active) setSuppliers(items)
       } catch {
         if (active) setError('Unable to load suppliers right now.')
@@ -79,18 +83,16 @@ export default function SuppliersPage() {
     return () => {
       active = false
     }
-  }, [category, city, query, featuredOnly])
+  }, [category, city, query, featuredOnly, sortBy])
 
   const savedSuppliers = useMemo(() => new Set(savedMap.suppliers ?? []), [savedMap.suppliers])
-  const sortedSuppliers = useMemo(() => {
-    const copy = [...suppliers]
-    if (sortBy === 'priceAsc') return copy.sort((a, b) => a.startingPricePhp - b.startingPricePhp)
-    if (sortBy === 'priceDesc') return copy.sort((a, b) => b.startingPricePhp - a.startingPricePhp)
-    if (sortBy === 'reviewsDesc') return copy.sort((a, b) => b.reviews - a.reviews)
-    return copy.sort((a, b) => b.rating - a.rating)
-  }, [suppliers, sortBy])
 
-  const hasFilters = category !== 'All' || city !== 'All' || query.trim().length > 0 || featuredOnly || sortBy !== 'ratingDesc'
+  const hasFilters =
+    category !== 'All' ||
+    city !== 'All' ||
+    query.trim().length > 0 ||
+    featuredOnly ||
+    sortBy !== 'featuredFirst'
 
   function onToggleSaved(id) {
     const updated = toggleSavedItem('suppliers', id)
@@ -102,7 +104,7 @@ export default function SuppliersPage() {
     setCity('All')
     setQuery('')
     setFeaturedOnly(false)
-    setSortBy('ratingDesc')
+    setSortBy('featuredFirst')
   }
 
   return (
@@ -113,6 +115,24 @@ export default function SuppliersPage() {
         description="Find caterers, florists, photographers, and production teams with pricing and reputation signals in one place."
         tone="teal"
       />
+
+      <SurfaceCard className="overflow-hidden border-none bg-gradient-to-r from-primary-400 via-orange-500 to-primary-600 text-white shadow-md">
+        <div className="flex flex-col gap-space-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-display text-overline uppercase tracking-wide text-white/85">Grow Your Supplier Brand</p>
+            <h3 className="mt-space-1 font-display text-heading-xl">List your services for free</h3>
+            <p className="mt-space-1 font-body text-body-sm text-white/90">
+              Get discovered by event organizers looking for trusted local teams.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-primary-600"
+          >
+            Join Now
+          </button>
+        </div>
+      </SurfaceCard>
 
       <FilterPanel title="Filter suppliers" showReset={hasFilters} onReset={resetFilters}>
         <input
@@ -144,6 +164,36 @@ export default function SuppliersPage() {
               <option key={item} value={item}>{item}</option>
             ))}
           </select>
+        </div>
+
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex min-w-max gap-space-2">
+            <button
+              type="button"
+              onClick={() => setCategory('All')}
+              className={`rounded-full border px-space-3 py-space-1 text-label-sm transition-all duration-fast ${
+                category === 'All'
+                  ? 'border-secondary-500 bg-secondary-50 text-secondary-700'
+                  : 'border-neutral-200 text-neutral-600'
+              }`}
+            >
+              All
+            </button>
+            {filterOptions.supplierCategories.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setCategory(item)}
+                className={`rounded-full border px-space-3 py-space-1 text-label-sm transition-all duration-fast ${
+                  category === item
+                    ? 'border-secondary-500 bg-secondary-50 text-secondary-700'
+                    : 'border-neutral-200 text-neutral-600'
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>
@@ -180,7 +230,7 @@ export default function SuppliersPage() {
         </div>
 
         <div className="grid grid-cols-3 gap-space-2">
-          <StatChip label="Results" value={sortedSuppliers.length} />
+          <StatChip label="Results" value={suppliers.length} />
           <StatChip label="Saved" value={savedSuppliers.size} />
           <StatChip label="Location" value={city === 'All' ? 'All' : city} />
         </div>
@@ -188,19 +238,30 @@ export default function SuppliersPage() {
 
       {loading && <LoadingState label="Loading suppliers..." />}
       {error && <ErrorState message={error} />}
-      {!loading && !error && sortedSuppliers.length === 0 && <EmptyState message="No suppliers matched your filters." />}
+      {!loading && !error && suppliers.length === 0 && <EmptyState message="No suppliers matched your filters." />}
 
-      {!loading && !error && sortedSuppliers.length > 0 && (
+      {!loading && !error && suppliers.length > 0 && (
         <section className="space-y-space-3">
           <SectionHeader title="Results" subtitle="Compare quality, pricing, and availability at a glance." />
           <div className="grid gap-space-3 md:grid-cols-2">
-            {sortedSuppliers.map((supplier) => (
-              <SurfaceCard key={supplier.id} className="overflow-hidden p-0">
-                <img
-                  src={supplierImageByCategory[supplier.category] || supplierImageByCategory.Photography}
-                  alt={supplier.name}
-                  className="h-44 w-full object-cover"
-                />
+            {suppliers.map((supplier) => (
+              <SurfaceCard
+                key={supplier.id}
+                className={`overflow-hidden p-0 ${supplier.isFeatured ? 'border-primary-300 shadow-primary' : ''}`}
+              >
+                <div className="relative">
+                  <img
+                    src={supplier.imageUrl || supplierImageByCategory[supplier.category] || supplierImageByCategory.Photography}
+                    alt={supplier.name}
+                    className="h-44 w-full object-cover"
+                  />
+                  {supplier.isFeatured && (
+                    <span className="absolute left-space-2 top-space-2 rounded-full bg-primary-500 px-space-2 py-1 font-display text-overline uppercase text-white">
+                      Featured
+                    </span>
+                  )}
+                </div>
+
                 <div className="p-space-4">
                   <div className="flex items-start justify-between gap-space-3">
                     <div>
@@ -233,8 +294,14 @@ export default function SuppliersPage() {
                     </button>
                   </div>
 
+                  {supplier.tag && (
+                    <p className="mt-space-2 font-body text-caption-lg text-primary-600">{supplier.tag}</p>
+                  )}
+
                   <div className="mt-space-3 flex items-center justify-between">
-                    <p className="font-display text-heading-md text-info">Starts at {formatPrice(supplier.startingPricePhp)}</p>
+                    <p className="font-display text-heading-md text-info">
+                      {supplier.priceRangeLabel || `Starts at ${formatPrice(supplier.startingPricePhp)}`}
+                    </p>
                     <Link to={`/suppliers/${supplier.id}`} className="text-label-sm text-secondary-700 hover:text-secondary-800">
                       View Profile
                     </Link>

@@ -57,7 +57,9 @@ function applySupplierFilters(items, filters = {}) {
     const queryMatch =
       includesQuery(item.name, query) ||
       includesQuery(item.category, query) ||
-      includesQuery(item.city, query)
+      includesQuery(item.city, query) ||
+      includesQuery(item.tag, query) ||
+      (item.specializations ?? []).some((specialization) => includesQuery(specialization, query))
 
     return categoryMatch && cityMatch && featuredMatch && queryMatch
   })
@@ -65,19 +67,46 @@ function applySupplierFilters(items, filters = {}) {
 
 function applyOrganizerFilters(items, filters = {}) {
   const city = filters.city ?? 'All'
+  const specialty = filters.specialty ?? 'All'
   const query = normalizeText(filters.query)
   const featuredOnly = filters.featuredOnly ?? false
 
   return items.filter((item) => {
     const cityMatch = city === 'All' || item.city === city
+    const specialtyMatch = specialty === 'All' || item.specialties.includes(specialty)
     const featuredMatch = !featuredOnly || item.isFeatured
     const queryMatch =
       includesQuery(item.name, query) ||
       includesQuery(item.city, query) ||
       item.specialties.some((specialty) => includesQuery(specialty, query))
 
-    return cityMatch && featuredMatch && queryMatch
+    return cityMatch && specialtyMatch && featuredMatch && queryMatch
   })
+}
+
+function sortSuppliers(items, sortBy = 'ratingDesc') {
+  const copy = [...items]
+
+  if (sortBy === 'featuredFirst') {
+    return copy.sort((a, b) => {
+      const featuredDelta = Number(b.isFeatured) - Number(a.isFeatured)
+      if (featuredDelta !== 0) return featuredDelta
+      return b.rating - a.rating
+    })
+  }
+  if (sortBy === 'reviewsDesc') return copy.sort((a, b) => b.reviews - a.reviews)
+  if (sortBy === 'bookingsDesc') return copy.sort((a, b) => (b.bookingsCount ?? 0) - (a.bookingsCount ?? 0))
+
+  return copy.sort((a, b) => b.rating - a.rating)
+}
+
+function sortOrganizers(items, sortBy = 'ratingDesc') {
+  const copy = [...items]
+
+  if (sortBy === 'eventsDesc') return copy.sort((a, b) => b.eventsHandled - a.eventsHandled)
+  if (sortBy === 'cityAsc') return copy.sort((a, b) => a.city.localeCompare(b.city))
+
+  return copy.sort((a, b) => b.rating - a.rating)
 }
 
 function maybeLimit(items, limit) {
@@ -95,14 +124,14 @@ export async function listEvents(filters = {}, options = {}) {
 export async function listSuppliers(filters = {}, options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
   const filtered = applySupplierFilters(suppliers, filters)
-  const sorted = [...filtered].sort((a, b) => b.rating - a.rating)
+  const sorted = sortSuppliers(filtered, filters.sortBy)
   return maybeLimit(sorted, filters.limit)
 }
 
 export async function listOrganizers(filters = {}, options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
   const filtered = applyOrganizerFilters(organizers, filters)
-  const sorted = [...filtered].sort((a, b) => b.rating - a.rating)
+  const sorted = sortOrganizers(filtered, filters.sortBy)
   return maybeLimit(sorted, filters.limit)
 }
 
@@ -166,11 +195,15 @@ export function getMarketplaceFilterOptions() {
   const eventCities = Array.from(new Set(events.map((item) => item.city))).sort()
   const supplierCities = Array.from(new Set(suppliers.map((item) => item.city))).sort()
   const organizerCities = Array.from(new Set(organizers.map((item) => item.city))).sort()
+  const organizerSpecialties = Array.from(
+    new Set(organizers.flatMap((item) => item.specialties)),
+  ).sort()
 
   return {
     categories: marketplaceCategories,
     cities: Array.from(new Set([...eventCities, ...supplierCities, ...organizerCities])).sort(),
     supplierCategories: Array.from(new Set(suppliers.map((item) => item.category))).sort(),
+    organizerSpecialties,
   }
 }
 

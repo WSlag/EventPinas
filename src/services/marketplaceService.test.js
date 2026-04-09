@@ -46,10 +46,25 @@ describe('marketplaceService', () => {
   })
 
   it('sorts suppliers and organizers by rating descending', async () => {
-    const topSuppliers = await listSuppliers({}, { simulateLatency: false })
-    const topOrganizers = await listOrganizers({}, { simulateLatency: false })
+    const topSuppliers = await listSuppliers({ sortBy: 'ratingDesc' }, { simulateLatency: false })
+    const topOrganizers = await listOrganizers({ sortBy: 'ratingDesc' }, { simulateLatency: false })
 
     expect(topSuppliers[0].rating).toBeGreaterThanOrEqual(topSuppliers[1].rating)
     expect(topOrganizers[0].rating).toBeGreaterThanOrEqual(topOrganizers[1].rating)
+  })
+
+  it('sorts suppliers by booking volume and puts featured suppliers first', async () => {
+    const bookedSuppliers = await listSuppliers({ sortBy: 'bookingsDesc' }, { simulateLatency: false })
+    const featuredSuppliers = await listSuppliers({ sortBy: 'featuredFirst' }, { simulateLatency: false })
+
+    expect(bookedSuppliers[0].bookingsCount).toBeGreaterThanOrEqual(bookedSuppliers[1].bookingsCount)
+    expect(featuredSuppliers[0].isFeatured).toBe(true)
+  })
+
+  it('filters organizers by specialty', async () => {
+    const corporateOrganizers = await listOrganizers({ specialty: 'Corporate' }, { simulateLatency: false })
+
+    expect(corporateOrganizers.length).toBeGreaterThan(0)
+    expect(corporateOrganizers.every((item) => item.specialties.includes('Corporate'))).toBe(true)
   })
 })

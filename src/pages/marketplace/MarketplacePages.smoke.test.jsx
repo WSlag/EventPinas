@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import EventsPage from './EventsPage'
 import SuppliersPage from './SuppliersPage'
@@ -85,5 +86,53 @@ describe('Marketplace pages smoke', () => {
     )
 
     expect(screen.getByText(/loading organizer details/i)).toBeInTheDocument()
+  })
+
+  it('renders supplier detail CTAs and tab content', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter future={routerFuture} initialEntries={['/suppliers/sup-001']}>
+        <Routes>
+          <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /get quote/i })).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: /message/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /portfolio/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /packages/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /packages/i }))
+    expect(screen.getAllByRole('button', { name: /select this package/i }).length).toBeGreaterThan(0)
+  })
+
+  it('renders organizer detail CTAs and tab content', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter future={routerFuture} initialEntries={['/organizers/org-001']}>
+        <Routes>
+          <Route path="/organizers/:id" element={<OrganizerDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /hire this organizer/i })).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: /message/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /about/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /pricing/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /pricing/i }))
+    expect(screen.getByText(/day-of coordination/i)).toBeInTheDocument()
   })
 })
