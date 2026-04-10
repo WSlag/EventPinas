@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
 const primaryNavItems = [
@@ -116,8 +116,7 @@ export default function TopNav() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMobileHeaderHidden, setIsMobileHeaderHidden] = useState(false)
   const previousScrollYRef = useRef(0)
-  const { user, profile, hasActiveSubscription, logout, authBusy, register, activateSubscription } = useAuth()
-  const navigate = useNavigate()
+  const { user, profile, hasActiveSubscription, logout, authBusy } = useAuth()
   const location = useLocation()
   const tone = useMemo(() => resolveTone(location.pathname), [location.pathname])
   const styles = toneStyles[tone]
@@ -211,24 +210,6 @@ export default function TopNav() {
     }
     return 'Create Events'
   }, [user, profile?.role, hasActiveSubscription])
-
-  async function onBypassManage() {
-    const stamp = Date.now()
-    try {
-      await register({
-        email: `organizer.test.${stamp}@eventpinas.com`,
-        password: `test${stamp}`.slice(0, 12),
-        displayName: 'Organizer Test User',
-        role: 'organizer',
-      })
-      await activateSubscription({ planId: 'pro', durationDays: 30 })
-      navigate('/manage/dashboard', { replace: true })
-    } catch {
-      // silent — already logged in as organizer, just navigate
-      navigate('/manage/dashboard', { replace: true })
-    }
-  }
-
   async function onLogout() {
     try {
       await logout()
@@ -240,12 +221,6 @@ export default function TopNav() {
   const onMobileMenuLinkClick = () => {
     setIsMobileMenuOpen(false)
   }
-
-  async function onMobileBypassManage() {
-    setIsMobileMenuOpen(false)
-    await onBypassManage()
-  }
-
   async function onMobileLogout() {
     setIsMobileMenuOpen(false)
     await onLogout()
@@ -254,10 +229,6 @@ export default function TopNav() {
   const mobileMenuPanelStateClass = isMobileMenuOpen
     ? 'max-h-[36rem] translate-y-0 opacity-100'
     : 'pointer-events-none max-h-0 -translate-y-1 opacity-0'
-  const mobileDevManageClass =
-    tone === 'discover'
-      ? 'border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900'
-      : 'border-white/50 text-white/80 hover:border-white hover:text-white'
   const mobileHeaderVisibilityClass = isMobileHeaderHidden
     ? '-translate-y-full opacity-0 lg:translate-y-0 lg:opacity-100'
     : 'translate-y-0 opacity-100'
@@ -279,13 +250,6 @@ export default function TopNav() {
           </Link>
 
           <nav className="hidden items-center gap-space-2 lg:flex">
-            <button
-              type="button"
-              onClick={onBypassManage}
-              className="rounded-full border border-dashed border-white/50 px-space-3 py-1 font-display text-caption-sm text-white/70 hover:border-white hover:text-white"
-            >
-              [dev] manage
-            </button>
             {primaryNavItems.map((item) => {
               const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))
               return (
@@ -354,13 +318,6 @@ export default function TopNav() {
       >
         <div className="mx-auto w-full max-w-[1680px] px-space-4 pb-space-3 pt-space-2 md:px-space-6">
             <div className="flex flex-col gap-space-1">
-              <button
-                type="button"
-                onClick={onMobileBypassManage}
-                className={`w-full rounded-full border border-dashed px-space-3 py-space-2 text-left font-display text-label-md ${mobileDevManageClass}`}
-              >
-                [dev] manage
-              </button>
               {primaryNavItems.map((item) => {
                 const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))
                 return (

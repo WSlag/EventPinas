@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
-  const { user, loading, authBusy, login, register, activateSubscription } = useAuth()
+  const { user, loading, authBusy, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from = location.state?.from?.pathname ?? '/'
@@ -27,27 +27,6 @@ export default function LoginPage() {
       navigate(from, { replace: true })
     } catch (submitError) {
       setError(submitError?.message ?? 'Unable to sign in with those credentials.')
-    }
-  }
-
-  async function onBypassManageTest() {
-    setError('')
-
-    const stamp = Date.now()
-    const testEmail = `organizer.test.${stamp}@eventpinas.com`
-    const testPassword = `test${stamp}`.slice(0, 12)
-
-    try {
-      await register({
-        email: testEmail,
-        password: testPassword,
-        displayName: 'Organizer Test User',
-        role: 'organizer',
-      })
-      await activateSubscription({ planId: 'pro', durationDays: 30 })
-      navigate('/manage/dashboard', { replace: true })
-    } catch (bypassError) {
-      setError(bypassError?.message ?? 'Unable to create bypass session right now.')
     }
   }
 
@@ -102,15 +81,6 @@ export default function LoginPage() {
               className="h-10 w-full rounded-full bg-primary-400 font-display text-label-md text-white disabled:opacity-60"
             >
               {authBusy ? 'Signing in...' : 'Sign in'}
-            </button>
-
-            <button
-              type="button"
-              onClick={onBypassManageTest}
-              disabled={authBusy}
-              className="h-10 w-full rounded-full border border-info bg-white font-display text-label-md text-info disabled:opacity-60"
-            >
-              Test Manage Page (Bypass)
             </button>
 
             <p className="text-center font-body text-body-sm text-neutral-600">
