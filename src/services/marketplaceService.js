@@ -307,6 +307,16 @@ function eventsCollectionRef() {
   return collection(db, MARKETPLACE_EVENTS_COLLECTION)
 }
 
+async function hasAnyPublicEventsInFirestore() {
+  const sourceQuery = query(
+    eventsCollectionRef(),
+    where('isPublic', '==', true),
+    limitConstraint(1),
+  )
+  const snapshot = await getDocs(sourceQuery)
+  return !snapshot.empty
+}
+
 async function listPublicEventsFromFirestore(filters = {}) {
   const statuses = buildStatusFilter(filters).slice(0, 10)
   const clauses = [where('isPublic', '==', true)]
@@ -452,6 +462,12 @@ export async function listPublicEvents(filters = {}, options = {}) {
   if (firebaseEnabled && db && options.forceLocal !== true) {
     try {
       source = await listPublicEventsFromFirestore(filters)
+      if (source.length === 0) {
+        const hasPublicEvents = await hasAnyPublicEventsInFirestore()
+        if (!hasPublicEvents) {
+          source = getMergedLocalPublicEvents()
+        }
+      }
     } catch {
       source = getMergedLocalPublicEvents()
     }
@@ -474,6 +490,12 @@ export async function listFeaturedPublicEvents(filters = {}, options = {}) {
   if (firebaseEnabled && db && options.forceLocal !== true) {
     try {
       source = await listFeaturedEventsFromFirestore(limitValue)
+      if (source.length === 0) {
+        const hasPublicEvents = await hasAnyPublicEventsInFirestore()
+        if (!hasPublicEvents) {
+          source = getMergedLocalPublicEvents()
+        }
+      }
     } catch {
       source = getMergedLocalPublicEvents()
     }
@@ -501,6 +523,11 @@ export async function getPublicEventById(id, options = {}) {
         if (options.includeUnpublished || normalized.isPublic) return normalized
         return null
       }
+      const hasPublicEvents = await hasAnyPublicEventsInFirestore()
+      if (hasPublicEvents) return null
+      const localFallback = getMergedLocalPublicEvents().find((event) => event.id === eventId) ?? null
+      if (!localFallback) return null
+      if (options.includeUnpublished || localFallback.isPublic) return localFallback
       return null
     } catch {
       // Continue to local fallback below.
