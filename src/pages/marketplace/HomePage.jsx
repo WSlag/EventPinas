@@ -1,18 +1,30 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
-import {
-  ActionButton,
-  HeroBanner,
-  PageShell,
-  SectionHeader,
-  SurfaceCard,
-} from '@/components/ui/MarketplacePrimitives'
 import { marketplaceCategories } from '@/data'
 import { getHomeFeed, getMarketplaceFilterOptions, getSavedItems, toggleSavedItem } from '@/services'
 import { getFallbackImageHandler } from '@/utils/imageFallback'
 
-const heroImageUrl = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2200&q=80'
+const heroImages = [
+  {
+    // Concert — person raising hand, electric blue/purple stage lighting (matches events.com slide 1)
+    url: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=2400&q=90',
+    label: 'Concerts & Festivals',
+    position: '70% center',
+  },
+  {
+    // Wedding — first dance with circular golden bokeh (matches events.com slide 2 vibe)
+    url: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=2400&q=90',
+    label: 'Weddings',
+    position: 'right center',
+  },
+  {
+    // Debut — elegant gown, warm ballroom lights and bokeh
+    url: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=2400&q=90',
+    label: 'Debut',
+    position: 'right center',
+  },
+]
 
 const supplierImageByCategory = {
   Florist:       'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=600&q=75',
@@ -65,44 +77,50 @@ const categoryShowcase = [
 
 const whyUseCards = [
   {
-    title: 'Plan events in one workspace',
-    description: 'Build event pages, send RSVP links, and keep guest tracking in one clear flow from setup to launch.',
-    image: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80',
-    alt: 'Organizer team planning an event timeline together',
+    num: '01',
+    title: 'Create & launch events in minutes',
+    description: 'Design your event page, collect registrations, and track every RSVP — all from one powerful dashboard built for Philippine organizers.',
+    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1400&q=85',
+    alt: 'Stunning event conference setup with stage lighting',
     ctaLabel: 'Create your event',
     ctaTo: '/register',
-    toneClass: 'from-primary-500/70 via-primary-600/35 to-transparent',
+    gradient: 'from-orange-700/95 via-primary-600/60 to-transparent',
+    pill: 'bg-primary-400',
   },
   {
-    title: 'Book trusted suppliers faster',
-    description: 'Compare featured vendors, shortlist the right fit, and move from discovery to booking-ready conversations quickly.',
-    image: 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=1200&q=80',
-    alt: 'Event supplier preparing catering service setup',
+    num: '02',
+    title: 'Connect with 500+ verified suppliers',
+    description: 'Find catering, photography, décor, and AV suppliers instantly. Compare, shortlist, and message them — without leaving the platform.',
+    image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1400&q=85',
+    alt: 'Beautiful event catering and gourmet spread',
     ctaLabel: 'Browse suppliers',
     ctaTo: '/suppliers',
-    toneClass: 'from-secondary-600/70 via-secondary-700/35 to-transparent',
+    gradient: 'from-emerald-800/95 via-secondary-600/60 to-transparent',
+    pill: 'bg-secondary-500',
   },
   {
-    title: 'Run event day with control',
-    description: 'Coordinate check-in and onsite operations with organizer-ready tools built to keep teams aligned during live events.',
-    image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&q=80',
-    alt: 'Event team coordinating guests during live event operations',
+    num: '03',
+    title: 'Run your event day without chaos',
+    description: 'Check in guests, coordinate teams, and handle last-minute changes with real-time tools that keep everything moving on schedule.',
+    image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1400&q=85',
+    alt: 'Live concert performance with vibrant stage lighting',
     ctaLabel: 'Meet organizers',
     ctaTo: '/organizers',
-    toneClass: 'from-info/75 via-info/40 to-transparent',
+    gradient: 'from-blue-900/95 via-info/60 to-transparent',
+    pill: 'bg-info',
   },
   {
-    title: 'Track performance and grow',
-    description: 'Follow attendance and event momentum with practical insights that help you improve your next launch.',
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
-    alt: 'Analytics dashboard showing event performance trends',
+    num: '04',
+    title: 'Turn every event into your next win',
+    description: 'Track ticket sales, attendance trends, and guest engagement — then use those insights to make your next event even bigger.',
+    image: 'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1400&q=85',
+    alt: 'Celebratory confetti at a successful event',
     ctaLabel: 'Explore events',
     ctaTo: '/events',
-    toneClass: 'from-neutral-800/80 via-neutral-700/45 to-transparent',
+    gradient: 'from-violet-900/95 via-purple-700/60 to-transparent',
+    pill: 'bg-violet-600',
   },
 ]
-
-const whyUseFallbackImage = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80'
 
 function formatPhp(value) {
   if (value === 0) return 'Free'
@@ -122,6 +140,14 @@ function PinIcon() {
   )
 }
 
+function HeartIcon({ filled }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  )
+}
+
 export default function HomePage() {
   const navigate = useNavigate()
   const filterOptions = useMemo(() => getMarketplaceFilterOptions(), [])
@@ -132,6 +158,14 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [savedMap, setSavedMap] = useState(() => getSavedItems())
+  const [heroIndex, setHeroIndex] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeroIndex((prev) => (prev + 1) % heroImages.length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -188,336 +222,504 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-space-8">
-      <section className="relative min-h-[68vh] overflow-hidden bg-info">
-        <img src={heroImageUrl} alt="Event crowd" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-r from-neutral-900/90 via-info/70 to-info/50" />
-        <div className="pointer-events-none absolute inset-y-0 left-[38%] hidden w-[560px] -translate-x-1/2 rounded-full border border-white/35 md:block" />
-        <div className="pointer-events-none absolute inset-y-0 left-[42%] hidden w-[760px] -translate-x-1/2 rounded-full border border-white/20 md:block" />
+    <div className="min-h-screen bg-white">
 
-        <div className="relative mx-auto flex min-h-[68vh] w-full max-w-[1680px] items-center px-space-4 py-space-12 md:px-space-8">
+      {/* ── HERO ── full-bleed, deep navy + auto-rotating photography */}
+      <section className="relative min-h-[88vh] overflow-hidden bg-[#0C1D5E]">
+        {/* Crossfade images */}
+        {heroImages.map((img, i) => (
+          <img
+            key={img.url}
+            src={img.url}
+            alt={img.label}
+            style={{ objectPosition: img.position }}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1500ms] ease-in-out ${
+              i === heroIndex ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+        ))}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#060F2E]/90 via-[#0C1D5E]/50 to-transparent" />
+
+        {/* Radar rings */}
+        <div className="pointer-events-none absolute inset-y-0 left-[40%] hidden w-[500px] -translate-x-1/2 rounded-full border border-white/50 md:block" />
+        <div className="pointer-events-none absolute inset-y-0 left-[44%] hidden w-[720px] -translate-x-1/2 rounded-full border border-white/35 md:block" />
+        <div className="pointer-events-none absolute inset-y-0 left-[48%] hidden w-[960px] -translate-x-1/2 rounded-full border border-white/20 md:block" />
+
+        <div className="relative mx-auto flex min-h-[88vh] w-full max-w-[1680px] items-center px-space-4 py-space-16 md:px-space-8">
           <div className="max-w-3xl">
-            <HeroBanner
-              eyebrow="EventPH Marketplace"
-              title="Great events start here."
-              description="Empowering event creators through every stage of the journey: Manage events, promote events, and discover trusted suppliers — everything Philippine event creators need, in one place."
-              tone="soft"
-              className="border-none bg-none p-0 shadow-none"
-              actions={(
-                <>
-                  <ActionButton to="/register">Create event</ActionButton>
-                  <ActionButton to="/suppliers" tone="soft">Let&apos;s talk</ActionButton>
-                </>
-              )}
-            />
+            <p className="font-display text-overline uppercase tracking-[0.12em] text-secondary-300">
+              EventPH Marketplace
+            </p>
+            <h1 className="mt-space-3 font-display font-extrabold leading-tight tracking-tight text-white text-4xl sm:text-5xl md:text-6xl lg:text-7xl">
+              Great events<br />start here.
+            </h1>
+            <p className="mt-space-4 max-w-2xl font-body text-white/85 text-body-md md:text-body-lg">
+              Empowering event creators through every stage of the journey: Manage events, promote events, and discover trusted suppliers — everything Philippine event creators need, in one place.
+            </p>
+            <div className="mt-space-6 flex flex-wrap gap-space-3">
+              <Link
+                to="/register"
+                className="inline-flex items-center rounded-full bg-secondary-500 px-space-6 py-space-3 font-display text-label-lg text-white transition-colors duration-fast hover:bg-secondary-400"
+              >
+                Create event
+              </Link>
+              <Link
+                to="/suppliers"
+                className="inline-flex items-center rounded-full border border-white/40 bg-white/10 px-space-6 py-space-3 font-display text-label-lg text-white transition-colors duration-fast hover:bg-white/20"
+              >
+                Let&apos;s talk
+              </Link>
+            </div>
+
+            {/* Slide indicators + current label */}
+            <div className="mt-space-8 flex items-center gap-space-3">
+              {heroImages.map((img, i) => (
+                <button
+                  key={img.url}
+                  type="button"
+                  onClick={() => setHeroIndex(i)}
+                  aria-label={`View ${img.label}`}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    i === heroIndex
+                      ? 'w-10 bg-secondary-400'
+                      : 'w-1.5 bg-white/35 hover:bg-white/60'
+                  }`}
+                />
+              ))}
+              <span className="ml-space-1 font-display text-caption-lg text-white/55">
+                {heroImages[heroIndex].label}
+              </span>
+            </div>
           </div>
         </div>
       </section>
 
-      <PageShell className="space-y-space-8">
-        <section className="relative z-10 -mt-space-16 space-y-space-4">
-          <div className="rounded-3xl border border-white/65 bg-white/95 p-space-5 shadow-lg backdrop-blur md:p-space-6">
-            <p className="font-display text-overline uppercase tracking-wide text-secondary-700">Built for practical wins</p>
-            <h2 className="mt-space-2 font-display text-heading-xl text-neutral-900 md:text-display-lg">Why Use EventPinas</h2>
-            <p className="mt-space-2 max-w-3xl font-body text-body-sm text-neutral-600 md:text-body-md">
-              From planning and supplier booking to event-day coordination and performance tracking, EventPinas helps teams move faster with less friction.
+      {/* ── WHY USE ── dark premium full-bleed section */}
+      <section className="bg-[#060F2E] py-space-12 md:py-space-16 lg:py-space-16">
+        {/* Section header */}
+        <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
+          <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-400">Built for practical wins</p>
+          <div className="mt-space-3 flex flex-col gap-space-4 md:flex-row md:items-end md:justify-between">
+            <h2 className="font-display font-extrabold leading-tight text-white text-3xl sm:text-4xl md:text-5xl">
+              Why Use EventPinas
+            </h2>
+            <p className="max-w-sm font-body text-white/55 text-body-sm md:text-right">
+              From planning to post-event insights — everything Philippine event creators need, in one place.
             </p>
           </div>
+        </div>
 
+        {/* 2×2 immersive card grid */}
+        <div className="mx-auto mt-space-8 max-w-[1280px] px-space-4 md:px-space-6">
           <div className="grid grid-cols-1 gap-space-4 md:grid-cols-2">
             {whyUseCards.map((card) => (
-              <SurfaceCard
+              <div
                 key={card.title}
-                className="group overflow-hidden border border-neutral-200/90 bg-white p-0 shadow-sm transition-all duration-fast hover:-translate-y-1 hover:shadow-md"
+                className="group relative min-h-[320px] overflow-hidden rounded-3xl md:min-h-[400px] lg:min-h-[440px]"
               >
-                <div className="relative h-52 overflow-hidden">
-                  <img
-                    src={card.image}
-                    alt={card.alt}
-                    onError={getFallbackImageHandler(whyUseFallbackImage)}
-                    className="h-full w-full object-cover transition-transform duration-slow group-hover:scale-[1.03]"
-                  />
-                  <div className={`absolute inset-0 bg-gradient-to-t ${card.toneClass}`} />
-                  <div className="absolute inset-x-space-4 bottom-space-3">
-                    <h3 className="font-display text-heading-lg text-white">{card.title}</h3>
-                  </div>
+                {/* Full-bleed background image */}
+                <img
+                  src={card.image}
+                  alt={card.alt}
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.06]"
+                />
+
+                {/* Top dark vignette so card number stays readable */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/10 to-transparent" />
+
+                {/* Bottom vibrant color gradient — unique per card */}
+                <div className={`absolute inset-0 bg-gradient-to-t ${card.gradient}`} />
+
+                {/* Card number — top left */}
+                <div className="absolute left-space-5 top-space-5">
+                  <span className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${card.pill} font-display text-label-sm font-bold text-white shadow-lg`}>
+                    {card.num}
+                  </span>
                 </div>
 
-                <div className="space-y-space-3 p-space-4">
-                  <p className="font-body text-body-sm text-neutral-600">{card.description}</p>
+                {/* Content — pinned to bottom */}
+                <div className="absolute inset-x-0 bottom-0 p-space-5 md:p-space-6">
+                  <h3 className="font-display font-extrabold leading-tight text-white text-xl md:text-2xl">
+                    {card.title}
+                  </h3>
+                  <p className="mt-space-2 font-body text-white/80 text-body-sm leading-relaxed">
+                    {card.description}
+                  </p>
                   <Link
                     to={card.ctaTo}
-                    className="inline-flex items-center rounded-full border border-info/20 bg-info px-space-4 py-space-2 font-display text-label-sm text-white transition-colors duration-fast hover:bg-info/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 focus-visible:ring-offset-2"
+                    className={`mt-space-4 inline-flex items-center gap-2 rounded-full ${card.pill} px-space-5 py-space-2 font-display text-label-sm font-semibold text-white shadow-md transition-all duration-fast hover:brightness-110 hover:shadow-lg`}
                   >
                     {card.ctaLabel}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
                   </Link>
                 </div>
-              </SurfaceCard>
+              </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section>
-          <SurfaceCard className="space-y-space-4 border border-white/70 bg-white/95 p-space-4 shadow-lg backdrop-blur">
-            <div className="flex items-center justify-between gap-space-2">
-              <h2 className="font-display text-heading-lg text-neutral-900">Discover fast</h2>
-              <p className="rounded-full bg-info/10 px-space-2 py-1 font-display text-caption-lg text-info">
-                {feed?.upcomingEvents?.length ?? 0} matches
-              </p>
+      {/* ── DISCOVER FAST ── full-bleed deep navy */}
+      <section className="bg-[#0C1D5E] py-space-10 md:py-space-14">
+        <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
+          <div className="flex items-center justify-between gap-space-2">
+            <h2 className="font-display font-bold text-white text-xl md:text-2xl">Discover fast</h2>
+            <span className="rounded-full bg-white/15 px-space-3 py-1 font-display text-caption-lg text-white">
+              {feed?.upcomingEvents?.length ?? 0} matches
+            </span>
+          </div>
+          <p className="mt-space-2 font-body text-white/70 text-body-sm">
+            Search events, tune category and city, then jump straight to booking-ready results.
+          </p>
+
+          <form className="mt-space-5 space-y-space-3" onSubmit={onDiscoverSubmit}>
+            <input
+              value={quickQuery}
+              onChange={(event) => setQuickQuery(event.target.value)}
+              placeholder="Search event title, venue, tag, or city"
+              className="h-12 w-full rounded-xl border border-white/20 bg-white/10 px-space-4 font-body text-body-sm text-white placeholder:text-white/50 focus:bg-white/15 focus:outline-none focus:ring-2 focus:ring-secondary-400/60"
+            />
+
+            <div className="grid grid-cols-1 gap-space-3 sm:grid-cols-2">
+              <select
+                value={activeCategory}
+                onChange={(event) => setActiveCategory(event.target.value)}
+                className="h-12 rounded-xl border border-white/20 bg-white/10 px-space-4 font-body text-body-sm text-white focus:outline-none focus:ring-2 focus:ring-secondary-400/60 [color-scheme:dark]"
+              >
+                {filterOptions.categories.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+
+              <select
+                value={quickCity}
+                onChange={(event) => setQuickCity(event.target.value)}
+                className="h-12 rounded-xl border border-white/20 bg-white/10 px-space-4 font-body text-body-sm text-white focus:outline-none focus:ring-2 focus:ring-secondary-400/60 [color-scheme:dark]"
+              >
+                <option value="All">All cities</option>
+                {filterOptions.cities.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
             </div>
-            <p className="font-body text-body-sm text-neutral-600">
-              Search events, tune category and city, then jump straight to booking-ready results.
-            </p>
 
-            <form className="space-y-space-3" onSubmit={onDiscoverSubmit}>
-              <input
-                value={quickQuery}
-                onChange={(event) => setQuickQuery(event.target.value)}
-                placeholder="Search event title, venue, tag, or city"
-                className="h-11 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
-              />
+            <div className="flex flex-wrap gap-space-3">
+              <button
+                type="submit"
+                className="inline-flex h-12 min-w-[160px] items-center justify-center rounded-full bg-secondary-500 px-space-5 font-display text-label-md text-white transition-colors duration-fast hover:bg-secondary-400"
+              >
+                Search events
+              </button>
+              <Link
+                to={toDiscoverPath('/suppliers')}
+                className="inline-flex h-12 min-w-[160px] items-center justify-center rounded-full border border-white/30 bg-white/10 px-space-5 font-display text-label-md text-white transition-colors duration-fast hover:bg-white/20"
+              >
+                Find vendors
+              </Link>
+            </div>
+          </form>
+        </div>
+      </section>
 
-              <div className="grid grid-cols-1 gap-space-2 sm:grid-cols-2">
-                <select
-                  value={activeCategory}
-                  onChange={(event) => setActiveCategory(event.target.value)}
-                  className="h-11 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
-                >
-                  {filterOptions.categories.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </select>
+      {/* ── FEATURED EVENTS ── white section */}
+      <section className="bg-white py-space-10 md:py-space-14">
+        <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
+          <div className="flex items-end justify-between gap-space-3">
+            <h2 className="font-display font-bold text-[#0C1D5E] text-xl md:text-2xl">Featured events</h2>
+            <Link to="/events" className="font-display text-label-md text-secondary-600 hover:text-secondary-700">
+              View all
+            </Link>
+          </div>
 
-                <select
-                  value={quickCity}
-                  onChange={(event) => setQuickCity(event.target.value)}
-                  className="h-11 rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
-                >
-                  <option value="All">All cities</option>
-                  {filterOptions.cities.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </select>
-              </div>
+          <div className="mt-space-6">
+            {loading && <LoadingState label="Loading featured events..." />}
+            {error && <ErrorState message={error} />}
+            {!loading && !error && featuredEvents.length === 0 && (
+              <EmptyState message="No featured events available for this category right now." />
+            )}
 
-              <div className="flex flex-wrap gap-space-2">
-                <button
-                  type="submit"
-                  className="inline-flex h-11 min-w-[148px] items-center justify-center rounded-full bg-info px-space-4 font-display text-label-md text-white"
-                >
-                  Search events
-                </button>
-                <Link
-                  to={toDiscoverPath('/suppliers')}
-                  className="inline-flex h-11 min-w-[148px] items-center justify-center rounded-full border border-info/30 bg-white px-space-4 font-display text-label-md text-info"
-                >
-                  Find vendors
-                </Link>
-              </div>
-            </form>
-          </SurfaceCard>
-        </section>
+            {!loading && !error && featuredEvents.length > 0 && (
+              <div className="grid gap-space-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+                {featuredEvents.map((event) => {
+                  const fallbackImage = eventImageByCategory[event.category] || eventImageByCategory.Festival
+                  const isSaved = savedEvents.has(event.id)
 
-        <section className="space-y-space-4">
-          <SectionHeader title="Featured events" actionLabel="View all" actionTo="/events" />
-
-          {loading && <LoadingState label="Loading featured events..." />}
-          {error && <ErrorState message={error} />}
-          {!loading && !error && featuredEvents.length === 0 && (
-            <EmptyState message="No featured events available for this category right now." />
-          )}
-
-          {!loading && !error && featuredEvents.length > 0 && (
-            <div className="grid gap-space-4 md:grid-cols-3">
-              {featuredEvents.map((event) => {
-                const fallbackImage = eventImageByCategory[event.category] || eventImageByCategory.Festival
-
-                return (
-                  <SurfaceCard key={event.id} className="overflow-hidden p-0">
-                    <div className="relative">
-                      <img
-                        src={event.imageUrl || fallbackImage}
-                        alt={event.title}
-                        onError={getFallbackImageHandler(fallbackImage)}
-                        className="h-48 w-full object-cover"
-                      />
-                      {event.tags[0] && (
-                        <span className={`absolute left-space-3 top-space-3 rounded-full px-space-2 py-0.5 font-display text-caption-sm text-white ${tagBadgeClass(event.tags[0])}`}>
-                          {event.tags[0]}
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-space-4">
-                      <div className="mb-space-2 flex items-center justify-between gap-space-3">
-                        <p className="font-display text-heading-sm text-info">{formatDate(event.date)}</p>
+                  return (
+                    <article key={event.id} className="group overflow-hidden rounded-2xl bg-white shadow-md transition-all duration-fast hover:-translate-y-1 hover:shadow-xl">
+                      {/* Image — landscape 16:10, tag badge + heart overlay */}
+                      <div className="relative overflow-hidden">
+                        <img
+                          src={event.imageUrl || fallbackImage}
+                          alt={event.title}
+                          onError={getFallbackImageHandler(fallbackImage)}
+                          className="aspect-[16/10] w-full object-cover transition-transform duration-slow group-hover:scale-[1.03]"
+                        />
+                        {event.tags[0] && (
+                          <span className={`absolute left-space-3 top-space-3 rounded-full px-space-2 py-0.5 font-display text-caption-sm text-white shadow-sm ${tagBadgeClass(event.tags[0])}`}>
+                            {event.tags[0]}
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => onToggleSavedEvent(event.id)}
-                          className={`rounded-full border px-space-2 py-1 text-label-sm ${
-                            savedEvents.has(event.id)
-                              ? 'border-secondary-500 bg-secondary-50 text-secondary-700'
-                              : 'border-neutral-300 text-neutral-500'
+                          aria-label={isSaved ? 'Remove from saved' : 'Save event'}
+                          className={`absolute right-space-3 top-space-3 rounded-full p-2 shadow-md transition-colors duration-fast ${
+                            isSaved
+                              ? 'bg-secondary-500 text-white'
+                              : 'bg-white/90 text-neutral-500 hover:text-secondary-500'
                           }`}
                         >
-                          {savedEvents.has(event.id) ? 'Saved' : 'Save'}
+                          <HeartIcon filled={isSaved} />
                         </button>
                       </div>
 
-                      <Link to={`/events/${event.id}`} className="line-clamp-2 font-display text-heading-xl text-neutral-900 hover:text-info">
-                        {event.title}
-                      </Link>
-
-                      <div className="mt-space-3 flex items-center justify-between gap-space-2">
-                        <p className="flex items-center gap-1 font-body text-body-sm text-neutral-600">
-                          <PinIcon />
-                          {event.city}
+                      {/* Card content */}
+                      <div className="p-space-4">
+                        {/* Date */}
+                        <p className="font-display text-caption-lg font-semibold uppercase tracking-wide text-[#0C1D5E]">
+                          {formatDate(event.date)}
                         </p>
-                        <Link to={`/events/${event.id}`} className="rounded-full bg-info px-space-4 py-1 font-display text-label-sm text-white">
-                          Let&apos;s go
-                        </Link>
-                      </div>
 
-                      <div className="mt-space-3 flex flex-wrap gap-space-1">
-                        {event.tags.map((tag) => (
-                          <span key={`${event.id}-${tag}`} className="rounded-full bg-neutral-100 px-space-2 py-1 font-body text-caption-sm text-neutral-600">
-                            {tag}
-                          </span>
-                        ))}
+                        {/* Title */}
+                        <Link
+                          to={`/events/${event.id}`}
+                          className="mt-space-1 block line-clamp-2 font-display text-heading-lg font-bold text-neutral-900 hover:text-[#0C1D5E]"
+                        >
+                          {event.title}
+                        </Link>
+
+                        {/* Location + CTA — same row like events.com */}
+                        <div className="mt-space-3 flex items-center justify-between gap-space-2">
+                          <p className="flex items-center gap-1 font-body text-body-sm text-neutral-500">
+                            <PinIcon />
+                            {event.city}
+                          </p>
+                          <Link
+                            to={`/events/${event.id}`}
+                            className="shrink-0 rounded-lg bg-secondary-500 px-space-4 py-space-2 font-display text-label-sm text-white transition-colors duration-fast hover:bg-secondary-400"
+                          >
+                            Let&apos;s go
+                          </Link>
+                        </div>
+
+                        {/* Tags row */}
+                        {event.tags.length > 0 && (
+                          <div className="mt-space-3 flex flex-wrap gap-space-1">
+                            {event.tags.map((tag) => (
+                              <span key={`${event.id}-${tag}`} className="rounded-full bg-neutral-100 px-space-2 py-0.5 font-body text-caption-sm text-neutral-600">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Price — small footer */}
+                        <p className="mt-space-3 font-display text-label-md text-[#0C1D5E]">
+                          {formatPhp(event.pricePhp)}
+                        </p>
                       </div>
-                      <p className="mt-space-3 font-display text-heading-sm text-info">{formatPhp(event.pricePhp)}</p>
-                      <div className="mt-space-2">
-                        <p className="font-body text-caption-sm text-neutral-500">{event.soldPercent}% sold</p>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100">
-                          <div
-                            className={`h-full rounded-full ${event.soldPercent >= 80 ? 'bg-red-500' : event.soldPercent >= 50 ? 'bg-amber-400' : 'bg-secondary-500'}`}
-                            style={{ width: `${event.soldPercent}%` }}
-                          />
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* View more events — events.com style centered button */}
+            {!loading && !error && (
+              <div className="mt-space-8 flex justify-center">
+                <Link
+                  to={toDiscoverPath('/events')}
+                  className="rounded-full border-2 border-[#0C1D5E] px-space-8 py-space-3 font-display text-label-lg text-[#0C1D5E] transition-colors duration-fast hover:bg-[#0C1D5E] hover:text-white"
+                >
+                  View more events
+                </Link>
+              </div>
+            )}
+
+            {!loading && !error && moreEvents.length > 0 && (
+              <div className="mt-space-5 grid gap-space-3 sm:grid-cols-2 lg:grid-cols-3">
+                {moreEvents.map((event) => (
+                  <Link
+                    key={event.id}
+                    to={`/events/${event.id}`}
+                    className="rounded-2xl border border-neutral-100 bg-white p-space-3 shadow-sm transition-all duration-fast hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <p className="font-display text-label-md text-[#0C1D5E]">{event.title}</p>
+                    <p className="mt-space-1 font-body text-body-sm text-neutral-500">{event.venue} - {event.city}</p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURED SUPPLIERS ── dark premium section */}
+      {!loading && !error && (feed?.featuredSuppliers?.length ?? 0) > 0 && (
+        <section className="bg-[#060F2E] py-space-10 md:py-space-12">
+          <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
+            <div className="flex items-end justify-between gap-space-3">
+              <div>
+                <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-400">Trusted partners</p>
+                <h2 className="mt-space-1 font-display font-bold text-white text-2xl md:text-3xl">Featured Suppliers</h2>
+                <p className="mt-space-1 font-body text-white/50 text-body-sm">Verified businesses ready to make your event unforgettable</p>
+              </div>
+              <Link to="/suppliers" className="shrink-0 font-display text-label-md text-secondary-400 hover:text-secondary-300">
+                Browse all
+              </Link>
+            </div>
+          </div>
+          <div className="mx-auto mt-space-6 max-w-[1280px]">
+            <div className="flex gap-space-4 overflow-x-auto px-space-4 pb-space-3 md:px-space-6 scrollbar-hide">
+              {feed.featuredSuppliers.map((supplier) => {
+                const fallbackImage = supplierImageByCategory[supplier.category] || supplierFallbackImage
+                return (
+                  <Link key={supplier.id} to={`/suppliers/${supplier.id}`} className="w-64 flex-shrink-0">
+                    <article className="group h-full overflow-hidden rounded-2xl bg-white shadow-xl transition-all duration-fast hover:-translate-y-1 hover:shadow-2xl">
+                      <div className="relative overflow-hidden">
+                        <img
+                          src={supplier.imageUrl || fallbackImage}
+                          alt={supplier.name}
+                          onError={getFallbackImageHandler(fallbackImage)}
+                          className="aspect-[4/3] w-full object-cover transition-transform duration-slow group-hover:scale-[1.04]"
+                        />
+                        {supplier.isFeatured && (
+                          <span className="absolute right-space-2 top-space-2 rounded-full bg-secondary-500 px-space-2 py-0.5 font-display text-caption-sm text-white shadow-sm">
+                            Featured
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-space-4">
+                        <p className="line-clamp-1 font-display text-heading-sm font-bold text-neutral-900">{supplier.name}</p>
+                        <p className="mt-0.5 font-body text-caption-sm text-neutral-500">{supplier.category} · {supplier.city}</p>
+                        <div className="mt-space-2 flex items-center gap-1 font-body text-caption-sm">
+                          <span className="text-amber-400">★</span>
+                          <span className="font-semibold text-neutral-800">{supplier.rating}</span>
+                          <span className="text-neutral-400">({supplier.reviews} reviews)</span>
                         </div>
                       </div>
-                    </div>
-                  </SurfaceCard>
+                    </article>
+                  </Link>
                 )
               })}
             </div>
-          )}
-
-          {!loading && !error && moreEvents.length > 0 && (
-            <div className="grid gap-space-3 sm:grid-cols-2 lg:grid-cols-3">
-              {moreEvents.map((event) => (
-                <Link
-                  key={event.id}
-                  to={`/events/${event.id}`}
-                  className="rounded-2xl border border-neutral-200 bg-white p-space-3 transition-all duration-fast hover:-translate-y-0.5 hover:shadow-sm"
-                >
-                  <p className="font-display text-label-md text-info">{event.title}</p>
-                  <p className="mt-space-1 font-body text-body-sm text-neutral-500">{event.venue} - {event.city}</p>
-                </Link>
-              ))}
-            </div>
-          )}
+          </div>
         </section>
+      )}
 
-        {!loading && !error && (feed?.featuredSuppliers?.length ?? 0) > 0 && (
-          <section className="space-y-space-4">
-            <SectionHeader title="Featured Suppliers" actionLabel="Browse all" actionTo="/suppliers" />
-            <div className="-mx-space-4 flex gap-space-4 overflow-x-auto px-space-4 pb-space-2 md:mx-0 md:px-0">
-              {feed.featuredSuppliers.map((supplier) => (
-                <Link key={supplier.id} to={`/suppliers/${supplier.id}`} className="w-56 flex-shrink-0">
-                  <SurfaceCard className="h-full overflow-hidden p-0">
-                    <div className="relative">
-                      {(() => {
-                        const fallbackImage = supplierImageByCategory[supplier.category] || supplierFallbackImage
+      {/* ── BUSINESS CTA ── full-bleed dark navy with rings + stats */}
+      <section className="relative overflow-hidden bg-[#0C1D5E] w-full">
+        {/* Decorative concentric rings (right side) */}
+        <div className="pointer-events-none absolute -right-40 top-1/2 h-[600px] w-[600px] -translate-y-1/2 rounded-full border border-white/8" />
+        <div className="pointer-events-none absolute -right-24 top-1/2 h-[420px] w-[420px] -translate-y-1/2 rounded-full border border-white/12" />
+        <div className="pointer-events-none absolute right-4 top-1/2 h-[260px] w-[260px] -translate-y-1/2 rounded-full border border-white/18" />
 
-                        return (
-                          <img
-                            src={supplier.imageUrl || fallbackImage}
-                            alt={supplier.name}
-                            onError={getFallbackImageHandler(fallbackImage)}
-                            className="h-36 w-full object-cover"
-                          />
-                        )
-                      })()}
-                      {supplier.isFeatured && (
-                        <span className="absolute right-space-2 top-space-2 rounded-full bg-info px-space-2 py-0.5 font-display text-caption-sm text-white">
-                          Featured
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-space-3">
-                      <p className="line-clamp-1 font-display text-heading-sm text-neutral-900">{supplier.name}</p>
-                      <p className="font-body text-caption-sm text-neutral-500">{supplier.category} · {supplier.city}</p>
-                      <div className="mt-space-2 flex items-center gap-1 font-body text-caption-sm text-neutral-600">
-                        <span className="text-amber-400">★</span>
-                        <span>{supplier.rating}</span>
-                        <span className="text-neutral-400">({supplier.reviews})</span>
-                      </div>
-                    </div>
-                  </SurfaceCard>
-                </Link>
+        <div className="relative mx-auto max-w-[1280px] px-space-4 py-space-12 md:px-space-6 md:py-space-16">
+          <div className="max-w-2xl">
+            <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-400">For Businesses</p>
+            <h2 className="mt-space-3 font-display font-extrabold leading-tight text-white text-3xl sm:text-4xl md:text-5xl">
+              Grow your events business with EventPinas
+            </h2>
+            <p className="mt-space-4 max-w-lg font-body text-white/70 text-body-md">
+              List your services and get discovered by thousands of event organizers across the Philippines. Join the marketplace that powers Philippine events.
+            </p>
+
+            {/* Stats row */}
+            <div className="mt-space-6 flex flex-wrap gap-space-3">
+              {[
+                { value: '500+', label: 'Active suppliers' },
+                { value: '2,000+', label: 'Event organizers' },
+                { value: '₱0', label: 'Listing fee', highlight: true },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-white/15 bg-white/8 px-space-4 py-space-3">
+                  <p className={`font-display font-extrabold text-xl ${stat.highlight ? 'text-secondary-400' : 'text-white'}`}>
+                    {stat.value}
+                  </p>
+                  <p className="font-body text-caption-lg text-white/55">{stat.label}</p>
+                </div>
               ))}
             </div>
-          </section>
-        )}
 
-        <section className="overflow-hidden rounded-2xl bg-gradient-to-r from-secondary-600 via-info to-secondary-500 p-space-6 text-white">
-          <p className="font-display text-heading-sm uppercase tracking-wide opacity-80">For Businesses</p>
-          <h2 className="mt-space-1 font-display text-heading-2xl">Are you an Event Supplier?</h2>
-          <p className="mt-space-2 max-w-md font-body text-body-sm opacity-90">
-            List your services on EventPH and get discovered by thousands of event organizers across the Philippines.
-          </p>
-          <Link
-            to="/suppliers"
-            className="mt-space-4 inline-flex items-center rounded-full bg-white px-space-5 py-space-2 font-display text-label-md text-info transition-opacity hover:opacity-90"
-          >
-            List your business →
-          </Link>
+            <Link
+              to="/suppliers"
+              className="mt-space-6 inline-flex items-center gap-2 rounded-full bg-secondary-500 px-space-6 py-space-3 font-display text-label-lg text-white transition-colors duration-fast hover:bg-secondary-400"
+            >
+              List your business
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TOP ORGANIZERS ── white section, elevated */}
+      {!loading && !error && (feed?.topOrganizers?.length ?? 0) > 0 && (
+        <section className="bg-white py-space-10 md:py-space-12">
+          <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
+            <div className="flex items-end justify-between gap-space-3">
+              <div>
+                <p className="font-display text-overline uppercase tracking-[0.15em] text-[#0C1D5E]">Top rated</p>
+                <h2 className="mt-space-1 font-display font-bold text-[#0C1D5E] text-2xl md:text-3xl">Top Organizers</h2>
+                <p className="mt-space-1 font-body text-body-sm text-neutral-500">
+                  Trusted by hundreds of events across the Philippines
+                </p>
+              </div>
+              <Link to="/organizers" className="shrink-0 font-display text-label-md text-secondary-600 hover:text-secondary-700">
+                View all
+              </Link>
+            </div>
+          </div>
+          <div className="mx-auto mt-space-6 max-w-[1280px]">
+            <div className="flex gap-space-4 overflow-x-auto px-space-4 pb-space-3 md:px-space-6 scrollbar-hide">
+              {feed.topOrganizers.map((org) => {
+                const fallbackImage = organizerImageBySpecialty[org.specialties[0]] || organizerFallbackImage
+                return (
+                  <Link key={org.id} to={`/organizers/${org.id}`} className="w-64 flex-shrink-0">
+                    <article className="group h-full overflow-hidden rounded-2xl bg-white shadow-md transition-all duration-fast hover:-translate-y-1 hover:shadow-xl">
+                      <div className="relative overflow-hidden">
+                        <img
+                          src={org.avatarUrl || fallbackImage}
+                          alt={org.name}
+                          onError={getFallbackImageHandler(fallbackImage)}
+                          className="aspect-[4/3] w-full object-cover transition-transform duration-slow group-hover:scale-[1.04]"
+                        />
+                        {org.isVerified && (
+                          <span className="absolute right-space-2 top-space-2 rounded-full bg-secondary-500 px-space-2 py-0.5 font-display text-caption-sm text-white shadow-sm">
+                            Verified
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-space-4">
+                        <p className="line-clamp-1 font-display text-heading-sm font-bold text-neutral-900">{org.name}</p>
+                        <p className="mt-0.5 font-body text-caption-sm text-neutral-500">{org.specialties[0]} · {org.city}</p>
+                        <div className="mt-space-2 flex items-center gap-1 font-body text-caption-sm">
+                          <span className="text-amber-400">★</span>
+                          <span className="font-semibold text-neutral-800">{org.rating}</span>
+                          <span className="text-neutral-400">({org.eventsHandled} events)</span>
+                        </div>
+                      </div>
+                    </article>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
         </section>
+      )}
 
-        {!loading && !error && (feed?.topOrganizers?.length ?? 0) > 0 && (
-          <section className="space-y-space-4">
-            <SectionHeader title="Top Organizers" actionLabel="View all" actionTo="/organizers" />
-            <div className="-mx-space-4 flex gap-space-4 overflow-x-auto px-space-4 pb-space-2 md:mx-0 md:px-0">
-              {feed.topOrganizers.map((org) => (
-                <Link key={org.id} to={`/organizers/${org.id}`} className="w-56 flex-shrink-0">
-                  <SurfaceCard className="h-full overflow-hidden p-0">
-                    <div className="relative">
-                      {(() => {
-                        const fallbackImage = organizerImageBySpecialty[org.specialties[0]] || organizerFallbackImage
+      {/* ── CATEGORIES ── dark premium with vibrant circle images */}
+      <section className="bg-[#060F2E] py-space-10 md:py-space-14">
+        <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
+          <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-400">Explore by type</p>
+          <div className="mt-space-1 flex items-end justify-between gap-space-3">
+            <h2 className="font-display font-bold text-white text-2xl md:text-3xl">Browse by Category</h2>
+            <p className="hidden font-body text-body-sm text-white/45 md:block">Filter events and suppliers by what you need</p>
+          </div>
 
-                        return (
-                          <img
-                            src={org.avatarUrl || fallbackImage}
-                            alt={org.name}
-                            onError={getFallbackImageHandler(fallbackImage)}
-                            className="h-36 w-full object-cover"
-                          />
-                        )
-                      })()}
-                      {org.isVerified && (
-                        <span className="absolute right-space-2 top-space-2 rounded-full bg-info px-space-2 py-0.5 font-display text-caption-sm text-white">
-                          Verified
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-space-3">
-                      <p className="line-clamp-1 font-display text-heading-sm text-neutral-900">{org.name}</p>
-                      <p className="font-body text-caption-sm text-neutral-500">{org.specialties[0]} · {org.city}</p>
-                      <div className="mt-space-2 flex items-center gap-1 font-body text-caption-sm text-neutral-600">
-                        <span className="text-amber-400">★</span>
-                        <span>{org.rating}</span>
-                        <span className="text-neutral-400">({org.eventsHandled} events)</span>
-                      </div>
-                    </div>
-                  </SurfaceCard>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section className="space-y-space-4">
-          <SectionHeader title="Categories" subtitle="Filter your feed" />
-          <div className="grid grid-cols-2 gap-space-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+          <div className="mt-space-8 grid grid-cols-3 gap-x-space-4 gap-y-space-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7">
             {categoryShowcase.map((item) => {
               const active = activeCategory === item.key
               return (
@@ -527,12 +729,14 @@ export default function HomePage() {
                   onClick={() => setActiveCategory(item.key)}
                   className="group flex flex-col items-center gap-space-2"
                 >
-                  <span className={`inline-flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 transition-all duration-fast md:h-36 md:w-36 ${
-                    active ? 'border-secondary-500 shadow-lg shadow-secondary-100' : 'border-white'
+                  <span className={`inline-flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 transition-all duration-fast sm:h-28 sm:w-28 md:h-32 md:w-32 ${
+                    active
+                      ? 'border-secondary-500 shadow-lg shadow-secondary-500/30 scale-105'
+                      : 'border-white/20 group-hover:border-white/50'
                   }`}>
-                    <img src={item.image} alt={item.label} className="h-full w-full object-cover" />
+                    <img src={item.image} alt={item.label} className="h-full w-full object-cover transition-transform duration-slow group-hover:scale-[1.08]" />
                   </span>
-                  <span className={`font-display text-heading-md ${active ? 'text-info' : 'text-neutral-800'}`}>
+                  <span className={`font-display text-label-sm font-semibold transition-colors duration-fast ${active ? 'text-secondary-400' : 'text-white/65 group-hover:text-white'}`}>
                     {item.label}
                   </span>
                 </button>
@@ -540,14 +744,14 @@ export default function HomePage() {
             })}
           </div>
 
-          <div className="flex flex-wrap gap-space-2">
+          <div className="mt-space-6 flex flex-wrap gap-space-2">
             <button
               type="button"
               onClick={() => setActiveCategory('All')}
-              className={`rounded-full border px-space-3 py-space-1 font-display text-label-sm ${
+              className={`rounded-full border px-space-3 py-space-1 font-display text-label-sm transition-colors duration-fast ${
                 activeCategory === 'All'
-                  ? 'border-info bg-info text-white'
-                  : 'border-neutral-300 bg-white text-neutral-600'
+                  ? 'border-secondary-500 bg-secondary-500 text-white'
+                  : 'border-white/20 text-white/65 hover:border-white/40 hover:text-white'
               }`}
             >
               All
@@ -557,19 +761,19 @@ export default function HomePage() {
                 key={category}
                 type="button"
                 onClick={() => setActiveCategory(category)}
-                className={`rounded-full border px-space-3 py-space-1 font-display text-label-sm ${
+                className={`rounded-full border px-space-3 py-space-1 font-display text-label-sm transition-colors duration-fast ${
                   activeCategory === category
-                    ? 'border-info bg-info text-white'
-                    : 'border-neutral-300 bg-white text-neutral-600'
+                    ? 'border-secondary-500 bg-secondary-500 text-white'
+                    : 'border-white/20 text-white/65 hover:border-white/40 hover:text-white'
                 }`}
               >
                 {category}
               </button>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-      </PageShell>
     </div>
   )
 }

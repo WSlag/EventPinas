@@ -1,5 +1,5 @@
 /* Google Fonts — must be first */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&family=Playfair+Display:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -19,7 +19,7 @@
   --color-accent-light: #D5F5F4;
 
   /* Surfaces */
-  --surface-base:    #FAFAF9;
+  --surface-base:    #FFFFFF;
   --surface-raised:  #FFFFFF;
   --surface-overlay: #F5F4F2;
 

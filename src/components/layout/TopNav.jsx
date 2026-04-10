@@ -10,7 +10,7 @@ const primaryNavItems = [
 
 const toneStyles = {
   home: {
-    topRow: 'bg-[#204CA3]',
+    topRow: 'bg-[#0C1D5E]',
     topRowBorder: '',
     headerScrolled: 'shadow-sm',
     logo: 'text-white',
@@ -18,7 +18,7 @@ const toneStyles = {
     navIdle: 'text-white/90 hover:text-white',
     auth: 'text-neutral-100',
     menuButton: 'text-white/95 hover:bg-white/10',
-    mobilePanel: 'border-t border-white/20 bg-[#204CA3]',
+    mobilePanel: 'border-t border-white/20 bg-[#0C1D5E]',
     mobileDivider: 'border-white/20',
   },
   discover: {

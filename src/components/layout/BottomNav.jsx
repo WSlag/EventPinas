@@ -185,7 +185,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-info/40 bg-info text-white shadow-xl md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#0C1D5E] text-white shadow-xl md:hidden"
     >
       <div className="flex">
         {tabs.map((tab) => {
