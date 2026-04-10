@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, vi } from 'vitest'
@@ -24,8 +24,32 @@ function renderNav(route = '/') {
   )
 }
 
+function setViewportWidth(width) {
+  act(() => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: width,
+    })
+    window.dispatchEvent(new Event('resize'))
+  })
+}
+
+function setScrollY(value) {
+  act(() => {
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      writable: true,
+      value,
+    })
+    window.dispatchEvent(new Event('scroll'))
+  })
+}
+
 beforeEach(() => {
   logoutMock.mockReset()
+  setViewportWidth(1280)
+  setScrollY(0)
   authState = {
     user: null,
     profile: null,
@@ -126,5 +150,80 @@ describe('TopNav', () => {
     expect(within(panel).getByRole('button', { name: /sign out/i })).toBeInTheDocument()
     expect(within(panel).queryByRole('link', { name: /^sign in$/i })).not.toBeInTheDocument()
     expect(within(panel).queryByRole('link', { name: /^join$/i })).not.toBeInTheDocument()
+  })
+
+  it('hides the header on mobile when scrolling down past threshold', async () => {
+    setViewportWidth(390)
+    renderNav('/events')
+    const header = screen.getByRole('banner')
+
+    setScrollY(48)
+
+    await waitFor(() => {
+      expect(header).toHaveClass('-translate-y-full')
+      expect(header).toHaveClass('opacity-0')
+    })
+  })
+
+  it('reveals the header on mobile when scrolling up', async () => {
+    setViewportWidth(390)
+    renderNav('/events')
+    const header = screen.getByRole('banner')
+
+    setScrollY(72)
+    await waitFor(() => {
+      expect(header).toHaveClass('-translate-y-full')
+    })
+
+    setScrollY(28)
+    await waitFor(() => {
+      expect(header).toHaveClass('translate-y-0')
+      expect(header).toHaveClass('opacity-100')
+    })
+  })
+
+  it('keeps the header visible on mobile while the menu is open', async () => {
+    setViewportWidth(390)
+    const user = userEvent.setup()
+    renderNav('/events')
+    const header = screen.getByRole('banner')
+
+    await user.click(screen.getByRole('button', { name: /open menu/i }))
+    setScrollY(140)
+
+    await waitFor(() => {
+      expect(header).not.toHaveClass('-translate-y-full')
+      expect(header).toHaveClass('translate-y-0')
+    })
+  })
+
+  it('does not hide the header on desktop scroll', async () => {
+    setViewportWidth(1280)
+    renderNav('/events')
+    const header = screen.getByRole('banner')
+
+    setScrollY(140)
+
+    await waitFor(() => {
+      expect(header).not.toHaveClass('-translate-y-full')
+      expect(header).toHaveClass('translate-y-0')
+    })
+  })
+
+  it('reveals the header near the top on mobile', async () => {
+    setViewportWidth(390)
+    renderNav('/events')
+    const header = screen.getByRole('banner')
+
+    setScrollY(120)
+    await waitFor(() => {
+      expect(header).toHaveClass('-translate-y-full')
+    })
+
+    setScrollY(6)
+    await waitFor(() => {
+      expect(header).toHaveClass('translate-y-0')
+      expect(header).toHaveClass('opacity-100')
+    })
   })
 })

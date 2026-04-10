@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -71,6 +71,19 @@ const toneStyles = {
   },
 }
 
+const SCROLL_SHADOW_OFFSET = 8
+const MOBILE_NEAR_TOP_OFFSET = 12
+const MOBILE_SCROLL_DELTA_THRESHOLD = 6
+const DESKTOP_MEDIA_QUERY = '(min-width: 1024px)'
+
+function isDesktopViewport() {
+  if (typeof window === 'undefined') return false
+  if (typeof window.matchMedia === 'function') {
+    return window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+  }
+  return window.innerWidth >= 1024
+}
+
 function resolveTone(pathname) {
   if (pathname === '/') return 'home'
   if (pathname.startsWith('/suppliers')) return 'suppliers'
@@ -101,6 +114,8 @@ function CloseIcon() {
 export default function TopNav() {
   const [scrolled, setScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isMobileHeaderHidden, setIsMobileHeaderHidden] = useState(false)
+  const previousScrollYRef = useRef(0)
   const { user, profile, hasActiveSubscription, logout, authBusy, register, activateSubscription } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -116,14 +131,57 @@ export default function TopNav() {
     : 'rounded-full bg-primary-400 px-space-3 py-space-1 font-display text-label-sm text-white'
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8)
+    previousScrollYRef.current = window.scrollY
+
+    const onScroll = () => {
+      const currentScrollY = Math.max(window.scrollY, 0)
+      setScrolled(currentScrollY > SCROLL_SHADOW_OFFSET)
+
+      if (isDesktopViewport() || isMobileMenuOpen) {
+        setIsMobileHeaderHidden(false)
+        previousScrollYRef.current = currentScrollY
+        return
+      }
+
+      if (currentScrollY <= MOBILE_NEAR_TOP_OFFSET) {
+        setIsMobileHeaderHidden(false)
+        previousScrollYRef.current = currentScrollY
+        return
+      }
+
+      const delta = currentScrollY - previousScrollYRef.current
+      if (Math.abs(delta) < MOBILE_SCROLL_DELTA_THRESHOLD) return
+
+      setIsMobileHeaderHidden(delta > 0)
+      previousScrollYRef.current = currentScrollY
+    }
+
+    const onResize = () => {
+      if (isDesktopViewport()) {
+        setIsMobileHeaderHidden(false)
+      }
+    }
+
+    onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [isMobileMenuOpen])
 
   useEffect(() => {
     setIsMobileMenuOpen(false)
+    setIsMobileHeaderHidden(false)
+    previousScrollYRef.current = window.scrollY
   }, [location.pathname, location.search])
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      setIsMobileHeaderHidden(false)
+    }
+  }, [isMobileMenuOpen])
 
   useEffect(() => {
     if (!isMobileMenuOpen) return undefined
@@ -200,9 +258,16 @@ export default function TopNav() {
     tone === 'discover'
       ? 'border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-neutral-900'
       : 'border-white/50 text-white/80 hover:border-white hover:text-white'
+  const mobileHeaderVisibilityClass = isMobileHeaderHidden
+    ? '-translate-y-full opacity-0 lg:translate-y-0 lg:opacity-100'
+    : 'translate-y-0 opacity-100'
 
   return (
-    <header className={`sticky top-0 z-50 transition-all duration-normal ${scrolled ? styles.headerScrolled : ''}`}>
+    <header
+      className={`sticky top-0 z-50 transition-[transform,opacity,box-shadow] duration-200 ease-out ${mobileHeaderVisibilityClass} ${
+        scrolled ? styles.headerScrolled : ''
+      }`}
+    >
       <div className={`${styles.topRow} ${styles.topRowBorder}`}>
         <div className={`mx-auto flex w-full max-w-[1680px] items-center justify-between px-space-4 md:px-space-6 ${topRowHeightClass}`}>
           <Link to="/" className="shrink-0">
