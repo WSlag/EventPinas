@@ -27,7 +27,13 @@
 - `organizers/{uid}/events/{eventId}/waitlist/data`
 - `organizers/{uid}/events/{eventId}/checkins/data`
 
-## 4) Runtime Behavior
+## 4) Public Marketplace Events Collection
+- `marketplaceEvents/{eventId}`
+- Used by homepage featured cards and public `/events` listings.
+- Organizer publish lifecycle mirrors events into this collection.
+- Featured placement is admin-approved (`featureStatus='approved'` + `isFeatured=true`).
+
+## 5) Runtime Behavior
 - When Firebase is configured, manage state runs in `firestore` mode with local fallback.
 - Local state is still persisted to `localStorage`.
 - Firestore sync is debounced and resilient to sync errors.

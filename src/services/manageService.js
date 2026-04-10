@@ -18,11 +18,15 @@ import {
 } from '@/data/manageContracts'
 import { auth, db, firebaseEnabled } from '@/lib/firebase'
 import {
+  patchPublicMarketplaceEvent,
+  requestPublicEventFeatured,
+  upsertPublicMarketplaceEvent,
+} from './marketplaceService'
+import {
   collection,
   doc,
   getDoc,
   getDocs,
-  onSnapshot,
   setDoc,
 } from 'firebase/firestore'
 
@@ -108,6 +112,68 @@ function getManageRootRef(ownerId = getManageOwnerId()) {
 
 function getManageEventsCollectionRef(ownerId = getManageOwnerId()) {
   return collection(db, 'organizers', ownerId, 'events')
+}
+
+function toPublicMarketplaceEvent(manageEvent, overrides = {}) {
+  const ownerUid = String(manageEvent?.ownerUid ?? getManageOwnerId())
+  const nowIso = new Date().toISOString()
+  const tags = Array.isArray(manageEvent?.tags)
+    ? manageEvent.tags.map((tag) => String(tag ?? '').trim()).filter(Boolean)
+    : []
+
+  const rankedValue = manageEvent?.featuredRank
+  const featuredRank = Number.isInteger(rankedValue)
+    ? rankedValue
+    : (Number.isFinite(Number(rankedValue)) ? Math.round(Number(rankedValue)) : null)
+
+  return {
+    id: manageEvent?.id,
+    ownerUid,
+    organizerId: ownerUid,
+    title: String(manageEvent?.title ?? '').trim(),
+    date: String(manageEvent?.date ?? '').trim(),
+    city: String(manageEvent?.city ?? '').trim(),
+    venue: String(manageEvent?.venue ?? '').trim(),
+    category: String(manageEvent?.category ?? 'Community').trim() || 'Community',
+    pricePhp: Math.max(0, Math.round(Number(manageEvent?.pricePhp ?? 0) || 0)),
+    imageUrl: manageEvent?.imageUrl ? String(manageEvent.imageUrl) : '',
+    startTime: String(manageEvent?.startTime ?? '09:00').trim() || '09:00',
+    soldPercent: Math.max(0, Math.min(100, Math.round(Number(manageEvent?.soldPercent ?? 0) || 0))),
+    tags,
+    status: String(manageEvent?.status ?? 'draft').trim() || 'draft',
+    isPublic: Boolean(manageEvent?.isPublic),
+    isFeatured: Boolean(manageEvent?.isFeatured),
+    featureStatus: String(manageEvent?.featureStatus ?? 'none').trim() || 'none',
+    featuredRank,
+    createdAt: manageEvent?.createdAt ?? nowIso,
+    updatedAt: nowIso,
+    ...overrides,
+  }
+}
+
+async function syncManageEventToMarketplace(manageEvent, overrides = {}, options = {}) {
+  if (!manageEvent?.id) return null
+  return upsertPublicMarketplaceEvent(
+    toPublicMarketplaceEvent(manageEvent, overrides),
+    {
+      ownerUid: getManageOwnerId(),
+      forceLocal: options.forceLocalMarketplace,
+      syncLocalFallback: true,
+    },
+  )
+}
+
+async function patchManageEventInMarketplace(eventId, patch = {}, options = {}) {
+  if (!eventId) return null
+  return patchPublicMarketplaceEvent(
+    eventId,
+    patch,
+    {
+      ownerUid: getManageOwnerId(),
+      forceLocal: options.forceLocalMarketplace,
+      syncLocalFallback: true,
+    },
+  )
 }
 
 async function syncStateToFirestore(state) {
@@ -1547,9 +1613,12 @@ export async function createManageEvent(payload, options = {}) {
   const normalized = normalizeManageEventCreatePayload(payload)
   const seatsPerTable = manageEventCreateDefaults.seatsPerTable
   const eventId = getNextManageEventId(state.events)
+  const ownerUid = getManageOwnerId()
+  const nowIso = new Date().toISOString()
 
   const event = {
     id: eventId,
+    ownerUid,
     title: normalized.title,
     city: normalized.city,
     venue: normalized.venue,
@@ -1559,6 +1628,18 @@ export async function createManageEvent(payload, options = {}) {
     deletedBy: null,
     guestCapacity: normalized.guestCapacity,
     tables: buildDefaultTables(normalized.guestCapacity, seatsPerTable),
+    category: 'Community',
+    pricePhp: 0,
+    imageUrl: '',
+    startTime: '09:00',
+    soldPercent: 0,
+    tags: [],
+    isPublic: false,
+    isFeatured: false,
+    featureStatus: 'none',
+    featuredRank: null,
+    createdAt: nowIso,
+    updatedAt: nowIso,
   }
 
   state.events = [...state.events, event]
@@ -1612,6 +1693,7 @@ export async function updateManageEvent(eventId, payload, options = {}) {
     date: normalized.date,
     guestCapacity: normalized.guestCapacity,
     tables: nextTables,
+    updatedAt: new Date().toISOString(),
   }
 
   state.events[index] = updatedEvent
@@ -1625,6 +1707,16 @@ export async function updateManageEvent(eventId, payload, options = {}) {
   })
   writeState(state)
 
+  if (updatedEvent.isPublic && !isSoftDeletedEvent(updatedEvent)) {
+    await syncManageEventToMarketplace(updatedEvent, {
+      isPublic: true,
+      status: updatedEvent.status,
+      featureStatus: updatedEvent.featureStatus ?? 'none',
+      isFeatured: Boolean(updatedEvent.isFeatured),
+      featuredRank: updatedEvent.featuredRank ?? null,
+    }, options)
+  }
+
   return { event: clone(updatedEvent), selectedEventId: state.selectedEventId }
 }
 
@@ -1635,7 +1727,22 @@ export async function publishManageEvent(eventId, options = {}) {
   const event = getEventFromState(state, eventId)
   assertEventEditable(event)
   assertValidLifecycleTransition(event, 'upcoming')
-  const updatedEvent = { ...event, status: 'upcoming' }
+  const updatedEvent = {
+    ...event,
+    status: 'upcoming',
+    isPublic: true,
+    isFeatured: false,
+    featureStatus: 'none',
+    featuredRank: null,
+    updatedAt: new Date().toISOString(),
+  }
+  await syncManageEventToMarketplace(updatedEvent, {
+    status: 'upcoming',
+    isPublic: true,
+    isFeatured: false,
+    featureStatus: 'none',
+    featuredRank: null,
+  }, options)
   state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
   appendAuditLogEntry(state, eventId, {
     module: 'events',
@@ -1653,7 +1760,19 @@ export async function goLiveManageEvent(eventId, options = {}) {
   const event = getEventFromState(state, eventId)
   assertEventEditable(event)
   assertValidLifecycleTransition(event, 'live')
-  const updatedEvent = { ...event, status: 'live' }
+  const updatedEvent = {
+    ...event,
+    status: 'live',
+    isPublic: true,
+    updatedAt: new Date().toISOString(),
+  }
+  await syncManageEventToMarketplace(updatedEvent, {
+    status: 'live',
+    isPublic: true,
+    featureStatus: updatedEvent.featureStatus ?? 'none',
+    isFeatured: Boolean(updatedEvent.isFeatured),
+    featuredRank: updatedEvent.featuredRank ?? null,
+  }, options)
   state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
   appendAuditLogEntry(state, eventId, {
     module: 'events',
@@ -1671,7 +1790,21 @@ export async function archiveManageEvent(eventId, options = {}) {
   const event = getEventFromState(state, eventId)
   assertEventEditable(event)
   assertValidLifecycleTransition(event, 'past')
-  const updatedEvent = { ...event, status: 'past' }
+  const updatedEvent = {
+    ...event,
+    status: 'past',
+    isPublic: false,
+    isFeatured: false,
+    updatedAt: new Date().toISOString(),
+  }
+  if (event.isPublic) {
+    await patchManageEventInMarketplace(eventId, {
+      status: 'past',
+      isPublic: false,
+      isFeatured: false,
+      updatedAt: new Date().toISOString(),
+    }, options)
+  }
   state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
   appendAuditLogEntry(state, eventId, {
     module: 'events',
@@ -1695,6 +1828,17 @@ export async function softDeleteManageEvent(eventId, options = {}) {
     deletedAt,
     deletedBy: state.selectedOperatorRole,
     status: 'past',
+    isPublic: false,
+    isFeatured: false,
+    updatedAt: new Date().toISOString(),
+  }
+  if (event.isPublic || event.isFeatured || ['pending', 'approved'].includes(event.featureStatus ?? 'none')) {
+    await patchManageEventInMarketplace(eventId, {
+      status: 'past',
+      isPublic: false,
+      isFeatured: false,
+      updatedAt: new Date().toISOString(),
+    }, options)
   }
   state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
   if (state.selectedEventId === eventId) {
@@ -1723,12 +1867,62 @@ export async function restoreManageEvent(eventId, options = {}) {
     deletedAt: null,
     deletedBy: null,
     status: event.status === 'past' ? 'draft' : event.status,
+    isPublic: false,
+    isFeatured: false,
+    featureStatus: 'none',
+    featuredRank: null,
+    updatedAt: new Date().toISOString(),
   }
+  await patchManageEventInMarketplace(eventId, {
+    status: updatedEvent.status,
+    isPublic: false,
+    isFeatured: false,
+    featureStatus: 'none',
+    featuredRank: null,
+    updatedAt: new Date().toISOString(),
+  }, options)
   state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
   appendAuditLogEntry(state, eventId, {
     module: 'events',
     action: 'event_restored',
     summary: `Event restored: ${updatedEvent.title}.`,
+  })
+  writeState(state)
+  return clone(updatedEvent)
+}
+
+export async function requestManageEventFeatured(eventId, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const state = readState()
+  assertPermission(state, 'events')
+  const event = getEventFromState(state, eventId)
+  assertEventEditable(event)
+
+  if (!event.isPublic || !['upcoming', 'live'].includes(event.status)) {
+    throw new Error('Only published upcoming/live events can request featured placement.')
+  }
+  if (event.featureStatus === 'approved') {
+    return clone(event)
+  }
+
+  await requestPublicEventFeatured(eventId, {
+    ownerUid: getManageOwnerId(),
+    forceLocal: options.forceLocalMarketplace,
+    syncLocalFallback: true,
+  })
+
+  const updatedEvent = {
+    ...event,
+    featureStatus: 'pending',
+    isFeatured: false,
+    featuredRank: null,
+    updatedAt: new Date().toISOString(),
+  }
+  state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
+  appendAuditLogEntry(state, eventId, {
+    module: 'events',
+    action: 'event_feature_requested',
+    summary: `Featured request submitted for ${updatedEvent.title}.`,
   })
   writeState(state)
   return clone(updatedEvent)

@@ -18,6 +18,7 @@ import {
   goLiveManageEvent,
   listManageEvents,
   publishManageEvent,
+  requestManageEventFeatured,
   restoreManageEvent,
   setManageSelectedEvent,
   softDeleteManageEvent,
@@ -243,6 +244,8 @@ export default function ManageEventsPage() {
         await softDeleteManageEvent(event.id, { simulateLatency: false })
       } else if (action === 'restore') {
         await restoreManageEvent(event.id, { simulateLatency: false })
+      } else if (action === 'requestFeatured') {
+        await requestManageEventFeatured(event.id, { simulateLatency: false })
       }
       if (typeof refreshManageBootstrap === 'function') await refreshManageBootstrap()
       await reloadEvents()
@@ -268,6 +271,15 @@ export default function ManageEventsPage() {
     const actions = []
     if (event.status === 'draft') actions.push({ id: 'publish', label: 'Publish', variant: 'secondary' })
     if (event.status === 'upcoming') actions.push({ id: 'live', label: 'Go Live', variant: 'secondary' })
+    if (event.status === 'upcoming' || event.status === 'live') {
+      if (event.featureStatus === 'approved') {
+        actions.push({ id: 'requestFeatured', label: 'Featured', variant: 'ghost', disabled: true })
+      } else if (event.featureStatus === 'pending') {
+        actions.push({ id: 'requestFeatured', label: 'Requested', variant: 'ghost', disabled: true })
+      } else {
+        actions.push({ id: 'requestFeatured', label: 'Request Featured', variant: 'secondary' })
+      }
+    }
     if (event.status === 'draft' || event.status === 'upcoming' || event.status === 'live') {
       actions.push({ id: 'archive', label: 'Archive', variant: 'ghost' })
     }
@@ -283,7 +295,7 @@ export default function ManageEventsPage() {
     <section className="space-y-space-3">
       <ManageSectionHeader
         title="My Events"
-        subtitle="Browse by status and use lifecycle controls to publish, go live, archive, delete, or restore."
+        subtitle="Browse by status and use lifecycle controls to publish, go live, request featured placement, archive, delete, or restore."
         actions={<ManageButton onClick={openCreateWizard}>+ Create Event</ManageButton>}
       />
 
@@ -352,6 +364,8 @@ export default function ManageEventsPage() {
                   <p className="font-playfair text-[1.05rem] font-bold leading-tight text-mgmt-text">{event.title}</p>
                   <div className="flex flex-wrap justify-end gap-1">
                     <ManageBadge tone={statusTone(event.status)}>{event.status}</ManageBadge>
+                    {event.featureStatus === 'approved' && <ManageBadge tone="success">featured</ManageBadge>}
+                    {event.featureStatus === 'pending' && <ManageBadge tone="warning">feature pending</ManageBadge>}
                     {event.deletedAt && <ManageBadge tone="danger">deleted</ManageBadge>}
                   </div>
                 </div>
@@ -388,7 +402,7 @@ export default function ManageEventsPage() {
                         key={action.id}
                         variant={action.variant}
                         className="text-[0.7rem]"
-                        disabled={Boolean(eventActionBusyKey)}
+                        disabled={Boolean(eventActionBusyKey) || Boolean(action.disabled)}
                         onClick={() => onEventLifecycleAction(event, action.id)}
                       >
                         {busy ? 'Working...' : action.label}
@@ -436,6 +450,8 @@ export default function ManageEventsPage() {
                       </p>
                       <div className="flex flex-wrap justify-end gap-1">
                         <ManageBadge tone={statusTone(event.status)}>{event.status}</ManageBadge>
+                        {event.featureStatus === 'approved' && <ManageBadge tone="success">featured</ManageBadge>}
+                        {event.featureStatus === 'pending' && <ManageBadge tone="warning">feature pending</ManageBadge>}
                         {event.deletedAt && <ManageBadge tone="danger">deleted</ManageBadge>}
                       </div>
                     </div>
@@ -474,7 +490,7 @@ export default function ManageEventsPage() {
                             key={action.id}
                             variant={action.variant}
                             className="text-[0.7rem]"
-                            disabled={Boolean(eventActionBusyKey)}
+                            disabled={Boolean(eventActionBusyKey) || Boolean(action.disabled)}
                             onClick={() => onEventLifecycleAction(event, action.id)}
                           >
                             {busy ? 'Working...' : action.label}

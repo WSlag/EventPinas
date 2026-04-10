@@ -34,6 +34,7 @@ import {
   listManageGuests,
   listRecentCheckIns,
   publishManageEvent,
+  requestManageEventFeatured,
   recordManageScanOutcome,
   importManageGuestsFromCsv,
   previewManageGuestCsvImport,
@@ -58,12 +59,19 @@ import {
   updateManageIncidentStatus,
   validateManageQrCode,
 } from './manageService'
+import {
+  PUBLIC_MARKETPLACE_EVENTS_STORAGE_KEY,
+  approvePublicEventFeatured,
+  getPublicEventById,
+  listFeaturedPublicEvents,
+} from './marketplaceService'
 
 const MANAGE_STORAGE_KEY = 'eventpinas-manage-state'
 
 describe('manageService', () => {
   beforeEach(() => {
     localStorage.removeItem(MANAGE_STORAGE_KEY)
+    localStorage.removeItem(PUBLIC_MARKETPLACE_EVENTS_STORAGE_KEY)
   })
 
   it('returns bootstrap event list', async () => {
@@ -326,6 +334,81 @@ describe('manageService', () => {
     const restored = await restoreManageEvent(eventId, { simulateLatency: false })
     expect(restored.deletedAt).toBeNull()
     expect(restored.status).toBe('draft')
+  })
+
+  it('publishes events into public marketplace visibility and hides on archive/delete/restore', async () => {
+    const created = await createManageEvent(
+      {
+        title: 'Public Sync Event',
+        date: '2026-12-15',
+        city: 'Davao City',
+        venue: 'Marketplace Sync Hall',
+        guestCapacity: 80,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = created.event.id
+
+    const published = await publishManageEvent(eventId, { simulateLatency: false })
+    expect(published.isPublic).toBe(true)
+
+    const publicAfterPublish = await getPublicEventById(eventId, { simulateLatency: false, forceLocal: true })
+    expect(publicAfterPublish?.isPublic).toBe(true)
+    expect(publicAfterPublish?.status).toBe('upcoming')
+
+    await archiveManageEvent(eventId, { simulateLatency: false })
+    const publicAfterArchive = await getPublicEventById(eventId, {
+      simulateLatency: false,
+      forceLocal: true,
+      includeUnpublished: true,
+    })
+    expect(publicAfterArchive?.isPublic).toBe(false)
+    expect(publicAfterArchive?.status).toBe('past')
+
+    await softDeleteManageEvent(eventId, { simulateLatency: false })
+    await restoreManageEvent(eventId, { simulateLatency: false })
+    const publicAfterRestore = await getPublicEventById(eventId, {
+      simulateLatency: false,
+      forceLocal: true,
+      includeUnpublished: true,
+    })
+    expect(publicAfterRestore?.isPublic).toBe(false)
+    expect(publicAfterRestore?.status).toBe('draft')
+
+    await publishManageEvent(eventId, { simulateLatency: false })
+    await softDeleteManageEvent(eventId, { simulateLatency: false })
+    const publicAfterDelete = await getPublicEventById(eventId, {
+      simulateLatency: false,
+      forceLocal: true,
+      includeUnpublished: true,
+    })
+    expect(publicAfterDelete?.isPublic).toBe(false)
+  })
+
+  it('sets featured request pending and shows in featured list only after admin approval', async () => {
+    const created = await createManageEvent(
+      {
+        title: 'Featured Request Event',
+        date: '2026-12-16',
+        city: 'Davao City',
+        venue: 'Featured Hall',
+        guestCapacity: 120,
+      },
+      { simulateLatency: false },
+    )
+    const eventId = created.event.id
+    await publishManageEvent(eventId, { simulateLatency: false })
+
+    const requested = await requestManageEventFeatured(eventId, { simulateLatency: false })
+    expect(requested.featureStatus).toBe('pending')
+    expect(requested.isFeatured).toBe(false)
+
+    const featuredBeforeApproval = await listFeaturedPublicEvents({}, { simulateLatency: false, forceLocal: true })
+    expect(featuredBeforeApproval.some((event) => event.id === eventId)).toBe(false)
+
+    await approvePublicEventFeatured(eventId, { featuredRank: 2 }, { forceLocal: true })
+    const featuredAfterApproval = await listFeaturedPublicEvents({}, { simulateLatency: false, forceLocal: true })
+    expect(featuredAfterApproval.some((event) => event.id === eventId)).toBe(true)
   })
 
   it('checks in a pending guest and logs activity', async () => {

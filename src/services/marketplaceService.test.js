@@ -1,13 +1,24 @@
 import {
+  PUBLIC_MARKETPLACE_EVENTS_STORAGE_KEY,
+  approvePublicEventFeatured,
+  getPublicEventById,
   getHomeFeed,
   getMarketplaceFilterOptions,
+  listFeaturedPublicEvents,
+  listPublicEvents,
   listEvents,
   listOrganizers,
   listSuppliers,
+  requestPublicEventFeatured,
   searchMarketplace,
+  upsertPublicMarketplaceEvent,
 } from './marketplaceService'
 
 describe('marketplaceService', () => {
+  beforeEach(() => {
+    localStorage.removeItem(PUBLIC_MARKETPLACE_EVENTS_STORAGE_KEY)
+  })
+
   it('filters events by category', async () => {
     const festivalEvents = await listEvents(
       { category: 'Festival' },
@@ -66,5 +77,52 @@ describe('marketplaceService', () => {
 
     expect(corporateOrganizers.length).toBeGreaterThan(0)
     expect(corporateOrganizers.every((item) => item.specialties.includes('Corporate'))).toBe(true)
+  })
+
+  it('keeps pending featured requests out of homepage featured events until approved', async () => {
+    await upsertPublicMarketplaceEvent(
+      {
+        id: 'evt-test-feature',
+        title: 'Feature Flow Event',
+        date: '2026-10-20',
+        city: 'Davao City',
+        venue: 'Feature Hall',
+        category: 'Community',
+        status: 'upcoming',
+        isPublic: true,
+      },
+      { forceLocal: true },
+    )
+
+    await requestPublicEventFeatured('evt-test-feature', { forceLocal: true })
+
+    const featuredBeforeApproval = await listFeaturedPublicEvents({}, { simulateLatency: false, forceLocal: true })
+    expect(featuredBeforeApproval.some((event) => event.id === 'evt-test-feature')).toBe(false)
+
+    await approvePublicEventFeatured('evt-test-feature', { featuredRank: 1 }, { forceLocal: true })
+    const featuredAfterApproval = await listFeaturedPublicEvents({}, { simulateLatency: false, forceLocal: true })
+    expect(featuredAfterApproval.some((event) => event.id === 'evt-test-feature')).toBe(true)
+  })
+
+  it('returns published public events and event detail by id', async () => {
+    await upsertPublicMarketplaceEvent(
+      {
+        id: 'evt-test-public',
+        title: 'Public Event',
+        date: '2026-11-01',
+        city: 'Iloilo City',
+        venue: 'Public Venue',
+        category: 'Expo',
+        status: 'upcoming',
+        isPublic: true,
+      },
+      { forceLocal: true },
+    )
+
+    const events = await listPublicEvents({ city: 'Iloilo City' }, { simulateLatency: false, forceLocal: true })
+    expect(events.some((event) => event.id === 'evt-test-public')).toBe(true)
+
+    const detail = await getPublicEventById('evt-test-public', { simulateLatency: false, forceLocal: true })
+    expect(detail?.title).toBe('Public Event')
   })
 })

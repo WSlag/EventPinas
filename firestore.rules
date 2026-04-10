@@ -9,6 +9,39 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userRole() {
+      return isSignedIn() ? userDoc().data.role : null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userRole() == 'admin';
+    }
+
+    function isOrganizer() {
+      return isSignedIn() && userRole() == 'organizer';
+    }
+
+    function organizerMirrorCreateAllowed() {
+      return isOrganizer()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.isFeatured == false
+        && request.resource.data.featureStatus in ['none', 'pending']
+        && request.resource.data.featuredRank == null;
+    }
+
+    function organizerMirrorUpdateAllowed() {
+      return isOrganizer()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.isFeatured == false
+        && request.resource.data.featureStatus in ['none', 'pending']
+        && request.resource.data.featuredRank == null;
+    }
+
     match /users/{uid} {
       allow read, write: if isOwner(uid);
     }
@@ -62,6 +95,13 @@ service cloud.firestore {
       match /checkins/{docId} {
         allow read, write: if isOwner(uid);
       }
+    }
+
+    match /marketplaceEvents/{eventId} {
+      allow read: if true;
+      allow create: if isAdmin() || organizerMirrorCreateAllowed();
+      allow update: if isAdmin() || organizerMirrorUpdateAllowed();
+      allow delete: if isAdmin() || (isOrganizer() && resource.data.ownerUid == request.auth.uid);
     }
   }
 }
