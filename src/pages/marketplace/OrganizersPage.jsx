@@ -77,12 +77,12 @@ export default function OrganizersPage() {
               Build your profile, showcase your track record, and get matched with event clients.
             </p>
           </div>
-          <button
-            type="button"
-            className="rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-info"
+          <Link
+            to="/register?role=organizer"
+            className="inline-flex items-center justify-center rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-info"
           >
             Join as Organizer
-          </button>
+          </Link>
         </div>
       </SurfaceCard>
 

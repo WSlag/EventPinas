@@ -39,6 +39,26 @@ describe('Marketplace pages smoke', () => {
     expect(screen.getByRole('heading', { name: /connect with organizers who can run your event end-to-end/i })).toBeInTheDocument()
   })
 
+  it('routes supplier join CTA to supplier registration', () => {
+    render(
+      <MemoryRouter future={routerFuture}>
+        <SuppliersPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: /join now/i })).toHaveAttribute('href', '/register?role=supplier')
+  })
+
+  it('routes organizer join CTA to organizer registration', () => {
+    render(
+      <MemoryRouter future={routerFuture}>
+        <OrganizersPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: /join as organizer/i })).toHaveAttribute('href', '/register?role=organizer')
+  })
+
   it('renders saved page shell', async () => {
     render(
       <MemoryRouter future={routerFuture}>

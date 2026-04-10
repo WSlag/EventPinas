@@ -126,12 +126,12 @@ export default function SuppliersPage() {
               Get discovered by event organizers looking for trusted local teams.
             </p>
           </div>
-          <button
-            type="button"
-            className="rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-primary-600"
+          <Link
+            to="/register?role=supplier"
+            className="inline-flex items-center justify-center rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-primary-600"
           >
             Join Now
-          </button>
+          </Link>
         </div>
       </SurfaceCard>
 

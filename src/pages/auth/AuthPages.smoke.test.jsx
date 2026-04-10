@@ -38,4 +38,14 @@ describe('Auth pages smoke', () => {
     )
     expect(screen.getByRole('heading', { name: /create your account/i })).toBeInTheDocument()
   })
+
+  it('prefills role from register query parameter', () => {
+    render(
+      <MemoryRouter future={routerFuture} initialEntries={['/register?role=organizer']}>
+        <RegisterPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByLabelText(/role/i)).toHaveValue('organizer')
+  })
 })

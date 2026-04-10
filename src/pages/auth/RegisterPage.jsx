@@ -1,17 +1,31 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+
+function resolveInitialRole(search) {
+  const rawRole = new URLSearchParams(search).get('role')
+  if (rawRole === 'organizer' || rawRole === 'supplier' || rawRole === 'attendee') {
+    return rawRole
+  }
+  return 'attendee'
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { authBusy, register } = useAuth()
 
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [role, setRole] = useState('attendee')
+  const roleFromSearch = useMemo(() => resolveInitialRole(location.search), [location.search])
+  const [role, setRole] = useState(roleFromSearch)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    setRole(roleFromSearch)
+  }, [roleFromSearch])
 
   async function onSubmit(event) {
     event.preventDefault()
