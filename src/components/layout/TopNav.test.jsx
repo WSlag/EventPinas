@@ -95,14 +95,43 @@ describe('TopNav', () => {
     await user.click(screen.getByRole('button', { name: /open menu/i }))
 
     const panel = screen.getByRole('navigation', { name: /mobile menu/i })
-    expect(within(panel).getByRole('button', { name: /\[dev\] manage/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /discover events/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /suppliers/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /organizers/i })).toBeInTheDocument()
-    expect(within(panel).getByRole('link', { name: /create events/i })).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: /go to event app/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /^sign in$/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /^join$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /close menu/i })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('shows go to event app CTA for guests and keeps register destination', () => {
+    renderNav('/events')
+
+    expect(screen.getByRole('link', { name: /^go to event app$/i })).toHaveAttribute('href', '/register')
+  })
+
+  it('shows go to event app CTA for subscribed organizers and keeps dashboard destination', () => {
+    authState = {
+      ...authState,
+      user: { uid: 'user-1' },
+      profile: { role: 'organizer' },
+      hasActiveSubscription: true,
+    }
+    renderNav('/events')
+
+    expect(screen.getByRole('link', { name: /^go to event app$/i })).toHaveAttribute('href', '/manage/dashboard')
+  })
+
+  it('shows go to event app CTA for unsubscribed organizers and keeps subscribe destination', () => {
+    authState = {
+      ...authState,
+      user: { uid: 'user-1' },
+      profile: { role: 'organizer' },
+      hasActiveSubscription: false,
+    }
+    renderNav('/events')
+
+    expect(screen.getByRole('link', { name: /^go to event app$/i })).toHaveAttribute('href', '/subscribe')
   })
 
   it('closes mobile menu when a menu link is tapped', async () => {

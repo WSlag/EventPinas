@@ -203,13 +203,7 @@ export default function TopNav() {
     return '/register'
   }, [user, profile?.role, hasActiveSubscription])
 
-  const createEventsLabel = useMemo(() => {
-    if (!user) return 'Create Events'
-    if (profile?.role === 'organizer') {
-      return hasActiveSubscription ? 'Organizer Console' : 'Upgrade'
-    }
-    return 'Create Events'
-  }, [user, profile?.role, hasActiveSubscription])
+  const createEventsLabel = 'Go to Event App'
   async function onLogout() {
     try {
       await logout()
