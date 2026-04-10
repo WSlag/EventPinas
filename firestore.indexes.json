@@ -29,9 +29,9 @@
       "collectionGroup": "marketplaceEvents",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "isPublic", "order": "ASCENDING" },
-        { "fieldPath": "isFeatured", "order": "ASCENDING" },
         { "fieldPath": "featureStatus", "order": "ASCENDING" },
+        { "fieldPath": "isFeatured", "order": "ASCENDING" },
+        { "fieldPath": "isPublic", "order": "ASCENDING" },
         { "fieldPath": "featuredRank", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "ASCENDING" }
       ]

@@ -11,7 +11,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "backfill:marketplace-events": "node scripts/backfillMarketplaceEvents.mjs"
+    "backfill:marketplace-events": "node scripts/backfillMarketplaceEvents.mjs",
+    "firebase:preflight": "node scripts/firebasePreflight.mjs",
+    "firebase:smoke": "node scripts/firebaseSmoke.mjs",
+    "firebase:deploy:backend": "firebase deploy --only firestore:rules,firestore:indexes,storage",
+    "firebase:deploy:hosting": "firebase deploy --only hosting",
+    "firebase:deploy:all": "npm run build && npm run firebase:deploy:backend && npm run firebase:deploy:hosting",
+    "firebase:verify:all": "npm run firebase:preflight && npm run firebase:smoke"
   },
   "dependencies": {
     "@react-spring/web": "^10.0.3",
