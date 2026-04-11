@@ -196,11 +196,11 @@ export default function TopNav() {
   }, [isMobileMenuOpen])
 
   const createEventsLink = useMemo(() => {
-    if (!user) return '/register'
+    if (!user) return '/register?role=organizer'
     if (profile?.role === 'organizer') {
       return hasActiveSubscription ? '/manage/dashboard' : '/subscribe'
     }
-    return '/register'
+    return '/subscribe'
   }, [user, profile?.role, hasActiveSubscription])
 
   const createEventsLabel = 'Go to Event App'
@@ -272,7 +272,7 @@ export default function TopNav() {
                 <Link to="/login" className={`hidden font-display lg:inline-flex ${styles.auth} ${authTextClass}`}>
                   Sign in
                 </Link>
-                <Link to="/register" className={`hidden lg:inline-flex ${joinButtonClass}`}>
+                <Link to="/register?role=attendee" className={`hidden lg:inline-flex ${joinButtonClass}`}>
                   Join
                 </Link>
               </>
@@ -347,7 +347,7 @@ export default function TopNav() {
                     Sign in
                   </Link>
                   <Link
-                    to="/register"
+                    to="/register?role=attendee"
                     className={`${joinButtonClass} inline-flex items-center justify-center`}
                     onClick={onMobileMenuLinkClick}
                   >

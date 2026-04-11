@@ -98,7 +98,7 @@ const whyUseCards = [
     image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1400&q=85',
     alt: 'Stunning event conference setup with stage lighting',
     ctaLabel: 'Create your event',
-    ctaTo: '/register',
+    ctaTo: '/register?role=organizer',
     gradient: 'from-orange-700/95 via-primary-600/60 to-transparent',
     pill: 'bg-primary-400',
   },
@@ -345,7 +345,7 @@ export default function HomePage() {
             {/* Primary CTAs */}
             <div className="mt-space-5 flex flex-wrap gap-space-3">
               <Link
-                to="/register"
+                to="/register?role=organizer"
                 className="inline-flex items-center rounded-full bg-primary-400 px-space-6 py-space-3
                            font-display text-label-lg text-white shadow-primary
                            transition-all duration-fast hover:bg-primary-500 hover:shadow-lg hover:scale-[1.02]

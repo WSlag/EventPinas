@@ -28,7 +28,7 @@ const plans = [
 ]
 
 export default function SubscribePage() {
-  const { user, profile, authBusy, hasActiveSubscription, activateSubscription } = useAuth()
+  const { user, profile, authBusy, hasActiveSubscription, activateSubscription, switchRole } = useAuth()
   const [error, setError] = useState('')
   const [selectedPlan, setSelectedPlan] = useState(plans[1].id)
   const location = useLocation()
@@ -44,6 +44,20 @@ export default function SubscribePage() {
       navigate(fromPath, { replace: true })
     } catch (activationError) {
       setError(activationError?.message ?? 'Unable to activate plan right now.')
+    }
+  }
+
+  async function onBecome(role) {
+    setError('')
+    try {
+      await switchRole(role)
+      if (role === 'organizer') {
+        navigate('/subscribe', { replace: true })
+        return
+      }
+      navigate('/suppliers', { replace: true })
+    } catch (switchError) {
+      setError(switchError?.message ?? 'Unable to switch account role right now.')
     }
   }
 
@@ -70,11 +84,35 @@ export default function SubscribePage() {
     return (
       <PageShell className="space-y-space-4">
         <HeroBanner
-          eyebrow="Organizer Access"
-          title="This area is for organizer accounts"
-          description="Switch to an organizer account to unlock event-day operations tools."
+          eyebrow="Role Upgrade"
+          title="Become a Supplier or Organizer"
+          description="Switch your current account role anytime without creating a new account."
           tone="dark"
         />
+        <SurfaceCard>
+          {error && <p className="mb-space-3 font-body text-body-sm text-error">{error}</p>}
+          <div className="flex flex-col gap-space-2 md:flex-row">
+            <button
+              type="button"
+              onClick={() => onBecome('supplier')}
+              disabled={authBusy || profile?.role === 'supplier'}
+              className="rounded-full bg-secondary-500 px-space-4 py-space-2 font-display text-label-md text-white disabled:opacity-60"
+            >
+              {profile?.role === 'supplier' ? 'Already a Supplier' : 'Become a Supplier'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onBecome('organizer')}
+              disabled={authBusy || profile?.role === 'organizer'}
+              className="rounded-full bg-primary-400 px-space-4 py-space-2 font-display text-label-md text-white disabled:opacity-60"
+            >
+              {profile?.role === 'organizer' ? 'Already an Organizer' : 'Become an Organizer'}
+            </button>
+          </div>
+          <p className="mt-space-3 font-body text-body-sm text-neutral-600">
+            Organizer role unlocks event app plans. Supplier role unlocks supplier profile ownership.
+          </p>
+        </SurfaceCard>
       </PageShell>
     )
   }

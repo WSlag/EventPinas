@@ -61,6 +61,8 @@ describe('HomePage', () => {
       expect(screen.getByRole('heading', { name: titleMatcher })).toBeInTheDocument()
     })
 
+    expect(screen.getByRole('link', { name: /^create event$/i })).toHaveAttribute('href', '/register?role=organizer')
+    expect(screen.getByRole('link', { name: /create your event/i })).toHaveAttribute('href', '/register?role=organizer')
     expect(screen.getByRole('link', { name: /browse suppliers/i })).toHaveAttribute('href', '/suppliers')
     expect(screen.getByRole('link', { name: /explore events/i })).toHaveAttribute('href', '/events')
   })

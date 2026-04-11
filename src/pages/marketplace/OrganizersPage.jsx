@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { FilterPanel, HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
 import { getMarketplaceFilterOptions, listOrganizers } from '@/services'
+import { useAuth } from '@/hooks/useAuth'
 import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const organizerSortOptions = [
@@ -18,6 +19,8 @@ const organizerImageByCity = {
 }
 
 export default function OrganizersPage() {
+  const navigate = useNavigate()
+  const { user, profile, authBusy, switchRole } = useAuth()
   const filterOptions = useMemo(() => getMarketplaceFilterOptions(), [])
   const [city, setCity] = useState('All')
   const [specialty, setSpecialty] = useState('All')
@@ -26,6 +29,7 @@ export default function OrganizersPage() {
   const [organizers, setOrganizers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [switchRoleError, setSwitchRoleError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -59,6 +63,16 @@ export default function OrganizersPage() {
     setSortBy('ratingDesc')
   }
 
+  async function onSwitchRole(nextRole) {
+    setSwitchRoleError('')
+    try {
+      await switchRole(nextRole)
+      navigate(nextRole === 'organizer' ? '/subscribe' : '/suppliers', { replace: true })
+    } catch (switchError) {
+      setSwitchRoleError(switchError?.message ?? 'Unable to switch role right now.')
+    }
+  }
+
   return (
     <PageShell className="space-y-space-6">
       <HeroBanner
@@ -77,13 +91,43 @@ export default function OrganizersPage() {
               Build your profile, showcase your track record, and get matched with event clients.
             </p>
           </div>
-          <Link
-            to="/register?role=organizer"
-            className="inline-flex items-center justify-center rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-info"
-          >
-            Join as Organizer
-          </Link>
+          {!user ? (
+            <div className="flex flex-wrap gap-space-2">
+              <Link
+                to="/register?role=organizer"
+                className="inline-flex items-center justify-center rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-info"
+              >
+                Join as Organizer
+              </Link>
+              <Link
+                to="/register?role=supplier"
+                className="inline-flex items-center justify-center rounded-full border border-white/70 bg-white/10 px-space-4 py-space-2 font-display text-label-md text-white"
+              >
+                Join as Supplier
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-space-2">
+              <button
+                type="button"
+                onClick={() => onSwitchRole('organizer')}
+                disabled={authBusy || profile?.role === 'organizer'}
+                className="inline-flex items-center justify-center rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-info disabled:opacity-60"
+              >
+                {profile?.role === 'organizer' ? 'Already Organizer' : 'Become Organizer'}
+              </button>
+              <button
+                type="button"
+                onClick={() => onSwitchRole('supplier')}
+                disabled={authBusy || profile?.role === 'supplier'}
+                className="inline-flex items-center justify-center rounded-full border border-white/70 bg-white/10 px-space-4 py-space-2 font-display text-label-md text-white disabled:opacity-60"
+              >
+                {profile?.role === 'supplier' ? 'Already Supplier' : 'Become Supplier'}
+              </button>
+            </div>
+          )}
         </div>
+        {switchRoleError && <p className="mt-space-2 font-body text-body-sm text-white">{switchRoleError}</p>}
       </SurfaceCard>
 
       <FilterPanel title="Filter organizers" showReset={hasFilters} onReset={resetFilters}>

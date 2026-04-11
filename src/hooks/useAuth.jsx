@@ -272,6 +272,77 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function switchRole(nextRole) {
+    if (!user) {
+      throw new Error('Please sign in first.')
+    }
+
+    const normalizedRole = nextRole === 'organizer' || nextRole === 'supplier' || nextRole === 'attendee'
+      ? nextRole
+      : 'attendee'
+    const nextSubscription = normalizedRole === 'organizer'
+      ? (profile?.subscription ?? { status: 'inactive', planId: null, expiresAt: null })
+      : null
+    const nextMarketplaceProfile = buildMarketplaceProfile(normalizedRole)
+
+    setAuthBusy(true)
+
+    try {
+      if (!firebaseEnabled || !db || !auth) {
+        const users = readLocalJSON(LOCAL_USERS_KEY, [])
+        const nextUsers = users.map((candidate) =>
+          candidate.uid === user.uid
+            ? {
+                ...candidate,
+                role: normalizedRole,
+                subscription: nextSubscription,
+                marketplaceProfile: nextMarketplaceProfile,
+              }
+            : candidate,
+        )
+        writeLocalJSON(LOCAL_USERS_KEY, nextUsers)
+
+        const currentSession = readLocalJSON(LOCAL_AUTH_KEY, null)
+        if (currentSession?.uid === user.uid) {
+          writeLocalJSON(LOCAL_AUTH_KEY, {
+            ...currentSession,
+            role: normalizedRole,
+            subscription: nextSubscription,
+            marketplaceProfile: nextMarketplaceProfile,
+          })
+        }
+
+        setProfile((current) => ({
+          ...(current ?? {}),
+          role: normalizedRole,
+          displayName: current?.displayName ?? user.displayName ?? '',
+          email: current?.email ?? user.email ?? '',
+          subscription: nextSubscription,
+          marketplaceProfile: nextMarketplaceProfile,
+        }))
+        return
+      }
+
+      await setDoc(doc(db, 'users', user.uid), {
+        role: normalizedRole,
+        subscription: nextSubscription,
+        marketplaceProfile: nextMarketplaceProfile,
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+
+      setProfile((current) => ({
+        ...(current ?? {}),
+        role: normalizedRole,
+        displayName: current?.displayName ?? user.displayName ?? '',
+        email: current?.email ?? user.email ?? '',
+        subscription: nextSubscription,
+        marketplaceProfile: nextMarketplaceProfile,
+      }))
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
   async function logout() {
     setAuthBusy(true)
 
@@ -300,6 +371,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     activateSubscription,
+    switchRole,
     isOrganizer: profile?.role === 'organizer',
     hasActiveSubscription: hasActiveOrganizerSubscription(profile),
     authMode: firebaseEnabled ? 'firebase' : 'local',
@@ -322,6 +394,7 @@ export function useAuth() {
     register: async () => {},
     logout: async () => {},
     activateSubscription: async () => {},
+    switchRole: async () => {},
     isOrganizer: false,
     hasActiveSubscription: false,
     authMode: firebaseEnabled ? 'firebase' : 'local',

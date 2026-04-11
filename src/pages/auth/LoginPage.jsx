@@ -85,7 +85,7 @@ export default function LoginPage() {
 
             <p className="text-center font-body text-body-sm text-neutral-600">
               No account yet?{' '}
-              <Link to="/register" className="font-medium text-primary-500">Create one</Link>
+              <Link to="/register?role=attendee" className="font-medium text-primary-500">Create one</Link>
             </p>
           </form>
         </div>

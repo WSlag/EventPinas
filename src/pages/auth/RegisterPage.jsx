@@ -10,6 +10,21 @@ function resolveInitialRole(search) {
   return 'attendee'
 }
 
+const roleFieldClassMap = {
+  attendee: {
+    label: 'text-info',
+    select: 'border-blue-200 bg-blue-50 text-info focus:border-info focus:ring-2 focus:ring-blue-200',
+  },
+  organizer: {
+    label: 'text-primary-700',
+    select: 'border-primary-200 bg-primary-50 text-primary-700 focus:border-primary-400 focus:ring-2 focus:ring-primary-200',
+  },
+  supplier: {
+    label: 'text-secondary-700',
+    select: 'border-secondary-200 bg-secondary-50 text-secondary-700 focus:border-secondary-400 focus:ring-2 focus:ring-secondary-200',
+  },
+}
+
 export default function RegisterPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -22,6 +37,7 @@ export default function RegisterPage() {
   const roleFromSearch = useMemo(() => resolveInitialRole(location.search), [location.search])
   const [role, setRole] = useState(roleFromSearch)
   const [error, setError] = useState('')
+  const roleFieldClasses = roleFieldClassMap[role] ?? roleFieldClassMap.attendee
 
   useEffect(() => {
     setRole(roleFromSearch)
@@ -86,11 +102,11 @@ export default function RegisterPage() {
             </label>
 
             <label className="block space-y-space-1">
-              <span className="font-body text-label-sm text-neutral-700">Role</span>
+              <span className={`font-body text-label-sm ${roleFieldClasses.label}`}>Role</span>
               <select
                 value={role}
                 onChange={(event) => setRole(event.target.value)}
-                className="h-10 w-full rounded-md border border-neutral-200 bg-white px-space-3 text-body-sm"
+                className={`h-10 w-full rounded-md border px-space-3 text-body-sm transition-colors duration-fast focus:outline-none ${roleFieldClasses.select}`}
               >
                 <option value="attendee">Attendee</option>
                 <option value="organizer">Organizer</option>

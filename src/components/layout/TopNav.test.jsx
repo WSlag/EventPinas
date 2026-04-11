@@ -98,16 +98,34 @@ describe('TopNav', () => {
     expect(within(panel).getByRole('link', { name: /discover events/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /suppliers/i })).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: /organizers/i })).toBeInTheDocument()
-    expect(within(panel).getByRole('link', { name: /go to event app/i })).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: /go to event app/i })).toHaveAttribute('href', '/register?role=organizer')
     expect(within(panel).getByRole('link', { name: /^sign in$/i })).toBeInTheDocument()
-    expect(within(panel).getByRole('link', { name: /^join$/i })).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: /^join$/i })).toHaveAttribute('href', '/register?role=attendee')
     expect(screen.getByRole('button', { name: /close menu/i })).toHaveAttribute('aria-expanded', 'true')
   })
 
-  it('shows go to event app CTA for guests and keeps register destination', () => {
+  it('shows go to event app CTA for guests and routes to organizer registration', () => {
     renderNav('/events')
 
-    expect(screen.getByRole('link', { name: /^go to event app$/i })).toHaveAttribute('href', '/register')
+    expect(screen.getByRole('link', { name: /^go to event app$/i })).toHaveAttribute('href', '/register?role=organizer')
+  })
+
+  it('routes desktop join CTA to attendee registration', () => {
+    renderNav('/events')
+
+    expect(screen.getByRole('link', { name: /^join$/i })).toHaveAttribute('href', '/register?role=attendee')
+  })
+
+  it('routes go to event app CTA for signed-in non-organizers to role-upgrade flow', () => {
+    authState = {
+      ...authState,
+      user: { uid: 'user-2' },
+      profile: { role: 'attendee' },
+      hasActiveSubscription: false,
+    }
+    renderNav('/events')
+
+    expect(screen.getByRole('link', { name: /^go to event app$/i })).toHaveAttribute('href', '/subscribe')
   })
 
   it('shows go to event app CTA for subscribed organizers and keeps dashboard destination', () => {

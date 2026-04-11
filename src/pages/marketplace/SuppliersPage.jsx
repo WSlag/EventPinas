@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { FilterPanel, HeroBanner, PageShell, SectionHeader, StatChip, SurfaceCard } from '@/components/ui/MarketplacePrimitives'
 import { getMarketplaceFilterOptions, getSavedItems, listSuppliers, toggleSavedItem } from '@/services'
+import { useAuth } from '@/hooks/useAuth'
 import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const supplierSortOptions = [
@@ -41,7 +42,9 @@ function resolveSupplierFiltersFromSearch(search, supplierCategories, cities) {
 }
 
 export default function SuppliersPage() {
+  const navigate = useNavigate()
   const location = useLocation()
+  const { user, profile, authBusy, switchRole } = useAuth()
   const filterOptions = useMemo(() => getMarketplaceFilterOptions(), [])
   const searchDefaults = useMemo(
     () => resolveSupplierFiltersFromSearch(location.search, filterOptions.supplierCategories, filterOptions.cities),
@@ -55,6 +58,7 @@ export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [switchRoleError, setSwitchRoleError] = useState('')
   const [savedMap, setSavedMap] = useState(() => getSavedItems())
 
   useEffect(() => {
@@ -100,6 +104,16 @@ export default function SuppliersPage() {
     setSavedMap(updated)
   }
 
+  async function onSwitchRole(nextRole) {
+    setSwitchRoleError('')
+    try {
+      await switchRole(nextRole)
+      navigate(nextRole === 'organizer' ? '/subscribe' : '/suppliers', { replace: true })
+    } catch (switchError) {
+      setSwitchRoleError(switchError?.message ?? 'Unable to switch role right now.')
+    }
+  }
+
   function resetFilters() {
     setCategory('All')
     setCity('All')
@@ -126,13 +140,43 @@ export default function SuppliersPage() {
               Get discovered by event organizers looking for trusted local teams.
             </p>
           </div>
-          <Link
-            to="/register?role=supplier"
-            className="inline-flex items-center justify-center rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-primary-600"
-          >
-            Join Now
-          </Link>
+          {!user ? (
+            <div className="flex flex-wrap gap-space-2">
+              <Link
+                to="/register?role=supplier"
+                className="inline-flex items-center justify-center rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-primary-600"
+              >
+                Join Now
+              </Link>
+              <Link
+                to="/register?role=organizer"
+                className="inline-flex items-center justify-center rounded-full border border-white/70 bg-white/10 px-space-4 py-space-2 font-display text-label-md text-white"
+              >
+                Join as Organizer
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-space-2">
+              <button
+                type="button"
+                onClick={() => onSwitchRole('supplier')}
+                disabled={authBusy || profile?.role === 'supplier'}
+                className="inline-flex items-center justify-center rounded-full bg-white px-space-4 py-space-2 font-display text-label-md text-primary-600 disabled:opacity-60"
+              >
+                {profile?.role === 'supplier' ? 'Already Supplier' : 'Become Supplier'}
+              </button>
+              <button
+                type="button"
+                onClick={() => onSwitchRole('organizer')}
+                disabled={authBusy || profile?.role === 'organizer'}
+                className="inline-flex items-center justify-center rounded-full border border-white/70 bg-white/10 px-space-4 py-space-2 font-display text-label-md text-white disabled:opacity-60"
+              >
+                {profile?.role === 'organizer' ? 'Already Organizer' : 'Become Organizer'}
+              </button>
+            </div>
+          )}
         </div>
+        {switchRoleError && <p className="mt-space-2 font-body text-body-sm text-white">{switchRoleError}</p>}
       </SurfaceCard>
 
       <FilterPanel title="Filter suppliers" showReset={hasFilters} onReset={resetFilters}>

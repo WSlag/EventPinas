@@ -9,7 +9,7 @@ const EXPLORE = [
 ]
 
 const FOR_BUSINESS = [
-  { label: 'Create an Event',    to: '/register' },
+  { label: 'Create an Event',    to: '/register?role=organizer' },
   { label: 'List Your Business', to: '/suppliers' },
   { label: 'Management Console', to: '/manage' },
   { label: 'Pricing & Plans',    to: '/subscribe' },
