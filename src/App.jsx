@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/hooks/useAuth'
 import OrganizerGuard from '@/components/auth/OrganizerGuard'
+import AdminGuard from '@/components/auth/AdminGuard'
 
 import TopNav from '@/components/layout/TopNav'
 import BottomNav from '@/components/layout/BottomNav'
@@ -20,6 +21,7 @@ const SupplierDetailPage = lazy(() => import('@/pages/marketplace/SupplierDetail
 const OrganizersPage = lazy(() => import('@/pages/marketplace/OrganizersPage'))
 const OrganizerDetailPage = lazy(() => import('@/pages/marketplace/OrganizerDetailPage'))
 const SavedPage = lazy(() => import('@/pages/marketplace/SavedPage'))
+const AdminPage = lazy(() => import('@/pages/admin/AdminPage'))
 const OrganizerManagePage = lazy(() => import('@/pages/marketplace/OrganizerManagePage'))
 const ManageDashboardPage = lazy(() => import('@/pages/marketplace/manage/ManageDashboardPage'))
 const ManageEventsPage = lazy(() => import('@/pages/marketplace/manage/ManageEventsPage'))
@@ -60,6 +62,16 @@ function ManageLayout({ children }) {
       <TopNav />
       <main className="pb-safe md:pb-space-8">{children}</main>
       <ManageBottomNav />
+    </div>
+  )
+}
+
+function AdminLayout({ children }) {
+  return (
+    <div className="min-h-screen bg-neutral-100">
+      <TopNav />
+      <main className="pb-safe md:pb-space-8">{children}</main>
+      <Footer />
     </div>
   )
 }
@@ -106,6 +118,16 @@ export default function App() {
           <Route path="/organizers" element={renderMarketplacePage(OrganizersPage)} />
           <Route path="/organizers/:id" element={renderMarketplacePage(OrganizerDetailPage)} />
           <Route path="/saved" element={renderMarketplacePage(SavedPage)} />
+          <Route
+            path="/admin"
+            element={(
+              <AdminGuard>
+                <AdminLayout>
+                  {renderLazy(AdminPage)}
+                </AdminLayout>
+              </AdminGuard>
+            )}
+          />
 
           <Route path="/about"          element={renderMarketplacePage(AboutPage)} />
           <Route path="/contact"        element={renderMarketplacePage(ContactPage)} />

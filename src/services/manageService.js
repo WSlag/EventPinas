@@ -145,6 +145,12 @@ function toPublicMarketplaceEvent(manageEvent, overrides = {}) {
     isFeatured: Boolean(manageEvent?.isFeatured),
     featureStatus: String(manageEvent?.featureStatus ?? 'none').trim() || 'none',
     featuredRank,
+    featureRequestedAt: manageEvent?.featureRequestedAt ? String(manageEvent.featureRequestedAt) : null,
+    featureRequestedByUid: manageEvent?.featureRequestedByUid ? String(manageEvent.featureRequestedByUid) : null,
+    featureModeratedAt: manageEvent?.featureModeratedAt ? String(manageEvent.featureModeratedAt) : null,
+    featureModeratedByUid: manageEvent?.featureModeratedByUid ? String(manageEvent.featureModeratedByUid) : null,
+    featureRejectReason: manageEvent?.featureRejectReason ? String(manageEvent.featureRejectReason) : null,
+    featureApproveNote: manageEvent?.featureApproveNote ? String(manageEvent.featureApproveNote) : null,
     createdAt: manageEvent?.createdAt ?? nowIso,
     updatedAt: nowIso,
     ...overrides,
@@ -1905,8 +1911,11 @@ export async function requestManageEventFeatured(eventId, options = {}) {
     return clone(event)
   }
 
+  const actorUid = getManageOwnerId()
+  const nowIso = new Date().toISOString()
   await requestPublicEventFeatured(eventId, {
-    ownerUid: getManageOwnerId(),
+    ownerUid: actorUid,
+    actorUid,
     forceLocal: options.forceLocalMarketplace,
     syncLocalFallback: true,
   })
@@ -1916,7 +1925,13 @@ export async function requestManageEventFeatured(eventId, options = {}) {
     featureStatus: 'pending',
     isFeatured: false,
     featuredRank: null,
-    updatedAt: new Date().toISOString(),
+    featureRequestedAt: nowIso,
+    featureRequestedByUid: actorUid,
+    featureModeratedAt: null,
+    featureModeratedByUid: null,
+    featureRejectReason: null,
+    featureApproveNote: null,
+    updatedAt: nowIso,
   }
   state.events = state.events.map((entry) => (entry.id === eventId ? updatedEvent : entry))
   appendAuditLogEntry(state, eventId, {

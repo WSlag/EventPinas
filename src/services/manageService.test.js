@@ -402,6 +402,8 @@ describe('manageService', () => {
     const requested = await requestManageEventFeatured(eventId, { simulateLatency: false })
     expect(requested.featureStatus).toBe('pending')
     expect(requested.isFeatured).toBe(false)
+    expect(requested.featureRequestedAt).toBeTruthy()
+    expect(requested.featureRequestedByUid).toBe('local-organizer')
 
     const featuredBeforeApproval = await listFeaturedPublicEvents({}, { simulateLatency: false, forceLocal: true })
     expect(featuredBeforeApproval.some((event) => event.id === eventId)).toBe(false)
@@ -409,6 +411,13 @@ describe('manageService', () => {
     await approvePublicEventFeatured(eventId, { featuredRank: 2 }, { forceLocal: true })
     const featuredAfterApproval = await listFeaturedPublicEvents({}, { simulateLatency: false, forceLocal: true })
     expect(featuredAfterApproval.some((event) => event.id === eventId)).toBe(true)
+    const approvedPublicEvent = await getPublicEventById(eventId, {
+      simulateLatency: false,
+      forceLocal: true,
+      includeUnpublished: true,
+    })
+    expect(approvedPublicEvent?.featureModeratedAt).toBeTruthy()
+    expect(approvedPublicEvent?.featureModeratedByUid).toBe('system-admin')
   })
 
   it('checks in a pending guest and logs activity', async () => {

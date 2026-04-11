@@ -30,6 +30,25 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "featureStatus", "order": "ASCENDING" },
+        { "fieldPath": "isPublic", "order": "ASCENDING" },
+        { "fieldPath": "featureRequestedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "marketplaceEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "featureStatus", "order": "ASCENDING" },
+        { "fieldPath": "isFeatured", "order": "ASCENDING" },
+        { "fieldPath": "isPublic", "order": "ASCENDING" },
+        { "fieldPath": "featuredRank", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "marketplaceEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "featureStatus", "order": "ASCENDING" },
         { "fieldPath": "isFeatured", "order": "ASCENDING" },
         { "fieldPath": "isPublic", "order": "ASCENDING" },
         { "fieldPath": "featuredRank", "order": "ASCENDING" },

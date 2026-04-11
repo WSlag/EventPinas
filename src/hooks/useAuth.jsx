@@ -515,6 +515,7 @@ export function AuthProvider({ children }) {
     activateSubscription,
     switchRole,
     isOrganizer: profile?.role === 'organizer',
+    isAdmin: profile?.role === 'admin',
     hasActiveSubscription: hasActiveOrganizerSubscription(profile),
     authMode: firebaseEnabled ? 'firebase' : 'local',
   }
@@ -538,6 +539,7 @@ export function useAuth() {
     activateSubscription: async () => {},
     switchRole: async () => {},
     isOrganizer: false,
+    isAdmin: false,
     hasActiveSubscription: false,
     authMode: firebaseEnabled ? 'firebase' : 'local',
   }

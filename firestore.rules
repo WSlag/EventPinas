@@ -25,6 +25,10 @@ service cloud.firestore {
       return isSignedIn() && userRole() == 'organizer';
     }
 
+    function clientRoleAllowed(role) {
+      return role in ['attendee', 'organizer', 'supplier'];
+    }
+
     function organizerMirrorCreateAllowed() {
       return isOrganizer()
         && request.resource.data.ownerUid == request.auth.uid
@@ -54,7 +58,15 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && clientRoleAllowed(request.resource.data.role);
+      allow update: if isOwner(uid)
+        && (
+          clientRoleAllowed(request.resource.data.role)
+          || request.resource.data.role == resource.data.role
+        )
+        && !(request.resource.data.role == 'admin' && resource.data.role != 'admin');
     }
 
     match /supplierProfiles/{profileId} {
@@ -117,6 +129,10 @@ service cloud.firestore {
       allow create: if isAdmin() || organizerMirrorCreateAllowed();
       allow update: if isAdmin() || organizerMirrorUpdateAllowed();
       allow delete: if isAdmin() || (isOrganizer() && resource.data.ownerUid == request.auth.uid);
+    }
+
+    match /adminModerationLogs/{logId} {
+      allow read, write: if isAdmin();
     }
   }
 }

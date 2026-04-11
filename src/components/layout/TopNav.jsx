@@ -241,6 +241,7 @@ export default function TopNav() {
     }
     return null
   }, [user, profile?.role, profile?.marketplaceProfile?.type, profile?.marketplaceProfile?.profileId])
+  const showAdminConsoleLink = profile?.role === 'admin'
 
   const createEventsLabel = 'Go to Event App'
   async function onLogout() {
@@ -344,6 +345,18 @@ export default function TopNav() {
                     tone === 'discover' ? 'border-neutral-200 bg-white' : 'border-white/20 bg-[#0C1D5E]'
                   } ${isAccountMenuOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'}`}
                 >
+                  {showAdminConsoleLink && (
+                    <Link
+                      role="menuitem"
+                      to="/admin"
+                      className={`block px-space-3 py-space-2 font-display text-label-md transition-colors duration-fast ${
+                        tone === 'discover' ? 'text-neutral-700 hover:bg-neutral-100' : 'text-neutral-100 hover:bg-white/10'
+                      }`}
+                      onClick={() => setIsAccountMenuOpen(false)}
+                    >
+                      Admin Console
+                    </Link>
+                  )}
                   {profileLink && (
                     <Link
                       role="menuitem"
@@ -447,6 +460,15 @@ export default function TopNav() {
                       onClick={onMobileMenuLinkClick}
                     >
                       My Profile
+                    </Link>
+                  )}
+                  {showAdminConsoleLink && (
+                    <Link
+                      to="/admin"
+                      className={`rounded-full px-space-3 py-space-2 font-display text-label-md transition-colors duration-fast ${styles.navIdle}`}
+                      onClick={onMobileMenuLinkClick}
+                    >
+                      Admin Console
                     </Link>
                   )}
                   <button

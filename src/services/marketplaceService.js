@@ -8,6 +8,7 @@ import {
   limit as limitConstraint,
   orderBy,
   query,
+  runTransaction,
   setDoc,
   where,
 } from 'firebase/firestore'
@@ -22,6 +23,8 @@ const DEFAULT_PUBLIC_EVENT_START_TIME = '09:00'
 const DEFAULT_PUBLIC_EVENT_DATE = '2099-12-31'
 const DEFAULT_FEATURE_STATUS = 'none'
 export const PUBLIC_MARKETPLACE_EVENTS_STORAGE_KEY = 'eventpinas-marketplace-public-events'
+export const ADMIN_MODERATION_LOGS_STORAGE_KEY = 'eventpinas-admin-moderation-logs'
+const ADMIN_MODERATION_LOGS_COLLECTION = 'adminModerationLogs'
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -193,6 +196,12 @@ function normalizePublicEvent(rawEvent = {}, overrides = {}) {
   const featuredRank = Number.isInteger(featuredRankRaw)
     ? featuredRankRaw
     : (Number.isFinite(Number(featuredRankRaw)) ? Math.round(Number(featuredRankRaw)) : null)
+  const featureRequestedAt = source.featureRequestedAt ? String(source.featureRequestedAt) : null
+  const featureRequestedByUid = source.featureRequestedByUid ? String(source.featureRequestedByUid) : null
+  const featureModeratedAt = source.featureModeratedAt ? String(source.featureModeratedAt) : null
+  const featureModeratedByUid = source.featureModeratedByUid ? String(source.featureModeratedByUid) : null
+  const featureRejectReason = source.featureRejectReason ? String(source.featureRejectReason).trim() : null
+  const featureApproveNote = source.featureApproveNote ? String(source.featureApproveNote).trim() : null
 
   return {
     id: String(source.id ?? '').trim(),
@@ -213,6 +222,12 @@ function normalizePublicEvent(rawEvent = {}, overrides = {}) {
     isFeatured: isFeatured && featureStatus === 'approved',
     featureStatus,
     featuredRank: featureStatus === 'approved' ? featuredRank : null,
+    featureRequestedAt,
+    featureRequestedByUid,
+    featureModeratedAt,
+    featureModeratedByUid,
+    featureRejectReason: featureStatus === 'rejected' ? featureRejectReason : null,
+    featureApproveNote: featureStatus === 'approved' ? featureApproveNote : null,
     createdAt: source.createdAt ? String(source.createdAt) : nowIso,
     updatedAt: source.updatedAt ? String(source.updatedAt) : nowIso,
   }
@@ -307,6 +322,14 @@ function eventsCollectionRef() {
   return collection(db, MARKETPLACE_EVENTS_COLLECTION)
 }
 
+function adminModerationLogsCollectionRef() {
+  return collection(db, ADMIN_MODERATION_LOGS_COLLECTION)
+}
+
+function moderationStateRef() {
+  return doc(db, 'platformState', 'featuredModeration')
+}
+
 async function hasAnyPublicEventsInFirestore() {
   const sourceQuery = query(
     eventsCollectionRef(),
@@ -347,6 +370,135 @@ async function listFeaturedEventsFromFirestore(limitValue) {
 
 function currentOwnerUid(options = {}) {
   return String(options.ownerUid ?? auth?.currentUser?.uid ?? LOCAL_PUBLIC_OWNER_UID)
+}
+
+function currentActorUid(options = {}) {
+  return String(options.actorUid ?? auth?.currentUser?.uid ?? 'system-admin')
+}
+
+function generateLocalId(prefix) {
+  if (globalThis.crypto?.randomUUID) return `${prefix}-${globalThis.crypto.randomUUID()}`
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 100000)}`
+}
+
+function readLocalModerationLogs() {
+  if (typeof localStorage === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(ADMIN_MODERATION_LOGS_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function writeLocalModerationLogs(logsInput) {
+  if (typeof localStorage === 'undefined') return
+  localStorage.setItem(ADMIN_MODERATION_LOGS_STORAGE_KEY, JSON.stringify(logsInput))
+}
+
+function toModerationSnapshot(event = {}) {
+  return {
+    eventId: String(event.id ?? '').trim(),
+    featureStatus: String(event.featureStatus ?? 'none').trim() || 'none',
+    isFeatured: Boolean(event.isFeatured),
+    featuredRank: Number.isInteger(event.featuredRank) ? event.featuredRank : null,
+    featureRequestedAt: event.featureRequestedAt ? String(event.featureRequestedAt) : null,
+    featureRequestedByUid: event.featureRequestedByUid ? String(event.featureRequestedByUid) : null,
+    featureModeratedAt: event.featureModeratedAt ? String(event.featureModeratedAt) : null,
+    featureModeratedByUid: event.featureModeratedByUid ? String(event.featureModeratedByUid) : null,
+    featureRejectReason: event.featureRejectReason ? String(event.featureRejectReason) : null,
+    featureApproveNote: event.featureApproveNote ? String(event.featureApproveNote) : null,
+  }
+}
+
+function buildModerationLog({
+  id = generateLocalId('modlog'),
+  eventId,
+  action,
+  actorUid,
+  createdAt,
+  before,
+  after,
+  targetRank = null,
+  rejectReason = null,
+  approveNote = null,
+  shifted = [],
+}) {
+  const normalizedShifted = Array.isArray(shifted)
+    ? shifted
+        .map((entry) => ({
+          eventId: String(entry?.eventId ?? '').trim(),
+          fromRank: Number.isInteger(entry?.fromRank) ? entry.fromRank : null,
+          toRank: Number.isInteger(entry?.toRank) ? entry.toRank : null,
+        }))
+        .filter((entry) => entry.eventId)
+    : []
+
+  return {
+    id: String(id),
+    eventId: String(eventId ?? '').trim(),
+    action: String(action ?? '').trim(),
+    actorUid: String(actorUid ?? '').trim(),
+    createdAt: createdAt ? String(createdAt) : new Date().toISOString(),
+    before: before ?? null,
+    after: after ?? null,
+    targetRank: Number.isInteger(targetRank) ? targetRank : null,
+    rejectReason: rejectReason ? String(rejectReason).trim() : null,
+    approveNote: approveNote ? String(approveNote).trim() : null,
+    shifted: normalizedShifted,
+  }
+}
+
+function upsertLocalModerationLog(entry) {
+  const normalized = buildModerationLog(entry)
+  if (!normalized.eventId) return normalized
+  const current = readLocalModerationLogs()
+  const next = current.filter((item) => item.id !== normalized.id)
+  next.push(normalized)
+  writeLocalModerationLogs(next)
+  return normalized
+}
+
+function sortPendingRequests(items) {
+  return [...items].sort((left, right) => {
+    const leftRequested = left.featureRequestedAt ? new Date(left.featureRequestedAt).getTime() : Number.MAX_SAFE_INTEGER
+    const rightRequested = right.featureRequestedAt ? new Date(right.featureRequestedAt).getTime() : Number.MAX_SAFE_INTEGER
+    if (leftRequested !== rightRequested) return leftRequested - rightRequested
+    return compareByDateAscending(left, right)
+  })
+}
+
+function filterPendingRequests(items, filters = {}) {
+  const queryValue = normalizeText(filters.query)
+  if (!queryValue) return items
+  return items.filter((item) =>
+    includesQuery(item.title, queryValue)
+    || includesQuery(item.city, queryValue)
+    || includesQuery(item.venue, queryValue)
+    || includesQuery(item.ownerUid, queryValue),
+  )
+}
+
+async function writeModerationLog(entry, options = {}) {
+  const normalized = buildModerationLog(entry)
+  const canUseFirestore = firebaseEnabled && db && options.forceLocal !== true
+
+  if (canUseFirestore) {
+    await setDoc(doc(adminModerationLogsCollectionRef(), normalized.id), normalized, { merge: true })
+  }
+
+  if (!canUseFirestore || options.syncLocalFallback) {
+    upsertLocalModerationLog(normalized)
+  }
+
+  return normalized
+}
+
+function parseFeaturedRank(value) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return null
+  return Math.max(0, Math.round(parsed))
 }
 
 export async function upsertPublicMarketplaceEvent(payload = {}, options = {}) {
@@ -416,42 +568,390 @@ export async function patchPublicMarketplaceEvent(eventId, patch = {}, options =
 }
 
 export async function requestPublicEventFeatured(eventId, options = {}) {
+  const actorUid = currentActorUid(options)
+  const nowIso = new Date().toISOString()
   return patchPublicMarketplaceEvent(
     eventId,
     {
       featureStatus: 'pending',
       isFeatured: false,
       featuredRank: null,
+      featureRequestedAt: nowIso,
+      featureRequestedByUid: actorUid,
+      featureModeratedAt: null,
+      featureModeratedByUid: null,
+      featureRejectReason: null,
+      featureApproveNote: null,
     },
     options,
   )
 }
 
 export async function approvePublicEventFeatured(eventId, payload = {}, options = {}) {
-  const featuredRank = Number.isFinite(Number(payload.featuredRank))
-    ? Math.max(0, Math.round(Number(payload.featuredRank)))
-    : null
-  return patchPublicMarketplaceEvent(
-    eventId,
-    {
-      featureStatus: 'approved',
-      isFeatured: true,
-      featuredRank,
-    },
-    options,
-  )
+  const result = await approveFeaturedWithRankShift(eventId, payload, options)
+  return result.event
 }
 
-export async function rejectPublicEventFeatured(eventId, options = {}) {
-  return patchPublicMarketplaceEvent(
-    eventId,
-    {
-      featureStatus: 'rejected',
-      isFeatured: false,
-      featuredRank: null,
-    },
-    options,
+export async function rejectPublicEventFeatured(eventId, payload = {}, options = {}) {
+  const result = await rejectFeaturedRequest(eventId, payload, options)
+  return result.event
+}
+
+export async function listPendingFeaturedRequests(filters = {}, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const limitValue = filters.limit ?? 50
+
+  let source
+  if (firebaseEnabled && db && options.forceLocal !== true) {
+    try {
+      const sourceQuery = query(
+        eventsCollectionRef(),
+        where('isPublic', '==', true),
+        where('featureStatus', '==', 'pending'),
+        orderBy('featureRequestedAt', 'asc'),
+      )
+      const snapshot = await getDocs(sourceQuery)
+      source = snapshot.docs.map((entry) => normalizePublicEvent({ id: entry.id, ...entry.data() })).filter((event) => event.id)
+    } catch {
+      source = getMergedLocalPublicEvents()
+    }
+  } else {
+    source = getMergedLocalPublicEvents()
+  }
+
+  const pending = source.filter((event) => event.isPublic && event.featureStatus === 'pending')
+  const filtered = filterPendingRequests(pending, filters)
+  const sorted = sortPendingRequests(filtered)
+  return maybeLimit(sorted, limitValue)
+}
+
+export async function listAdminModerationLogs(filters = {}, options = {}) {
+  if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
+  const limitValue = filters.limit ?? 100
+  const queryValue = normalizeText(filters.query)
+  const actionFilter = String(filters.action ?? '').trim()
+
+  let source
+  if (firebaseEnabled && db && options.forceLocal !== true) {
+    try {
+      const sourceQuery = query(adminModerationLogsCollectionRef(), orderBy('createdAt', 'desc'))
+      const snapshot = await getDocs(sourceQuery)
+      source = snapshot.docs.map((entry) => buildModerationLog({ id: entry.id, ...entry.data() }))
+    } catch {
+      source = readLocalModerationLogs().map((entry) => buildModerationLog(entry))
+    }
+  } else {
+    source = readLocalModerationLogs().map((entry) => buildModerationLog(entry))
+  }
+
+  const filtered = source.filter((entry) => {
+    const actionMatch = !actionFilter || entry.action === actionFilter
+    const queryMatch =
+      !queryValue
+      || includesQuery(entry.eventId, queryValue)
+      || includesQuery(entry.actorUid, queryValue)
+      || includesQuery(entry.rejectReason, queryValue)
+      || includesQuery(entry.approveNote, queryValue)
+    return actionMatch && queryMatch
+  })
+
+  const sorted = [...filtered].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+  return maybeLimit(sorted, limitValue)
+}
+
+export async function approveFeaturedWithRankShift(eventId, payload = {}, options = {}) {
+  const id = String(eventId ?? '').trim()
+  if (!id) throw new Error('Public marketplace event id is required.')
+  const targetRank = parseFeaturedRank(payload.featuredRank)
+  if (!Number.isInteger(targetRank)) {
+    throw new Error('Featured rank must be a non-negative integer.')
+  }
+  const actorUid = currentActorUid(options)
+  const approveNote = payload.approveNote ? String(payload.approveNote).trim() : null
+  const canUseFirestore = firebaseEnabled && db && options.forceLocal !== true
+
+  if (!canUseFirestore) {
+    const nowIso = new Date().toISOString()
+    const sourceEvents = getMergedLocalPublicEvents()
+    const targetEvent = sourceEvents.find((event) => event.id === id)
+    if (!targetEvent) throw new Error('Featured request event was not found.')
+    if (targetEvent.featureStatus !== 'pending') {
+      throw new Error('Only pending featured requests can be approved.')
+    }
+
+    const shifted = []
+    for (const event of sourceEvents) {
+      if (event.id === id) continue
+      if (!event.isPublic || !event.isFeatured || event.featureStatus !== 'approved') continue
+      if (!Number.isInteger(event.featuredRank) || event.featuredRank < targetRank) continue
+      const nextRank = event.featuredRank + 1
+      shifted.push({ eventId: event.id, fromRank: event.featuredRank, toRank: nextRank })
+      upsertLocalPublicEvent(
+        normalizePublicEvent(
+          {
+            ...event,
+            featuredRank: nextRank,
+            updatedAt: nowIso,
+          },
+          { id: event.id, updatedAt: nowIso },
+        ),
+      )
+    }
+
+    const approvedEvent = normalizePublicEvent(
+      {
+        ...targetEvent,
+        featureStatus: 'approved',
+        isFeatured: true,
+        featuredRank: targetRank,
+        featureModeratedAt: nowIso,
+        featureModeratedByUid: actorUid,
+        featureRejectReason: null,
+        featureApproveNote: approveNote,
+        updatedAt: nowIso,
+      },
+      { id, updatedAt: nowIso },
+    )
+    upsertLocalPublicEvent(approvedEvent)
+    const moderationLog = await writeModerationLog(
+      {
+        eventId: id,
+        action: 'feature_approved',
+        actorUid,
+        createdAt: nowIso,
+        before: toModerationSnapshot(targetEvent),
+        after: toModerationSnapshot(approvedEvent),
+        targetRank,
+        approveNote,
+        shifted,
+      },
+      options,
+    )
+    return { event: approvedEvent, shifted, log: moderationLog }
+  }
+
+  const candidateQuery = query(
+    eventsCollectionRef(),
+    where('isPublic', '==', true),
+    where('isFeatured', '==', true),
+    where('featureStatus', '==', 'approved'),
+    where('featuredRank', '>=', targetRank),
+    orderBy('featuredRank', 'asc'),
   )
+  const candidateSnapshot = await getDocs(candidateQuery)
+  const candidateRefs = candidateSnapshot.docs.map((entry) => entry.ref).filter((ref) => ref.id !== id)
+  const stateRef = moderationStateRef()
+  const logRef = doc(adminModerationLogsCollectionRef())
+
+  const result = await runTransaction(db, async (transaction) => {
+    const nowIso = new Date().toISOString()
+    const targetRef = eventDocRef(id)
+    const targetSnapshot = await transaction.get(targetRef)
+    if (!targetSnapshot.exists()) {
+      throw new Error('Featured request event was not found.')
+    }
+
+    const beforeEvent = normalizePublicEvent({ id, ...targetSnapshot.data() })
+    if (beforeEvent.featureStatus !== 'pending') {
+      throw new Error('Only pending featured requests can be approved.')
+    }
+
+    const shifted = []
+    for (const ref of candidateRefs) {
+      const snapshot = await transaction.get(ref)
+      if (!snapshot.exists()) continue
+      const event = normalizePublicEvent({ id: snapshot.id, ...snapshot.data() })
+      if (!event.isPublic || !event.isFeatured || event.featureStatus !== 'approved') continue
+      if (!Number.isInteger(event.featuredRank) || event.featuredRank < targetRank) continue
+
+      const nextRank = event.featuredRank + 1
+      const shiftedEvent = normalizePublicEvent(
+        {
+          ...event,
+          featuredRank: nextRank,
+          updatedAt: nowIso,
+        },
+        { id: event.id, updatedAt: nowIso },
+      )
+      transaction.set(ref, shiftedEvent, { merge: true })
+      shifted.push({ eventId: event.id, fromRank: event.featuredRank, toRank: nextRank })
+    }
+
+    const approvedEvent = normalizePublicEvent(
+      {
+        ...beforeEvent,
+        featureStatus: 'approved',
+        isFeatured: true,
+        featuredRank: targetRank,
+        featureModeratedAt: nowIso,
+        featureModeratedByUid: actorUid,
+        featureRejectReason: null,
+        featureApproveNote: approveNote,
+        updatedAt: nowIso,
+      },
+      { id, updatedAt: nowIso },
+    )
+    transaction.set(targetRef, approvedEvent, { merge: true })
+
+    const stateSnapshot = await transaction.get(stateRef)
+    const currentRevision = Number(stateSnapshot.data()?.revision ?? 0)
+    transaction.set(
+      stateRef,
+      {
+        revision: currentRevision + 1,
+        updatedAt: nowIso,
+        updatedByUid: actorUid,
+      },
+      { merge: true },
+    )
+
+    const moderationLog = buildModerationLog({
+      id: logRef.id,
+      eventId: id,
+      action: 'feature_approved',
+      actorUid,
+      createdAt: nowIso,
+      before: toModerationSnapshot(beforeEvent),
+      after: toModerationSnapshot(approvedEvent),
+      targetRank,
+      approveNote,
+      shifted,
+    })
+    transaction.set(logRef, moderationLog, { merge: true })
+    return { event: approvedEvent, shifted, log: moderationLog }
+  })
+
+  if (options.syncLocalFallback) {
+    for (const shiftedEntry of result.shifted) {
+      const localEvent = await getPublicEventById(shiftedEntry.eventId, { includeUnpublished: true, forceLocal: true, simulateLatency: false })
+      if (!localEvent) continue
+      upsertLocalPublicEvent(
+        normalizePublicEvent(
+          {
+            ...localEvent,
+            featuredRank: shiftedEntry.toRank,
+          },
+          { id: shiftedEntry.eventId },
+        ),
+      )
+    }
+    upsertLocalPublicEvent(result.event)
+    upsertLocalModerationLog(result.log)
+  }
+
+  return result
+}
+
+export async function rejectFeaturedRequest(eventId, payload = {}, options = {}) {
+  const id = String(eventId ?? '').trim()
+  if (!id) throw new Error('Public marketplace event id is required.')
+  const rejectReason = String(payload.rejectReason ?? '').trim()
+  if (!rejectReason) throw new Error('Reject reason is required.')
+  const actorUid = currentActorUid(options)
+  const canUseFirestore = firebaseEnabled && db && options.forceLocal !== true
+
+  if (!canUseFirestore) {
+    const nowIso = new Date().toISOString()
+    const sourceEvents = getMergedLocalPublicEvents()
+    const targetEvent = sourceEvents.find((event) => event.id === id)
+    if (!targetEvent) throw new Error('Featured request event was not found.')
+    if (targetEvent.featureStatus !== 'pending') {
+      throw new Error('Only pending featured requests can be rejected.')
+    }
+
+    const rejectedEvent = normalizePublicEvent(
+      {
+        ...targetEvent,
+        featureStatus: 'rejected',
+        isFeatured: false,
+        featuredRank: null,
+        featureModeratedAt: nowIso,
+        featureModeratedByUid: actorUid,
+        featureRejectReason: rejectReason,
+        featureApproveNote: null,
+        updatedAt: nowIso,
+      },
+      { id, updatedAt: nowIso },
+    )
+    upsertLocalPublicEvent(rejectedEvent)
+    const moderationLog = await writeModerationLog(
+      {
+        eventId: id,
+        action: 'feature_rejected',
+        actorUid,
+        createdAt: nowIso,
+        before: toModerationSnapshot(targetEvent),
+        after: toModerationSnapshot(rejectedEvent),
+        rejectReason,
+      },
+      options,
+    )
+    return { event: rejectedEvent, log: moderationLog }
+  }
+
+  const stateRef = moderationStateRef()
+  const logRef = doc(adminModerationLogsCollectionRef())
+
+  const result = await runTransaction(db, async (transaction) => {
+    const nowIso = new Date().toISOString()
+    const targetRef = eventDocRef(id)
+    const targetSnapshot = await transaction.get(targetRef)
+    if (!targetSnapshot.exists()) {
+      throw new Error('Featured request event was not found.')
+    }
+    const beforeEvent = normalizePublicEvent({ id, ...targetSnapshot.data() })
+    if (beforeEvent.featureStatus !== 'pending') {
+      throw new Error('Only pending featured requests can be rejected.')
+    }
+
+    const rejectedEvent = normalizePublicEvent(
+      {
+        ...beforeEvent,
+        featureStatus: 'rejected',
+        isFeatured: false,
+        featuredRank: null,
+        featureModeratedAt: nowIso,
+        featureModeratedByUid: actorUid,
+        featureRejectReason: rejectReason,
+        featureApproveNote: null,
+        updatedAt: nowIso,
+      },
+      { id, updatedAt: nowIso },
+    )
+    transaction.set(targetRef, rejectedEvent, { merge: true })
+
+    const stateSnapshot = await transaction.get(stateRef)
+    const currentRevision = Number(stateSnapshot.data()?.revision ?? 0)
+    transaction.set(
+      stateRef,
+      {
+        revision: currentRevision + 1,
+        updatedAt: nowIso,
+        updatedByUid: actorUid,
+      },
+      { merge: true },
+    )
+
+    const moderationLog = buildModerationLog({
+      id: logRef.id,
+      eventId: id,
+      action: 'feature_rejected',
+      actorUid,
+      createdAt: nowIso,
+      before: toModerationSnapshot(beforeEvent),
+      after: toModerationSnapshot(rejectedEvent),
+      rejectReason,
+    })
+    transaction.set(logRef, moderationLog, { merge: true })
+    return { event: rejectedEvent, log: moderationLog }
+  })
+
+  if (options.syncLocalFallback) {
+    upsertLocalPublicEvent(result.event)
+    upsertLocalModerationLog(result.log)
+  }
+
+  return result
 }
 
 export async function listPublicEvents(filters = {}, options = {}) {

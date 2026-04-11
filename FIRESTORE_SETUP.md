@@ -107,6 +107,8 @@ Collections and paths currently used:
 1. Register at least one organizer account through app UI (creates `users/{uid}` profile).
 2. Create one admin user for moderation/backfill flows:
    - Set `users/{uid}.role = "admin"` in Firestore for the chosen admin UID.
+   - This must be done through privileged tooling (Firebase Console/Admin SDK/script).
+   - Client app writes are intentionally blocked from self-assigning `admin` role.
 3. Organizer publish rules require:
    - `users/{uid}.role = "organizer"`
    - `ownerUid == request.auth.uid` in `marketplaceEvents` writes.

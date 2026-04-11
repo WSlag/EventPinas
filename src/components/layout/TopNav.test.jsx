@@ -223,6 +223,40 @@ describe('TopNav', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
   })
 
+  it('shows admin console menu item only for admin accounts', async () => {
+    authState = {
+      ...authState,
+      user: { uid: 'admin-1' },
+      profile: { role: 'admin' },
+      hasActiveSubscription: false,
+    }
+
+    const user = userEvent.setup()
+    renderNav('/events')
+
+    await user.click(screen.getByRole('button', { name: /account menu/i }))
+    const panel = screen.getByRole('menu', { name: /account menu panel/i })
+
+    expect(within(panel).getByRole('menuitem', { name: /admin console/i })).toHaveAttribute('href', '/admin')
+  })
+
+  it('does not show admin console menu item for non-admin accounts', async () => {
+    authState = {
+      ...authState,
+      user: { uid: 'user-1' },
+      profile: { role: 'organizer', marketplaceProfile: { type: 'organizer', profileId: 'org-001' } },
+      hasActiveSubscription: true,
+    }
+
+    const user = userEvent.setup()
+    renderNav('/events')
+
+    await user.click(screen.getByRole('button', { name: /account menu/i }))
+    const panel = screen.getByRole('menu', { name: /account menu panel/i })
+
+    expect(within(panel).queryByRole('menuitem', { name: /admin console/i })).not.toBeInTheDocument()
+  })
+
   it('routes my profile to organizer directory when organizer profile id is missing', async () => {
     authState = {
       ...authState,
