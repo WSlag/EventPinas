@@ -194,9 +194,67 @@ describe('TopNav', () => {
     await user.click(screen.getByRole('button', { name: /open menu/i }))
     const panel = screen.getByRole('navigation', { name: /mobile menu/i })
 
+    expect(within(panel).getByRole('link', { name: /my profile/i })).toHaveAttribute('href', '/organizers')
     expect(within(panel).getByRole('button', { name: /sign out/i })).toBeInTheDocument()
     expect(within(panel).queryByRole('link', { name: /^sign in$/i })).not.toBeInTheDocument()
     expect(within(panel).queryByRole('link', { name: /^join$/i })).not.toBeInTheDocument()
+  })
+
+  it('shows desktop account menu trigger and organizer profile link for signed-in organizers', async () => {
+    authState = {
+      ...authState,
+      user: { uid: 'user-1' },
+      profile: { role: 'organizer', marketplaceProfile: { type: 'organizer', profileId: 'org-001' } },
+      hasActiveSubscription: true,
+    }
+
+    const user = userEvent.setup()
+    renderNav('/events')
+
+    const trigger = screen.getByRole('button', { name: /account menu/i })
+    expect(trigger).toHaveAttribute('aria-controls', 'account-menu-panel')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(trigger)
+
+    const panel = screen.getByRole('menu', { name: /account menu panel/i })
+    expect(within(panel).getByRole('menuitem', { name: /my profile/i })).toHaveAttribute('href', '/organizers/org-001')
+    expect(within(panel).getByRole('menuitem', { name: /sign out/i })).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('routes my profile to organizer directory when organizer profile id is missing', async () => {
+    authState = {
+      ...authState,
+      user: { uid: 'user-1' },
+      profile: { role: 'organizer' },
+      hasActiveSubscription: true,
+    }
+
+    const user = userEvent.setup()
+    renderNav('/events')
+
+    await user.click(screen.getByRole('button', { name: /account menu/i }))
+    const panel = screen.getByRole('menu', { name: /account menu panel/i })
+
+    expect(within(panel).getByRole('menuitem', { name: /my profile/i })).toHaveAttribute('href', '/organizers')
+  })
+
+  it('routes my profile to supplier detail page for signed-in suppliers', async () => {
+    authState = {
+      ...authState,
+      user: { uid: 'user-2' },
+      profile: { role: 'supplier', marketplaceProfile: { type: 'supplier', profileId: 'sup-001' } },
+      hasActiveSubscription: false,
+    }
+
+    const user = userEvent.setup()
+    renderNav('/events')
+
+    await user.click(screen.getByRole('button', { name: /account menu/i }))
+    const panel = screen.getByRole('menu', { name: /account menu panel/i })
+
+    expect(within(panel).getByRole('menuitem', { name: /my profile/i })).toHaveAttribute('href', '/suppliers/sup-001')
   })
 
   it('hides the header on mobile when scrolling down past threshold', async () => {

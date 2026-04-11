@@ -92,21 +92,18 @@ function resolveTone(pathname) {
   return 'discover'
 }
 
-function HamburgerIcon() {
+function AccountGridIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
-      <path d="M4 6h16" />
-      <path d="M4 12h16" />
-      <path d="M4 18h16" />
-    </svg>
-  )
-}
-
-function CloseIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
-      <path d="m6 6 12 12" />
-      <path d="m18 6-12 12" />
+    <svg width="20" height="20" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true">
+      <rect x="1" y="1" width="4" height="4" rx="0.5" />
+      <rect x="7" y="1" width="4" height="4" rx="0.5" />
+      <rect x="13" y="1" width="4" height="4" rx="0.5" />
+      <rect x="1" y="7" width="4" height="4" rx="0.5" />
+      <rect x="7" y="7" width="4" height="4" rx="0.5" />
+      <rect x="13" y="7" width="4" height="4" rx="0.5" />
+      <rect x="1" y="13" width="4" height="4" rx="0.5" />
+      <rect x="7" y="13" width="4" height="4" rx="0.5" />
+      <rect x="13" y="13" width="4" height="4" rx="0.5" />
     </svg>
   )
 }
@@ -115,7 +112,9 @@ export default function TopNav() {
   const [scrolled, setScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMobileHeaderHidden, setIsMobileHeaderHidden] = useState(false)
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const previousScrollYRef = useRef(0)
+  const accountMenuRef = useRef(null)
   const { user, profile, hasActiveSubscription, logout, authBusy } = useAuth()
   const location = useLocation()
   const tone = useMemo(() => resolveTone(location.pathname), [location.pathname])
@@ -172,6 +171,7 @@ export default function TopNav() {
 
   useEffect(() => {
     setIsMobileMenuOpen(false)
+    setIsAccountMenuOpen(false)
     setIsMobileHeaderHidden(false)
     previousScrollYRef.current = window.scrollY
   }, [location.pathname, location.search])
@@ -195,6 +195,29 @@ export default function TopNav() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [isMobileMenuOpen])
 
+  useEffect(() => {
+    if (!isAccountMenuOpen) return undefined
+
+    const onPointerDown = (event) => {
+      if (!accountMenuRef.current?.contains(event.target)) {
+        setIsAccountMenuOpen(false)
+      }
+    }
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsAccountMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [isAccountMenuOpen])
+
   const createEventsLink = useMemo(() => {
     if (!user) return '/register?role=organizer'
     if (profile?.role === 'organizer') {
@@ -202,6 +225,22 @@ export default function TopNav() {
     }
     return '/subscribe'
   }, [user, profile?.role, hasActiveSubscription])
+
+  const profileLink = useMemo(() => {
+    if (!user) return null
+
+    const role = profile?.role
+    const profileType = profile?.marketplaceProfile?.type
+    const profileId = profile?.marketplaceProfile?.profileId
+
+    if (role === 'organizer' || profileType === 'organizer') {
+      return profileId ? `/organizers/${profileId}` : '/organizers'
+    }
+    if (role === 'supplier' || profileType === 'supplier') {
+      return profileId ? `/suppliers/${profileId}` : '/suppliers'
+    }
+    return null
+  }, [user, profile?.role, profile?.marketplaceProfile?.type, profile?.marketplaceProfile?.profileId])
 
   const createEventsLabel = 'Go to Event App'
   async function onLogout() {
@@ -217,6 +256,11 @@ export default function TopNav() {
   }
   async function onMobileLogout() {
     setIsMobileMenuOpen(false)
+    await onLogout()
+  }
+
+  async function onDesktopLogout() {
+    setIsAccountMenuOpen(false)
     await onLogout()
   }
 
@@ -279,14 +323,52 @@ export default function TopNav() {
             )}
 
             {user && (
-              <button
-                type="button"
-                onClick={onLogout}
-                disabled={authBusy}
-                className={`hidden font-display lg:inline-flex ${styles.auth} disabled:opacity-60 ${authTextClass}`}
-              >
-                {authBusy ? 'Signing out...' : 'Sign out'}
-              </button>
+              <div className="relative hidden lg:block" ref={accountMenuRef}>
+                <button
+                  type="button"
+                  aria-label="Account menu"
+                  aria-haspopup="menu"
+                  aria-controls="account-menu-panel"
+                  aria-expanded={isAccountMenuOpen}
+                  onClick={() => setIsAccountMenuOpen((open) => !open)}
+                  className={`inline-flex rounded-full p-2.5 transition-colors duration-fast ${styles.menuButton}`}
+                >
+                  <AccountGridIcon />
+                </button>
+                <div
+                  id="account-menu-panel"
+                  role="menu"
+                  aria-label="Account menu panel"
+                  aria-hidden={!isAccountMenuOpen}
+                  className={`absolute right-0 top-[calc(100%+0.5rem)] z-20 min-w-44 overflow-hidden rounded-xl border shadow-lg transition-all duration-150 ${
+                    tone === 'discover' ? 'border-neutral-200 bg-white' : 'border-white/20 bg-[#0C1D5E]'
+                  } ${isAccountMenuOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'}`}
+                >
+                  {profileLink && (
+                    <Link
+                      role="menuitem"
+                      to={profileLink}
+                      className={`block px-space-3 py-space-2 font-display text-label-md transition-colors duration-fast ${
+                        tone === 'discover' ? 'text-neutral-700 hover:bg-neutral-100' : 'text-neutral-100 hover:bg-white/10'
+                      }`}
+                      onClick={() => setIsAccountMenuOpen(false)}
+                    >
+                      My Profile
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={onDesktopLogout}
+                    disabled={authBusy}
+                    className={`block w-full px-space-3 py-space-2 text-left font-display text-label-md transition-colors duration-fast disabled:opacity-60 ${
+                      tone === 'discover' ? 'text-neutral-700 hover:bg-neutral-100' : 'text-neutral-100 hover:bg-white/10'
+                    }`}
+                  >
+                    {authBusy ? 'Signing out...' : 'Sign out'}
+                  </button>
+                </div>
+              </div>
             )}
 
             <button
@@ -297,7 +379,7 @@ export default function TopNav() {
               aria-expanded={isMobileMenuOpen}
               onClick={() => setIsMobileMenuOpen((open) => !open)}
             >
-              {isMobileMenuOpen ? <CloseIcon /> : <HamburgerIcon />}
+              <AccountGridIcon />
             </button>
 
           </div>
@@ -357,14 +439,25 @@ export default function TopNav() {
               )}
 
               {user && (
-                <button
-                  type="button"
-                  onClick={onMobileLogout}
-                  disabled={authBusy}
-                  className={`w-full rounded-full px-space-3 py-space-2 text-left font-display text-label-md ${styles.auth} disabled:opacity-60`}
-                >
-                  {authBusy ? 'Signing out...' : 'Sign out'}
-                </button>
+                <div className="flex flex-col gap-space-2">
+                  {profileLink && (
+                    <Link
+                      to={profileLink}
+                      className={`rounded-full px-space-3 py-space-2 font-display text-label-md transition-colors duration-fast ${styles.navIdle}`}
+                      onClick={onMobileMenuLinkClick}
+                    >
+                      My Profile
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onMobileLogout}
+                    disabled={authBusy}
+                    className={`w-full rounded-full px-space-3 py-space-2 text-left font-display text-label-md ${styles.auth} disabled:opacity-60`}
+                  >
+                    {authBusy ? 'Signing out...' : 'Sign out'}
+                  </button>
+                </div>
               )}
             </div>
           </div>
