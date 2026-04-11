@@ -254,11 +254,11 @@ export default function OrganizerManagePage() {
       <section className="mb-space-4 grid gap-space-2 md:grid-cols-4">
         {/* Active event display (read-only) */}
         <div className="rounded-xl border border-mgmt-border bg-mgmt-surface p-space-3">
-          <p className="font-barlow text-[0.75rem] uppercase tracking-[0.12em] text-mgmt-muted">
+          <p className="font-barlow text-label-md font-semibold uppercase tracking-[0.14em] text-mgmt-muted">
             Active Event
           </p>
           <div className="mt-space-1 flex h-10 w-full items-center rounded-md border border-mgmt-border bg-mgmt-raised px-space-3">
-            <span className={`truncate font-body text-body-sm ${selectedEvent ? 'text-mgmt-text' : 'text-mgmt-dim'}`}>
+            <span className={`truncate font-body text-body-md font-semibold md:text-heading-sm ${selectedEvent ? 'text-mgmt-text' : 'text-mgmt-dim'}`}>
               {selectedEvent?.title ?? 'No active event selected'}
             </span>
           </div>
