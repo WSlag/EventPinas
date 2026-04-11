@@ -5,6 +5,7 @@ import OrganizerGuard from '@/components/auth/OrganizerGuard'
 
 import TopNav from '@/components/layout/TopNav'
 import BottomNav from '@/components/layout/BottomNav'
+import Footer from '@/components/layout/Footer'
 import ManageBottomNav from '@/components/layout/ManageBottomNav'
 
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
@@ -39,6 +40,7 @@ function MarketplaceLayout({ children }) {
     <div className="min-h-screen bg-neutral-100">
       <TopNav />
       <main className="pb-safe md:pb-space-8">{children}</main>
+      <Footer />
       <BottomNav />
     </div>
   )

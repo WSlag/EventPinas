@@ -7,30 +7,32 @@ import { getFallbackImageHandler } from '@/utils/imageFallback'
 
 const heroImages = [
   {
-    // Concert — person raising hand, electric blue/purple stage lighting (matches events.com slide 1)
     url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2200&q=80',
     label: 'Concerts & Festivals',
     position: '70% center',
   },
   {
-    // Wedding — first dance with circular golden bokeh (matches events.com slide 2 vibe)
-    url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2200&q=80',
-    label: 'Weddings',
-    position: 'right center',
+    url: 'https://unsplash.com/photos/ULHxWq8reao/download?force=true&w=2200',
+    label: 'Wine Toast Celebrations',
+    position: 'center center',
   },
   {
-    // Debut — elegant gown, warm ballroom lights and bokeh
-    url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2200&q=80',
-    label: 'Debut',
-    position: 'right center',
+    url: 'https://unsplash.com/photos/Knt1jl1r8Kk/download?force=true&w=2200',
+    label: 'Wedding Moments',
+    position: 'center 35%',
+  },
+  {
+    url: 'https://unsplash.com/photos/nOvIa_x_tfo/download?force=true&w=2200',
+    label: 'Lobby Networking',
+    position: 'center center',
   },
 ]
 
 const supplierImageByCategory = {
-  Florist:       'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=600&q=75',
-  Catering:      'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=600&q=75',
-  Photography:   'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=600&q=75',
-  'Audio-Visual':'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=600&q=75',
+  Florist:        'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=600&q=75',
+  Catering:       'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=600&q=75',
+  Photography:    'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=600&q=75',
+  'Audio-Visual': 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=600&q=75',
 }
 const supplierFallbackImage = 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=600&q=75'
 
@@ -55,24 +57,37 @@ function tagBadgeClass(tag) {
 }
 
 const eventImageByCategory = {
-  Wedding: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1000&q=80',
-  Reunion: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1000&q=80',
-  Festival: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=1000&q=80',
-  Concert: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1000&q=80',
+  Wedding:   'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1000&q=80',
+  Reunion:   'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1000&q=80',
+  Festival:  'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=1000&q=80',
+  Concert:   'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1000&q=80',
   Corporate: 'https://images.unsplash.com/photo-1515169067868-5387ec356754?auto=format&fit=crop&w=1000&q=80',
   Community: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=1000&q=80',
-  Debut: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=1000&q=80',
-  Expo: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=1000&q=80',
+  Debut:     'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=1000&q=80',
+  Expo:      'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=1000&q=80',
 }
 
+// Category-specific gradient overlays for event cards — inspired by Eventbrite 2025 energy auras
+const categoryGradient = {
+  Concert:   'from-violet-900/85 via-purple-800/40 to-transparent',
+  Festival:  'from-amber-900/85 via-orange-700/35 to-transparent',
+  Wedding:   'from-rose-900/85 via-pink-800/35 to-transparent',
+  Debut:     'from-pink-900/85 via-rose-700/35 to-transparent',
+  Corporate: 'from-slate-900/85 via-blue-900/35 to-transparent',
+  Community: 'from-emerald-900/85 via-green-800/35 to-transparent',
+  Reunion:   'from-amber-800/85 via-yellow-800/35 to-transparent',
+  Expo:      'from-sky-900/85 via-blue-800/35 to-transparent',
+}
+const defaultCategoryGradient = 'from-neutral-900/85 via-neutral-700/35 to-transparent'
+
 const categoryShowcase = [
-  { key: 'Wedding', label: 'Wedding', image: 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=700&q=80' },
-  { key: 'Reunion', label: 'Reunion', image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=700&q=80' },
-  { key: 'Festival', label: 'Festival', image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=700&q=80' },
-  { key: 'Concert', label: 'Concert', image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=700&q=80' },
+  { key: 'Wedding',   label: 'Wedding',   image: 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=700&q=80' },
+  { key: 'Reunion',   label: 'Reunion',   image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=700&q=80' },
+  { key: 'Festival',  label: 'Festival',  image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=700&q=80' },
+  { key: 'Concert',   label: 'Concert',   image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=700&q=80' },
   { key: 'Corporate', label: 'Corporate', image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=700&q=80' },
   { key: 'Community', label: 'Community', image: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=700&q=80' },
-  { key: 'Debut', label: 'Debut', image: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=700&q=80' },
+  { key: 'Debut',     label: 'Debut',     image: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=700&q=80' },
 ]
 
 const whyUseCards = [
@@ -173,7 +188,6 @@ export default function HomePage() {
     async function loadFeed() {
       setLoading(true)
       setError('')
-
       try {
         const data = await getHomeFeed({
           category: activeCategory,
@@ -192,9 +206,7 @@ export default function HomePage() {
     }
 
     loadFeed()
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [activeCategory, quickCity, quickQuery])
 
   const savedEvents = useMemo(() => new Set(savedMap.events ?? []), [savedMap.events])
@@ -216,17 +228,18 @@ export default function HomePage() {
     return queryString ? `${basePath}?${queryString}` : basePath
   }
 
-  function onDiscoverSubmit(event) {
-    event.preventDefault()
+  function onDiscoverSubmit(e) {
+    e.preventDefault()
     navigate(toDiscoverPath('/events'))
   }
 
   return (
     <div className="min-h-screen bg-white">
 
-      {/* ── HERO ── full-bleed, deep navy + auto-rotating photography */}
-      <section className="relative min-h-[88vh] overflow-hidden bg-[#0C1D5E]">
-        {/* Crossfade images */}
+      {/* ── 1. HERO ── full-screen rotating photography + energy aura overlay */}
+      <section className="relative min-h-screen min-h-[100svh] overflow-hidden bg-[#0C1D5E]">
+
+        {/* Full-bleed crossfade photography */}
         {heroImages.map((img, i) => (
           <img
             key={img.url}
@@ -238,40 +251,119 @@ export default function HomePage() {
             }`}
           />
         ))}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#060F2E]/90 via-[#0C1D5E]/50 to-transparent" />
 
-        {/* Radar rings */}
-        <div className="pointer-events-none absolute inset-y-0 left-[40%] hidden w-[500px] -translate-x-1/2 rounded-full border border-white/50 md:block" />
-        <div className="pointer-events-none absolute inset-y-0 left-[44%] hidden w-[720px] -translate-x-1/2 rounded-full border border-white/35 md:block" />
-        <div className="pointer-events-none absolute inset-y-0 left-[48%] hidden w-[960px] -translate-x-1/2 rounded-full border border-white/20 md:block" />
+        {/* Dark directional overlay — text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
 
-        <div className="relative mx-auto flex min-h-[88vh] w-full max-w-[1680px] items-center px-space-4 py-space-16 md:px-space-8">
-          <div className="max-w-3xl">
-            <p className="font-display text-overline uppercase tracking-[0.12em] text-secondary-300">
-              EventPH Marketplace
+        {/* Energy aura tints on top of photo */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_70%_at_0%_100%,rgba(217,58,24,0.35)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_55%_at_100%_0%,rgba(107,33,168,0.25)_0%,transparent_60%)]" />
+
+        {/* Content — single column, left-aligned */}
+        <div className="relative mx-auto flex min-h-screen min-h-[100svh] max-w-[1680px] items-center
+                        px-space-4 pb-24 pt-24 md:px-space-8">
+          <div className="w-full max-w-2xl">
+          <div className="flex flex-col justify-center">
+            <p className="font-display text-overline uppercase tracking-[0.14em] text-primary-300">
+              EventPinas Marketplace
             </p>
-            <h1 className="mt-space-3 font-display font-extrabold leading-tight tracking-tight text-white text-4xl sm:text-5xl md:text-6xl lg:text-7xl">
-              Great events<br />start here.
+
+            <h1 className="mt-space-3 font-display font-extrabold leading-[1.05] tracking-tight text-white
+                           text-[2.75rem] sm:text-[3.5rem] md:text-[4.5rem] lg:text-[4.75rem]">
+              Where great{' '}
+              <span className="text-primary-300">events</span>
+              <br />begin.
             </h1>
-            <p className="mt-space-4 max-w-2xl font-body text-white/85 text-body-md md:text-body-lg">
-              Empowering event creators through every stage of the journey: Manage events, promote events, and discover trusted suppliers — everything Philippine event creators need, in one place.
+
+            <p className="mt-space-5 max-w-xl font-body text-white/75 text-body-md md:text-body-lg">
+              Manage events, find trusted suppliers, and connect with top organizers — everything Philippine event creators need, in one place.
             </p>
-            <div className="mt-space-6 flex flex-wrap gap-space-3">
+
+            {/* Integrated search form */}
+            <form className="mt-space-6 w-full max-w-xl space-y-space-3" onSubmit={onDiscoverSubmit}>
+              <input
+                value={quickQuery}
+                onChange={(e) => setQuickQuery(e.target.value)}
+                placeholder="Search event title, venue, tag, or city"
+                className="h-14 w-full rounded-2xl border border-white/20 bg-white/10
+                           px-space-5 font-body text-body-md text-white
+                           placeholder:text-white/40 backdrop-blur-sm
+                           focus:outline-none focus:ring-2 focus:ring-primary-300/60"
+              />
+
+              <div className="grid grid-cols-2 gap-space-3">
+                <select
+                  value={activeCategory}
+                  onChange={(e) => setActiveCategory(e.target.value)}
+                  style={{ colorScheme: 'dark' }}
+                  className="h-12 rounded-xl border border-white/20 bg-white/10 px-space-4
+                             font-body text-body-sm text-white backdrop-blur-sm
+                             focus:outline-none focus:ring-2 focus:ring-primary-300/60"
+                >
+                  {filterOptions.categories.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={quickCity}
+                  onChange={(e) => setQuickCity(e.target.value)}
+                  style={{ colorScheme: 'dark' }}
+                  className="h-12 rounded-xl border border-white/20 bg-white/10 px-space-4
+                             font-body text-body-sm text-white backdrop-blur-sm
+                             focus:outline-none focus:ring-2 focus:ring-primary-300/60"
+                >
+                  <option value="All">All cities</option>
+                  {filterOptions.cities.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap gap-space-3">
+                <button
+                  type="submit"
+                  className="inline-flex h-12 min-w-[148px] items-center justify-center rounded-full
+                             bg-primary-400 px-space-6 font-display text-label-md text-white shadow-primary
+                             transition-all duration-fast hover:bg-primary-500 hover:shadow-lg hover:scale-[1.02]
+                             active:scale-[0.98]"
+                >
+                  Search events
+                </button>
+                <Link
+                  to={toDiscoverPath('/suppliers')}
+                  className="inline-flex h-12 min-w-[148px] items-center justify-center rounded-full
+                             border border-white/35 bg-white/10 px-space-6 font-display text-label-md text-white
+                             backdrop-blur-sm transition-all duration-fast hover:bg-white/20 active:scale-[0.98]"
+                >
+                  Find suppliers
+                </Link>
+              </div>
+            </form>
+
+            {/* Primary CTAs */}
+            <div className="mt-space-5 flex flex-wrap gap-space-3">
               <Link
                 to="/register"
-                className="inline-flex items-center rounded-full bg-secondary-500 px-space-6 py-space-3 font-display text-label-lg text-white transition-colors duration-fast hover:bg-secondary-400"
+                className="inline-flex items-center rounded-full bg-primary-400 px-space-6 py-space-3
+                           font-display text-label-lg text-white shadow-primary
+                           transition-all duration-fast hover:bg-primary-500 hover:shadow-lg hover:scale-[1.02]
+                           active:scale-[0.98]"
               >
                 Create event
               </Link>
               <Link
                 to="/suppliers"
-                className="inline-flex items-center rounded-full border border-white/40 bg-white/10 px-space-6 py-space-3 font-display text-label-lg text-white transition-colors duration-fast hover:bg-white/20"
+                className="inline-flex items-center rounded-full border border-white/40 bg-white/10
+                           px-space-6 py-space-3 font-display text-label-lg text-white
+                           backdrop-blur-sm transition-all duration-fast hover:bg-white/20 active:scale-[0.98]"
               >
-                Let&apos;s talk
+                Explore suppliers
               </Link>
             </div>
 
-            {/* Slide indicators + current label */}
+            {/* Slide indicators */}
             <div className="mt-space-8 flex items-center gap-space-3">
               {heroImages.map((img, i) => (
                 <button
@@ -281,7 +373,7 @@ export default function HomePage() {
                   aria-label={`View ${img.label}`}
                   className={`h-1.5 rounded-full transition-all duration-500 ${
                     i === heroIndex
-                      ? 'w-10 bg-secondary-400'
+                      ? 'w-10 bg-primary-300'
                       : 'w-1.5 bg-white/35 hover:bg-white/60'
                   }`}
                 />
@@ -291,25 +383,411 @@ export default function HomePage() {
               </span>
             </div>
           </div>
+          </div>
+        </div>
+
+        {/* Stats ticker strip */}
+        <div className="absolute bottom-0 left-0 right-0 overflow-hidden
+                        border-t border-white/10 bg-black/20 py-space-2
+                        pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur-sm md:pb-space-2">
+          <div className="ticker-track">
+            {[...Array(2)].map((_, setIdx) => (
+              <span key={setIdx} className="flex flex-shrink-0 items-center gap-space-8">
+                <span className="font-display text-caption-lg text-white/65">500+ Active Suppliers</span>
+                <span className="text-white/25">·</span>
+                <span className="font-display text-caption-lg text-white/65">2,000+ Event Organizers</span>
+                <span className="text-white/25">·</span>
+                <span className="font-display text-caption-lg font-semibold text-primary-300">₱0 Listing Fee</span>
+                <span className="text-white/25">·</span>
+                <span className="font-display text-caption-lg text-white/65">Built for the Philippines</span>
+                <span className="text-white/25">·</span>
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── WHY USE ── white section */}
-      <section className="bg-white py-space-12 md:py-space-16 lg:py-space-16">
-        {/* Section header */}
-        <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
-          <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-600">Built for practical wins</p>
-          <div className="mt-space-3 flex flex-col gap-space-4 md:flex-row md:items-end md:justify-between">
-            <h2 className="font-display font-extrabold leading-tight text-[#060F2E] text-3xl sm:text-4xl md:text-5xl">
-              Why Use EventPinas
-            </h2>
-            <p className="max-w-sm font-body text-neutral-500 text-body-sm md:text-right">
-              From planning to post-event insights — everything Philippine event creators need, in one place.
+      {/* ── 2. CATEGORIES ── portrait card carousel */}
+      <section className="relative bg-white py-space-12 md:py-space-14">
+        {/* Subtle gradient bleed from hero above */}
+        <div className="pointer-events-none absolute left-0 right-0 top-0 h-20 bg-gradient-to-b from-[#0C1D5E]/5 to-transparent" />
+
+        <div className="relative mx-auto max-w-[1280px] px-space-4 md:px-space-6">
+          <div className="flex items-end justify-between gap-space-3">
+            <div>
+              <p className="font-display text-overline uppercase tracking-[0.15em] text-neutral-400">Explore by type</p>
+              <h2 className="mt-space-1 font-display font-extrabold leading-tight text-[#0C1D5E] text-2xl md:text-3xl">
+                Browse by Category
+              </h2>
+            </div>
+            <p className="hidden font-body text-body-sm text-neutral-400 md:block">
+              Filter events and suppliers by what you need
             </p>
           </div>
         </div>
 
-        {/* 2×2 immersive card grid */}
+        {/* Portrait card scroll */}
+        <div className="relative mx-auto mt-space-6 max-w-[1280px]">
+          <div className="flex gap-space-3 overflow-x-auto scroll-smooth snap-x snap-mandatory
+                          px-space-4 pb-space-3 scrollbar-hide md:px-space-6">
+            {categoryShowcase.map((item) => {
+              const active = activeCategory === item.key
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setActiveCategory(item.key)}
+                  className={`group snap-start relative w-36 flex-shrink-0 overflow-hidden rounded-2xl
+                              border-2 transition-all duration-300 md:w-44 ${
+                    active
+                      ? 'border-primary-400 shadow-lg shadow-primary-400/20'
+                      : 'border-transparent hover:border-neutral-200'
+                  }`}
+                >
+                  <div className="aspect-[3/4] w-full overflow-hidden">
+                    <img
+                      src={item.image}
+                      alt={item.label}
+                      className="h-full w-full object-cover transition-transform duration-slow group-hover:scale-[1.06]"
+                    />
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-space-3">
+                    <span className="font-display text-label-sm font-semibold text-white">{item.label}</span>
+                    {active && (
+                      <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary-400 align-middle" />
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Category pill filters */}
+        <div className="mx-auto mt-space-4 max-w-[1280px] px-space-4 md:px-space-6">
+          <div className="flex flex-wrap gap-space-2">
+            <button
+              type="button"
+              onClick={() => setActiveCategory('All')}
+              className={`rounded-full border px-space-3 py-space-1 font-display text-label-sm
+                          transition-all duration-fast active:scale-[0.97] ${
+                activeCategory === 'All'
+                  ? 'border-primary-400 bg-primary-400 text-white'
+                  : 'border-neutral-200 bg-white text-neutral-600 hover:border-primary-300 hover:text-primary-500'
+              }`}
+            >
+              All
+            </button>
+            {marketplaceCategories.filter((c) => c !== 'All').map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setActiveCategory(category)}
+                className={`rounded-full border px-space-3 py-space-1 font-display text-label-sm
+                            transition-all duration-fast active:scale-[0.97] ${
+                  activeCategory === category
+                    ? 'border-primary-400 bg-primary-400 text-white'
+                    : 'border-neutral-200 bg-white text-neutral-600 hover:border-primary-300 hover:text-primary-500'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 3. FEATURED EVENTS ── category-colored card overlays */}
+      <section className="bg-neutral-50 py-space-10 md:py-space-14">
+        <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
+
+          {/* Section header */}
+          <div className="flex items-start justify-between gap-space-3">
+            <div className="flex items-center gap-space-4">
+              <span className="hidden select-none font-display text-[3rem] font-black leading-none text-primary-400/15 md:block">
+                01
+              </span>
+              <div>
+                <p className="font-display text-overline uppercase tracking-[0.15em] text-primary-500">Happening now</p>
+                <h2 className="font-display font-extrabold leading-tight text-[#0C1D5E] text-2xl md:text-3xl">
+                  Featured Events
+                </h2>
+              </div>
+            </div>
+            <Link
+              to="/events"
+              className="shrink-0 font-display text-label-md text-secondary-600 transition-colors duration-fast hover:text-secondary-700"
+            >
+              View all →
+            </Link>
+          </div>
+
+          <div className="mt-space-6">
+            {loading && <LoadingState label="Loading featured events..." />}
+            {error && <ErrorState message={error} />}
+            {!loading && !error && featuredEvents.length === 0 && (
+              <EmptyState message="No featured events available for this category right now." />
+            )}
+
+            {!loading && !error && featuredEvents.length > 0 && (
+              <div className="grid gap-space-4 grid-cols-1 md:grid-cols-3">
+
+                {/* Large feature card */}
+                {(() => {
+                  const event = featuredEvents[0]
+                  const fallbackImage = eventImageByCategory[event.category] || eventImageByCategory.Festival
+                  const isSaved = savedEvents.has(event.id)
+                  const cardGradient = categoryGradient[event.category] ?? defaultCategoryGradient
+                  return (
+                    <article
+                      key={event.id}
+                      className={`stagger-item stagger-delay-1 group relative min-h-[380px] overflow-hidden rounded-3xl md:min-h-[460px] ${
+                        featuredEvents.length === 1 ? 'md:col-span-3' : 'md:col-span-2'
+                      }`}
+                    >
+                      <img
+                        src={event.imageUrl || fallbackImage}
+                        alt={event.title}
+                        onError={getFallbackImageHandler(fallbackImage)}
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                      />
+                      <div className={`absolute inset-0 bg-gradient-to-t ${cardGradient}`} />
+
+                      {/* Date pill */}
+                      <div className="absolute left-space-4 top-space-4">
+                        <span className="rounded-full bg-white/15 px-space-3 py-1 font-display text-caption-lg text-white backdrop-blur-sm">
+                          {formatDate(event.date)}
+                        </span>
+                      </div>
+
+                      {/* Tag */}
+                      {event.tags[0] && (
+                        <span className={`absolute left-space-4 top-14 rounded-full px-space-2 py-0.5 font-display text-caption-sm text-white shadow-sm ${tagBadgeClass(event.tags[0])}`}>
+                          {event.tags[0]}
+                        </span>
+                      )}
+
+                      {/* Heart */}
+                      <button
+                        type="button"
+                        onClick={() => onToggleSavedEvent(event.id)}
+                        aria-label={isSaved ? 'Remove from saved' : 'Save event'}
+                        className={`absolute right-space-4 top-space-4 rounded-full p-2 shadow-md transition-colors duration-fast ${
+                          isSaved ? 'bg-secondary-500 text-white' : 'bg-white/20 text-white hover:bg-white/35'
+                        }`}
+                      >
+                        <HeartIcon filled={isSaved} />
+                      </button>
+
+                      {/* Bottom overlay */}
+                      <div className="absolute inset-x-0 bottom-0 p-space-5 md:p-space-6">
+                        <Link
+                          to={`/events/${event.id}`}
+                          className="block line-clamp-2 font-display font-extrabold leading-tight text-white text-2xl hover:text-white/90 md:text-3xl"
+                        >
+                          {event.title}
+                        </Link>
+                        <div className="mt-space-3 flex items-center justify-between gap-space-3">
+                          <p className="flex items-center gap-1 font-body text-body-sm text-white/70">
+                            <PinIcon />
+                            {event.city}
+                          </p>
+                          <div className="flex items-center gap-space-3">
+                            <span className="font-display text-label-md text-white/80">
+                              {formatPhp(event.pricePhp)}
+                            </span>
+                            <Link
+                              to={`/events/${event.id}`}
+                              className="rounded-full bg-primary-400 px-space-4 py-space-2 font-display text-label-sm text-white
+                                         transition-all duration-fast hover:bg-primary-500 active:scale-[0.97]"
+                            >
+                              Let&apos;s go
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })()}
+
+                {/* Smaller stacked cards */}
+                {featuredEvents.length > 1 && (
+                  <div className="flex flex-col gap-space-4">
+                    {featuredEvents.slice(1, 3).map((event, idx) => {
+                      const fallbackImage = eventImageByCategory[event.category] || eventImageByCategory.Festival
+                      const isSaved = savedEvents.has(event.id)
+                      const cardGradient = categoryGradient[event.category] ?? defaultCategoryGradient
+                      return (
+                        <article
+                          key={event.id}
+                          className={`stagger-item stagger-delay-${idx + 2} group relative min-h-[180px] flex-1 overflow-hidden rounded-2xl`}
+                        >
+                          <img
+                            src={event.imageUrl || fallbackImage}
+                            alt={event.title}
+                            onError={getFallbackImageHandler(fallbackImage)}
+                            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
+                          />
+                          <div className={`absolute inset-0 bg-gradient-to-t ${cardGradient}`} />
+
+                          <button
+                            type="button"
+                            onClick={() => onToggleSavedEvent(event.id)}
+                            aria-label={isSaved ? 'Remove from saved' : 'Save event'}
+                            className={`absolute right-space-3 top-space-3 rounded-full p-1.5 shadow-md transition-colors duration-fast ${
+                              isSaved ? 'bg-secondary-500 text-white' : 'bg-white/20 text-white hover:bg-white/35'
+                            }`}
+                          >
+                            <HeartIcon filled={isSaved} />
+                          </button>
+
+                          <div className="absolute inset-x-0 bottom-0 p-space-4">
+                            <p className="font-display text-caption-sm font-semibold uppercase tracking-wide text-white/65">
+                              {formatDate(event.date)}
+                            </p>
+                            <Link
+                              to={`/events/${event.id}`}
+                              className="mt-0.5 block line-clamp-2 font-display font-bold text-white text-heading-sm hover:text-white/90"
+                            >
+                              {event.title}
+                            </Link>
+                            <div className="mt-space-2 flex items-center justify-between">
+                              <p className="flex items-center gap-1 font-body text-caption-sm text-white/60">
+                                <PinIcon />
+                                {event.city}
+                              </p>
+                              <span className="font-display text-label-sm text-white/75">
+                                {formatPhp(event.pricePhp)}
+                              </span>
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!loading && !error && (
+              <div className="mt-space-8 flex justify-center">
+                <Link
+                  to={toDiscoverPath('/events')}
+                  className="rounded-full border-2 border-neutral-300 px-space-8 py-space-3
+                             font-display text-label-lg text-neutral-700
+                             transition-all duration-fast hover:border-primary-400 hover:text-primary-500
+                             active:scale-[0.98]"
+                >
+                  View more events
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4. FEATURED SUPPLIERS ── light teal-tinted section */}
+      {!loading && !error && (feed?.featuredSuppliers?.length ?? 0) > 0 && (
+        <section className="bg-secondary-50 py-space-10 md:py-space-12">
+          <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
+            <div className="flex items-start justify-between gap-space-3">
+              <div className="flex items-center gap-space-4">
+                <span className="hidden select-none font-display text-[3rem] font-black leading-none text-secondary-200 md:block">
+                  02
+                </span>
+                <div>
+                  <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-600">Trusted partners</p>
+                  <h2 className="font-display font-extrabold leading-tight text-[#060F2E] text-2xl md:text-3xl">
+                    Featured Suppliers
+                  </h2>
+                  <p className="mt-space-1 font-body text-neutral-500 text-body-sm">
+                    Verified businesses ready to make your event unforgettable
+                  </p>
+                </div>
+              </div>
+              <Link to="/suppliers" className="shrink-0 font-display text-label-md text-secondary-600 transition-colors duration-fast hover:text-secondary-700">
+                Browse all →
+              </Link>
+            </div>
+          </div>
+
+          <div className="mx-auto mt-space-6 max-w-[1280px]">
+            <div className="flex gap-space-4 overflow-x-auto px-space-4 pb-space-3 md:px-space-6 scrollbar-hide">
+              {feed.featuredSuppliers.map((supplier, idx) => {
+                const fallbackImage = supplierImageByCategory[supplier.category] || supplierFallbackImage
+                return (
+                  <Link
+                    key={supplier.id}
+                    to={`/suppliers/${supplier.id}`}
+                    className={`stagger-item stagger-delay-${Math.min(idx + 1, 6)} w-72 flex-shrink-0`}
+                  >
+                    <article className="group h-full overflow-hidden rounded-2xl bg-white shadow-md transition-all duration-fast hover:-translate-y-1 hover:shadow-xl">
+                      <div className="relative overflow-hidden">
+                        <img
+                          src={supplier.imageUrl || fallbackImage}
+                          alt={supplier.name}
+                          onError={getFallbackImageHandler(fallbackImage)}
+                          className="aspect-[4/3] w-full object-cover transition-transform duration-slow group-hover:scale-[1.04]"
+                        />
+                        {/* Category pill — teal */}
+                        <span className="absolute left-space-3 top-space-3 rounded-full bg-secondary-500 px-space-2 py-0.5 font-display text-caption-sm text-white shadow-sm">
+                          {supplier.category}
+                        </span>
+                        {/* Verified badge */}
+                        {supplier.isVerified && (
+                          <span className="absolute right-space-2 top-space-2 rounded-full bg-white/90 px-space-2 py-0.5 font-display text-caption-sm text-secondary-700 shadow-sm">
+                            ✓ Verified
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-space-4">
+                        <p className="line-clamp-1 font-display text-heading-sm font-bold text-neutral-900">{supplier.name}</p>
+                        <p className="mt-0.5 font-body text-caption-sm text-neutral-500">{supplier.city}</p>
+                        <div className="mt-space-2 flex items-center gap-1 font-body text-caption-sm">
+                          <span className="text-amber-400">★</span>
+                          <span className="font-semibold text-neutral-800">{supplier.rating}</span>
+                          <span className="text-neutral-400">({supplier.reviews} reviews)</span>
+                        </div>
+                        <div className="mt-space-3 flex items-center justify-between">
+                          <p className="font-display text-label-md font-bold text-primary-400">
+                            {supplier.startingPricePhp != null
+                              ? `From ${formatPhp(supplier.startingPricePhp)}`
+                              : (supplier.priceRangeLabel ?? '—')}
+                          </p>
+                          <span className="font-display text-label-sm text-secondary-600">View →</span>
+                        </div>
+                      </div>
+                    </article>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── 5. WHY USE ── white, 2×2 grid unchanged */}
+      <section className="bg-white py-space-12 md:py-space-16">
+        <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
+          <div className="flex items-start gap-space-4">
+            <span className="hidden select-none font-display text-[3rem] font-black leading-none text-neutral-100 md:block">
+              03
+            </span>
+            <div className="flex-1">
+              <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-600">Built for practical wins</p>
+              <div className="mt-space-3 flex flex-col gap-space-4 md:flex-row md:items-end md:justify-between">
+                <h2 className="font-display font-extrabold leading-tight text-[#060F2E] text-3xl sm:text-4xl md:text-5xl">
+                  Why Use EventPinas
+                </h2>
+                <p className="max-w-sm font-body text-neutral-500 text-body-sm md:text-right">
+                  From planning to post-event insights — everything Philippine event creators need, in one place.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="mx-auto mt-space-8 max-w-[1280px] px-space-4 md:px-space-6">
           <div className="grid grid-cols-1 gap-space-4 md:grid-cols-2">
             {whyUseCards.map((card) => (
@@ -317,27 +795,18 @@ export default function HomePage() {
                 key={card.title}
                 className="group relative min-h-[320px] overflow-hidden rounded-3xl md:min-h-[400px] lg:min-h-[440px]"
               >
-                {/* Full-bleed background image */}
                 <img
                   src={card.image}
                   alt={card.alt}
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.06]"
                 />
-
-                {/* Top dark vignette so card number stays readable */}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/10 to-transparent" />
-
-                {/* Bottom vibrant color gradient — unique per card */}
                 <div className={`absolute inset-0 bg-gradient-to-t ${card.gradient}`} />
-
-                {/* Card number — top left */}
                 <div className="absolute left-space-5 top-space-5">
                   <span className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${card.pill} font-display text-label-sm font-bold text-white shadow-lg`}>
                     {card.num}
                   </span>
                 </div>
-
-                {/* Content — pinned to bottom */}
                 <div className="absolute inset-x-0 bottom-0 p-space-5 md:p-space-6">
                   <h3 className="font-display font-extrabold leading-tight text-white text-xl md:text-2xl">
                     {card.title}
@@ -347,7 +816,10 @@ export default function HomePage() {
                   </p>
                   <Link
                     to={card.ctaTo}
-                    className={`mt-space-4 inline-flex items-center gap-2 rounded-full ${card.pill} px-space-5 py-space-2 font-display text-label-sm font-semibold text-white shadow-md transition-all duration-fast hover:brightness-110 hover:shadow-lg`}
+                    className={`mt-space-4 inline-flex items-center gap-2 rounded-full ${card.pill} px-space-5 py-space-2
+                                font-display text-label-sm font-semibold text-white shadow-md
+                                transition-all duration-fast hover:brightness-110 hover:shadow-lg hover:scale-[1.02]
+                                active:scale-[0.98]`}
                   >
                     {card.ctaLabel}
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
@@ -361,324 +833,38 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── DISCOVER FAST ── white section */}
-      <section className="bg-white py-space-10 md:py-space-14 border-t border-neutral-100">
-        <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
-          <div className="flex items-center justify-between gap-space-2">
-            <h2 className="font-display font-bold text-[#0C1D5E] text-xl md:text-2xl">Discover fast</h2>
-            <span className="rounded-full bg-neutral-100 px-space-3 py-1 font-display text-caption-lg text-[#0C1D5E]">
-              {feed?.upcomingEvents?.length ?? 0} matches
-            </span>
-          </div>
-          <p className="mt-space-2 font-body text-neutral-500 text-body-sm">
-            Search events, tune category and city, then jump straight to booking-ready results.
-          </p>
-
-          <form className="mt-space-5 space-y-space-3" onSubmit={onDiscoverSubmit}>
-            <input
-              value={quickQuery}
-              onChange={(event) => setQuickQuery(event.target.value)}
-              placeholder="Search event title, venue, tag, or city"
-              className="h-12 w-full rounded-xl border border-neutral-200 bg-white px-space-4 font-body text-body-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-secondary-400/60"
-            />
-
-            <div className="grid grid-cols-1 gap-space-3 sm:grid-cols-2">
-              <select
-                value={activeCategory}
-                onChange={(event) => setActiveCategory(event.target.value)}
-                className="h-12 rounded-xl border border-neutral-200 bg-white px-space-4 font-body text-body-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-400/60"
-              >
-                {filterOptions.categories.map((item) => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
-
-              <select
-                value={quickCity}
-                onChange={(event) => setQuickCity(event.target.value)}
-                className="h-12 rounded-xl border border-neutral-200 bg-white px-space-4 font-body text-body-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-400/60"
-              >
-                <option value="All">All cities</option>
-                {filterOptions.cities.map((item) => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-wrap gap-space-3">
-              <button
-                type="submit"
-                className="inline-flex h-12 min-w-[160px] items-center justify-center rounded-full bg-secondary-500 px-space-5 font-display text-label-md text-white transition-colors duration-fast hover:bg-secondary-400"
-              >
-                Search events
-              </button>
-              <Link
-                to={toDiscoverPath('/suppliers')}
-                className="inline-flex h-12 min-w-[160px] items-center justify-center rounded-full border border-neutral-300 bg-white px-space-5 font-display text-label-md text-[#0C1D5E] transition-colors duration-fast hover:bg-neutral-50"
-              >
-                Find vendors
-              </Link>
-            </div>
-          </form>
-        </div>
-      </section>
-
-      {/* ── FEATURED EVENTS ── white section */}
-      <section className="bg-white py-space-10 md:py-space-14">
-        <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
-          <div className="flex items-end justify-between gap-space-3">
-            <h2 className="font-display font-bold text-[#0C1D5E] text-xl md:text-2xl">Featured events</h2>
-            <Link to="/events" className="font-display text-label-md text-secondary-600 hover:text-secondary-700">
-              View all
-            </Link>
-          </div>
-
-          <div className="mt-space-6">
-            {loading && <LoadingState label="Loading featured events..." />}
-            {error && <ErrorState message={error} />}
-            {!loading && !error && featuredEvents.length === 0 && (
-              <EmptyState message="No featured events available for this category right now." />
-            )}
-
-            {!loading && !error && featuredEvents.length > 0 && (
-              <div className="grid gap-space-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-                {featuredEvents.map((event) => {
-                  const fallbackImage = eventImageByCategory[event.category] || eventImageByCategory.Festival
-                  const isSaved = savedEvents.has(event.id)
-
-                  return (
-                    <article key={event.id} className="group overflow-hidden rounded-2xl bg-white shadow-md transition-all duration-fast hover:-translate-y-1 hover:shadow-xl">
-                      {/* Image — landscape 16:10, tag badge + heart overlay */}
-                      <div className="relative overflow-hidden">
-                        <img
-                          src={event.imageUrl || fallbackImage}
-                          alt={event.title}
-                          onError={getFallbackImageHandler(fallbackImage)}
-                          className="aspect-[16/10] w-full object-cover transition-transform duration-slow group-hover:scale-[1.03]"
-                        />
-                        {event.tags[0] && (
-                          <span className={`absolute left-space-3 top-space-3 rounded-full px-space-2 py-0.5 font-display text-caption-sm text-white shadow-sm ${tagBadgeClass(event.tags[0])}`}>
-                            {event.tags[0]}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => onToggleSavedEvent(event.id)}
-                          aria-label={isSaved ? 'Remove from saved' : 'Save event'}
-                          className={`absolute right-space-3 top-space-3 rounded-full p-2 shadow-md transition-colors duration-fast ${
-                            isSaved
-                              ? 'bg-secondary-500 text-white'
-                              : 'bg-white/90 text-neutral-500 hover:text-secondary-500'
-                          }`}
-                        >
-                          <HeartIcon filled={isSaved} />
-                        </button>
-                      </div>
-
-                      {/* Card content */}
-                      <div className="p-space-4">
-                        {/* Date */}
-                        <p className="font-display text-caption-lg font-semibold uppercase tracking-wide text-[#0C1D5E]">
-                          {formatDate(event.date)}
-                        </p>
-
-                        {/* Title */}
-                        <Link
-                          to={`/events/${event.id}`}
-                          className="mt-space-1 block line-clamp-2 font-display text-heading-lg font-bold text-neutral-900 hover:text-[#0C1D5E]"
-                        >
-                          {event.title}
-                        </Link>
-
-                        {/* Location + CTA — same row like events.com */}
-                        <div className="mt-space-3 flex items-center justify-between gap-space-2">
-                          <p className="flex items-center gap-1 font-body text-body-sm text-neutral-500">
-                            <PinIcon />
-                            {event.city}
-                          </p>
-                          <Link
-                            to={`/events/${event.id}`}
-                            className="shrink-0 rounded-lg bg-secondary-500 px-space-4 py-space-2 font-display text-label-sm text-white transition-colors duration-fast hover:bg-secondary-400"
-                          >
-                            Let&apos;s go
-                          </Link>
-                        </div>
-
-                        {/* Tags row */}
-                        {event.tags.length > 0 && (
-                          <div className="mt-space-3 flex flex-wrap gap-space-1">
-                            {event.tags.map((tag) => (
-                              <span key={`${event.id}-${tag}`} className="rounded-full bg-neutral-100 px-space-2 py-0.5 font-body text-caption-sm text-neutral-600">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Price — small footer */}
-                        <p className="mt-space-3 font-display text-label-md text-[#0C1D5E]">
-                          {formatPhp(event.pricePhp)}
-                        </p>
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* View more events — events.com style centered button */}
-            {!loading && !error && (
-              <div className="mt-space-8 flex justify-center">
-                <Link
-                  to={toDiscoverPath('/events')}
-                  className="rounded-full border-2 border-[#0C1D5E] px-space-8 py-space-3 font-display text-label-lg text-[#0C1D5E] transition-colors duration-fast hover:bg-[#0C1D5E] hover:text-white"
-                >
-                  View more events
-                </Link>
-              </div>
-            )}
-
-            {!loading && !error && moreEvents.length > 0 && (
-              <div className="mt-space-5 grid gap-space-3 sm:grid-cols-2 lg:grid-cols-3">
-                {moreEvents.map((event) => (
-                  <Link
-                    key={event.id}
-                    to={`/events/${event.id}`}
-                    className="rounded-2xl border border-neutral-100 bg-white p-space-3 shadow-sm transition-all duration-fast hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <p className="font-display text-label-md text-[#0C1D5E]">{event.title}</p>
-                    <p className="mt-space-1 font-body text-body-sm text-neutral-500">{event.venue} - {event.city}</p>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURED SUPPLIERS ── white section */}
-      {!loading && !error && (feed?.featuredSuppliers?.length ?? 0) > 0 && (
-        <section className="bg-white py-space-10 md:py-space-12 border-t border-neutral-100">
-          <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
-            <div className="flex items-end justify-between gap-space-3">
-              <div>
-                <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-600">Trusted partners</p>
-                <h2 className="mt-space-1 font-display font-bold text-[#060F2E] text-2xl md:text-3xl">Featured Suppliers</h2>
-                <p className="mt-space-1 font-body text-neutral-500 text-body-sm">Verified businesses ready to make your event unforgettable</p>
-              </div>
-              <Link to="/suppliers" className="shrink-0 font-display text-label-md text-secondary-600 hover:text-secondary-700">
-                Browse all
-              </Link>
-            </div>
-          </div>
-          <div className="mx-auto mt-space-6 max-w-[1280px]">
-            <div className="flex gap-space-4 overflow-x-auto px-space-4 pb-space-3 md:px-space-6 scrollbar-hide">
-              {feed.featuredSuppliers.map((supplier) => {
-                const fallbackImage = supplierImageByCategory[supplier.category] || supplierFallbackImage
-                return (
-                  <Link key={supplier.id} to={`/suppliers/${supplier.id}`} className="w-64 flex-shrink-0">
-                    <article className="group h-full overflow-hidden rounded-2xl bg-white shadow-xl transition-all duration-fast hover:-translate-y-1 hover:shadow-2xl">
-                      <div className="relative overflow-hidden">
-                        <img
-                          src={supplier.imageUrl || fallbackImage}
-                          alt={supplier.name}
-                          onError={getFallbackImageHandler(fallbackImage)}
-                          className="aspect-[4/3] w-full object-cover transition-transform duration-slow group-hover:scale-[1.04]"
-                        />
-                        {supplier.isFeatured && (
-                          <span className="absolute right-space-2 top-space-2 rounded-full bg-secondary-500 px-space-2 py-0.5 font-display text-caption-sm text-white shadow-sm">
-                            Featured
-                          </span>
-                        )}
-                      </div>
-                      <div className="p-space-4">
-                        <p className="line-clamp-1 font-display text-heading-sm font-bold text-neutral-900">{supplier.name}</p>
-                        <p className="mt-0.5 font-body text-caption-sm text-neutral-500">{supplier.category} · {supplier.city}</p>
-                        <div className="mt-space-2 flex items-center gap-1 font-body text-caption-sm">
-                          <span className="text-amber-400">★</span>
-                          <span className="font-semibold text-neutral-800">{supplier.rating}</span>
-                          <span className="text-neutral-400">({supplier.reviews} reviews)</span>
-                        </div>
-                      </div>
-                    </article>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── BUSINESS CTA ── white section with rings + stats */}
-      <section className="relative overflow-hidden bg-white w-full border-t border-neutral-100">
-        {/* Decorative concentric rings (right side) */}
-        <div className="pointer-events-none absolute -right-40 top-1/2 h-[600px] w-[600px] -translate-y-1/2 rounded-full border border-[#0C1D5E]/8" />
-        <div className="pointer-events-none absolute -right-24 top-1/2 h-[420px] w-[420px] -translate-y-1/2 rounded-full border border-[#0C1D5E]/12" />
-        <div className="pointer-events-none absolute right-4 top-1/2 h-[260px] w-[260px] -translate-y-1/2 rounded-full border border-[#0C1D5E]/18" />
-
-        <div className="relative mx-auto max-w-[1280px] px-space-4 py-space-12 md:px-space-6 md:py-space-16">
-          <div className="max-w-2xl">
-            <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-600">For Businesses</p>
-            <h2 className="mt-space-3 font-display font-extrabold leading-tight text-[#0C1D5E] text-3xl sm:text-4xl md:text-5xl">
-              Grow your events business with EventPinas
-            </h2>
-            <p className="mt-space-4 max-w-lg font-body text-neutral-600 text-body-md">
-              List your services and get discovered by thousands of event organizers across the Philippines. Join the marketplace that powers Philippine events.
-            </p>
-
-            {/* Stats row */}
-            <div className="mt-space-6 flex flex-wrap gap-space-3">
-              {[
-                { value: '500+', label: 'Active suppliers' },
-                { value: '2,000+', label: 'Event organizers' },
-                { value: '₱0', label: 'Listing fee', highlight: true },
-              ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-neutral-200 bg-neutral-50 px-space-4 py-space-3">
-                  <p className={`font-display font-extrabold text-xl ${stat.highlight ? 'text-secondary-600' : 'text-[#0C1D5E]'}`}>
-                    {stat.value}
-                  </p>
-                  <p className="font-body text-caption-lg text-neutral-500">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-
-            <Link
-              to="/suppliers"
-              className="mt-space-6 inline-flex items-center gap-2 rounded-full bg-secondary-500 px-space-6 py-space-3 font-display text-label-lg text-white transition-colors duration-fast hover:bg-secondary-400"
-            >
-              List your business
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── TOP ORGANIZERS ── white section, elevated */}
+      {/* ── 6. TOP ORGANIZERS ── neutral-50, improved cards */}
       {!loading && !error && (feed?.topOrganizers?.length ?? 0) > 0 && (
-        <section className="bg-white py-space-10 md:py-space-12">
+        <section className="bg-neutral-50 py-space-10 md:py-space-12">
           <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
-            <div className="flex items-end justify-between gap-space-3">
-              <div>
-                <p className="font-display text-overline uppercase tracking-[0.15em] text-[#0C1D5E]">Top rated</p>
-                <h2 className="mt-space-1 font-display font-bold text-[#0C1D5E] text-2xl md:text-3xl">Top Organizers</h2>
-                <p className="mt-space-1 font-body text-body-sm text-neutral-500">
-                  Trusted by hundreds of events across the Philippines
-                </p>
+            <div className="flex items-start justify-between gap-space-3">
+              <div className="flex items-center gap-space-4">
+                <span className="hidden select-none font-display text-[3rem] font-black leading-none text-neutral-200 md:block">
+                  04
+                </span>
+                <div>
+                  <p className="font-display text-overline uppercase tracking-[0.15em] text-[#0C1D5E]">Top rated</p>
+                  <h2 className="font-display font-extrabold leading-tight text-[#0C1D5E] text-2xl md:text-3xl">
+                    Top Organizers
+                  </h2>
+                  <p className="mt-space-1 font-body text-body-sm text-neutral-500">
+                    Trusted by hundreds of events across the Philippines
+                  </p>
+                </div>
               </div>
-              <Link to="/organizers" className="shrink-0 font-display text-label-md text-secondary-600 hover:text-secondary-700">
-                View all
+              <Link to="/organizers" className="shrink-0 font-display text-label-md text-secondary-600 transition-colors duration-fast hover:text-secondary-700">
+                View all →
               </Link>
             </div>
           </div>
+
           <div className="mx-auto mt-space-6 max-w-[1280px]">
             <div className="flex gap-space-4 overflow-x-auto px-space-4 pb-space-3 md:px-space-6 scrollbar-hide">
               {feed.topOrganizers.map((org) => {
                 const fallbackImage = organizerImageBySpecialty[org.specialties[0]] || organizerFallbackImage
                 return (
-                  <Link key={org.id} to={`/organizers/${org.id}`} className="w-64 flex-shrink-0">
-                    <article className="group h-full overflow-hidden rounded-2xl bg-white shadow-md transition-all duration-fast hover:-translate-y-1 hover:shadow-xl">
+                  <Link key={org.id} to={`/organizers/${org.id}`} className="w-72 flex-shrink-0">
+                    <article className="group h-full overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-md transition-all duration-fast hover:-translate-y-1 hover:shadow-xl">
                       <div className="relative overflow-hidden">
                         <img
                           src={org.avatarUrl || fallbackImage}
@@ -686,6 +872,12 @@ export default function HomePage() {
                           onError={getFallbackImageHandler(fallbackImage)}
                           className="aspect-[4/3] w-full object-cover transition-transform duration-slow group-hover:scale-[1.04]"
                         />
+                        {/* Badge — coral, top-left */}
+                        {org.badge && (
+                          <span className="absolute left-space-2 top-space-2 rounded-full bg-primary-400/90 px-space-2 py-0.5 font-display text-caption-sm text-white shadow-sm">
+                            {org.badge}
+                          </span>
+                        )}
                         {org.isVerified && (
                           <span className="absolute right-space-2 top-space-2 rounded-full bg-secondary-500 px-space-2 py-0.5 font-display text-caption-sm text-white shadow-sm">
                             Verified
@@ -698,8 +890,11 @@ export default function HomePage() {
                         <div className="mt-space-2 flex items-center gap-1 font-body text-caption-sm">
                           <span className="text-amber-400">★</span>
                           <span className="font-semibold text-neutral-800">{org.rating}</span>
-                          <span className="text-neutral-400">({org.eventsHandled} events)</span>
+                          <span className="text-neutral-400">({org.reviewsCount} reviews)</span>
                         </div>
+                        <p className="mt-space-1 font-body text-caption-sm text-neutral-500">
+                          <span className="font-semibold text-[#0C1D5E]">{org.eventsHandled}</span> events handled
+                        </p>
                       </div>
                     </article>
                   </Link>
@@ -710,66 +905,50 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ── CATEGORIES ── light surface with vibrant circle images */}
-      <section className="bg-white py-space-10 md:py-space-14">
-        <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
-          <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-400">Explore by type</p>
-          <div className="mt-space-1 flex items-end justify-between gap-space-3">
-            <h2 className="font-display font-bold text-[#0C1D5E] text-2xl md:text-3xl">Browse by Category</h2>
-            <p className="hidden font-body text-body-sm text-neutral-500 md:block">Filter events and suppliers by what you need</p>
-          </div>
+      {/* ── 7. BUSINESS CTA ── dark navy + energy auras */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-[#060F2E]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_80%_at_0%_50%,rgba(255,107,74,0.18)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_70%_at_100%_50%,rgba(31,168,165,0.12)_0%,transparent_60%)]" />
 
-          <div className="mt-space-8 grid grid-cols-3 gap-x-space-4 gap-y-space-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7">
-            {categoryShowcase.map((item) => {
-              const active = activeCategory === item.key
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setActiveCategory(item.key)}
-                  className="group flex flex-col items-center gap-space-2"
-                >
-                  <span className={`inline-flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 transition-all duration-fast sm:h-28 sm:w-28 md:h-32 md:w-32 ${
-                    active
-                      ? 'border-secondary-500 shadow-lg shadow-secondary-500/30 scale-105'
-                      : 'border-neutral-200 group-hover:border-[#0C1D5E]/45'
-                  }`}>
-                    <img src={item.image} alt={item.label} className="h-full w-full object-cover transition-transform duration-slow group-hover:scale-[1.08]" />
-                  </span>
-                  <span className={`font-display text-label-sm font-semibold transition-colors duration-fast ${active ? 'text-secondary-600' : 'text-[#0C1D5E]/70 group-hover:text-[#0C1D5E]'}`}>
-                    {item.label}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+        <div className="relative mx-auto max-w-[1280px] px-space-4 py-space-12 md:px-space-6 md:py-space-16">
+          <div className="max-w-2xl">
+            <p className="font-display text-overline uppercase tracking-[0.15em] text-primary-300">For Businesses</p>
+            <h2 className="mt-space-3 font-display font-extrabold leading-tight text-white text-3xl sm:text-4xl md:text-5xl">
+              Grow your events business with EventPinas
+            </h2>
+            <p className="mt-space-4 max-w-lg font-body text-white/70 text-body-md">
+              List your services and get discovered by thousands of event organizers across the Philippines. Join the marketplace that powers Philippine events.
+            </p>
 
-          <div className="mt-space-6 flex flex-wrap gap-space-2">
-            <button
-              type="button"
-              onClick={() => setActiveCategory('All')}
-              className={`rounded-full border px-space-3 py-space-1 font-display text-label-sm transition-colors duration-fast ${
-                activeCategory === 'All'
-                  ? 'border-secondary-500 bg-secondary-500 text-white'
-                  : 'border-neutral-200 text-[#0C1D5E]/70 hover:border-[#0C1D5E]/40 hover:text-[#0C1D5E]'
-              }`}
+            {/* Stats */}
+            <div className="mt-space-6 flex flex-wrap gap-space-3">
+              {[
+                { value: '500+',   label: 'Active suppliers' },
+                { value: '2,000+', label: 'Event organizers' },
+                { value: '₱0',     label: 'Listing fee', highlight: true },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-white/15 bg-white/10 px-space-4 py-space-3">
+                  <p className={`font-display font-extrabold text-xl ${stat.highlight ? 'text-primary-300' : 'text-white'}`}>
+                    {stat.value}
+                  </p>
+                  <p className="font-body text-caption-lg text-white/50">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <Link
+              to="/suppliers"
+              className="mt-space-6 inline-flex items-center gap-2 rounded-full bg-primary-400
+                         px-space-6 py-space-3 font-display text-label-lg text-white shadow-primary
+                         transition-all duration-fast hover:bg-primary-500 hover:shadow-lg hover:scale-[1.02]
+                         active:scale-[0.98]"
             >
-              All
-            </button>
-            {marketplaceCategories.filter((category) => category !== 'All').map((category) => (
-              <button
-                key={category}
-                type="button"
-                onClick={() => setActiveCategory(category)}
-                className={`rounded-full border px-space-3 py-space-1 font-display text-label-sm transition-colors duration-fast ${
-                  activeCategory === category
-                    ? 'border-secondary-500 bg-secondary-500 text-white'
-                    : 'border-neutral-200 text-[#0C1D5E]/70 hover:border-[#0C1D5E]/40 hover:text-[#0C1D5E]'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
+              List your business
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
           </div>
         </div>
       </section>
@@ -777,4 +956,3 @@ export default function HomePage() {
     </div>
   )
 }
-
