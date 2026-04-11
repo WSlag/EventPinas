@@ -35,6 +35,13 @@ const ManageAuditPage = lazy(() => import('@/pages/marketplace/manage/ManageAudi
 const ManagePlannerPage = lazy(() => import('@/pages/marketplace/manage/ManagePlannerPage'))
 const ManageOnlineRegistrationPage = lazy(() => import('@/pages/marketplace/manage/ManageOnlineRegistrationPage'))
 const ManageOnsiteRegistrationPage = lazy(() => import('@/pages/marketplace/manage/ManageOnsiteRegistrationPage'))
+const AboutPage = lazy(() => import('@/pages/static/AboutPage'))
+const ContactPage = lazy(() => import('@/pages/static/ContactPage'))
+const HelpPage = lazy(() => import('@/pages/static/HelpPage'))
+const TermsPage = lazy(() => import('@/pages/static/TermsPage'))
+const PrivacyPage = lazy(() => import('@/pages/static/PrivacyPage'))
+const CookiesPage = lazy(() => import('@/pages/static/CookiesPage'))
+const AcceptableUsePage = lazy(() => import('@/pages/static/AcceptableUsePage'))
 
 function MarketplaceLayout({ children }) {
   return (
@@ -99,6 +106,14 @@ export default function App() {
           <Route path="/organizers" element={renderMarketplacePage(OrganizersPage)} />
           <Route path="/organizers/:id" element={renderMarketplacePage(OrganizerDetailPage)} />
           <Route path="/saved" element={renderMarketplacePage(SavedPage)} />
+
+          <Route path="/about"          element={renderMarketplacePage(AboutPage)} />
+          <Route path="/contact"        element={renderMarketplacePage(ContactPage)} />
+          <Route path="/help"           element={renderMarketplacePage(HelpPage)} />
+          <Route path="/terms"          element={renderMarketplacePage(TermsPage)} />
+          <Route path="/privacy"        element={renderMarketplacePage(PrivacyPage)} />
+          <Route path="/cookies"        element={renderMarketplacePage(CookiesPage)} />
+          <Route path="/acceptable-use" element={renderMarketplacePage(AcceptableUsePage)} />
 
           <Route
             path="/manage"

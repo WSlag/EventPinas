@@ -19,7 +19,7 @@ const COMPANY = [
   { label: 'About EventPinas', to: '/about' },
   { label: 'Contact Us',       to: '/contact' },
   { label: 'Help Center',      to: '/help' },
-  { label: 'Careers',          to: '/careers' },
+  { label: 'Careers',          to: '/careers', disabled: true },
 ]
 
 const LEGAL = [
@@ -90,13 +90,21 @@ function FooterLinkGroup({ heading, links, className = '' }) {
       <ul className="mt-space-4 space-y-space-1">
         {links.map((link) => (
           <li key={link.label}>
-            <Link
-              to={link.to}
-              className="block py-space-1 font-body text-body-sm text-neutral-400
-                         transition-colors duration-fast hover:text-white"
-            >
-              {link.label}
-            </Link>
+            {link.disabled
+              ? (
+                <span className="block py-space-1 font-body text-body-sm text-neutral-600 cursor-default select-none">
+                  {link.label}
+                </span>
+              )
+              : (
+                <Link
+                  to={link.to}
+                  className="block py-space-1 font-body text-body-sm text-neutral-400
+                             transition-colors duration-fast hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              )}
           </li>
         ))}
       </ul>
