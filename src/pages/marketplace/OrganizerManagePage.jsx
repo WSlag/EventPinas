@@ -5,6 +5,8 @@ import { useDrag } from '@use-gesture/react'
 import { ErrorState, LoadingState } from '@/components/ui/PageStates'
 import { ManageBadge, ManageKpiTile } from '@/components/ui/ManagePrimitives'
 import { ManageIcon } from '@/components/layout/ManageIcons'
+import { ManageTutorial } from '@/components/ui/ManageTutorial'
+import { useTutorial } from '@/hooks/useTutorial'
 import { manageNavConfig } from '@/data'
 import {
   getManageBootstrap,
@@ -83,6 +85,7 @@ function DraggableNavItem({ item, index, isActive, linkTo, onReorder }) {
 // OrganizerManagePage — main shell
 // ---------------------------------------------------------------------------
 export default function OrganizerManagePage() {
+  const tutorial = useTutorial()
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
@@ -244,16 +247,29 @@ export default function OrganizerManagePage() {
             Event Console
           </h1>
         </div>
-        <span
-          aria-hidden="true"
-          className="mb-2 hidden h-[1px] w-48 bg-gradient-to-l from-mgmt-gold/40 via-mgmt-gold/15 to-transparent md:block"
-        />
+        <div className="mb-2 hidden items-center gap-space-4 md:flex">
+          <span
+            aria-hidden="true"
+            className="h-[1px] w-32 bg-gradient-to-l from-mgmt-gold/40 via-mgmt-gold/15 to-transparent"
+          />
+          <button
+            type="button"
+            onClick={tutorial.start}
+            className="flex items-center gap-1.5 rounded-lg border border-mgmt-border px-space-3 py-[7px] font-barlow text-[0.7rem] uppercase tracking-[0.14em] text-mgmt-muted transition-all duration-fast hover:border-mgmt-gold/50 hover:text-mgmt-gold"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4M12 8h.01" />
+            </svg>
+            Tour
+          </button>
+        </div>
       </header>
 
       {/* Event & Role selectors + KPI strip */}
       <section className="mb-space-4 grid gap-space-2 md:grid-cols-4">
         {/* Active event display (read-only) */}
-        <div className="rounded-xl border border-mgmt-border bg-mgmt-surface p-space-3">
+        <div data-tutorial="event-selector" className="rounded-xl border border-mgmt-border bg-mgmt-surface p-space-3">
           <p className="font-barlow text-label-md font-semibold uppercase tracking-[0.14em] text-mgmt-muted">
             Active Event
           </p>
@@ -271,7 +287,7 @@ export default function OrganizerManagePage() {
         <ManageKpiTile label="Capacity" value={selectedEvent?.guestCapacity ?? 0} />
 
         {/* Operator role selector */}
-        <div className="rounded-xl border border-mgmt-border bg-mgmt-surface p-space-3">
+        <div data-tutorial="role-selector" className="rounded-xl border border-mgmt-border bg-mgmt-surface p-space-3">
           <p className="font-barlow text-[0.75rem] uppercase tracking-[0.12em] text-mgmt-muted">
             Operator Role
           </p>
@@ -289,10 +305,24 @@ export default function OrganizerManagePage() {
         </div>
       </section>
 
+      {/* Mobile Tour FAB — visible only on mobile */}
+      <button
+        type="button"
+        onClick={tutorial.start}
+        aria-label="Start tutorial"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)', zIndex: 50 }}
+        className="fixed right-4 flex h-11 w-11 items-center justify-center rounded-full border border-mgmt-border bg-mgmt-surface shadow-mgmt md:hidden"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="text-mgmt-gold">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 16v-4M12 8h.01" />
+        </svg>
+      </button>
+
       {/* Sidebar + content */}
       <section className="grid gap-space-3 md:grid-cols-[220px_1fr]">
         {/* Sidebar */}
-        <aside className="hidden md:block">
+        <aside data-tutorial="sidebar" className="hidden md:block">
           <div className="sticky top-[5.8rem] rounded-xl border border-l-2 border-mgmt-border border-l-mgmt-gold/40 bg-mgmt-surface p-space-2 shadow-mgmt">
             <p className="px-space-2 py-space-1 font-barlow text-[0.7rem] uppercase tracking-[0.18em] text-mgmt-gold">
               Modules
@@ -318,7 +348,7 @@ export default function OrganizerManagePage() {
         {/* Content */}
         <div className="space-y-space-3">
           {/* Active module header bar */}
-          <div className="flex items-center justify-between rounded-xl border border-mgmt-border bg-mgmt-surface px-space-4 py-space-3">
+          <div data-tutorial="module-bar" className="flex items-center justify-between rounded-xl border border-mgmt-border bg-mgmt-surface px-space-4 py-space-3">
             <div className="flex items-center gap-space-3">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-accent-tint text-mgmt-gold">
                 <ManageIcon id={activeModule?.id ?? 'dashboard'} active />
@@ -342,6 +372,16 @@ export default function OrganizerManagePage() {
           />
         </div>
       </section>
+
+      {/* Onboarding Tutorial */}
+      <ManageTutorial
+        active={tutorial.active}
+        step={tutorial.step}
+        onNext={tutorial.next}
+        onPrev={tutorial.prev}
+        onComplete={tutorial.complete}
+        onDismiss={tutorial.dismiss}
+      />
     </div>
   )
 }

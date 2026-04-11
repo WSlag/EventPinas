@@ -133,6 +133,24 @@
   .stagger-delay-5 { animation-delay: 0.35s; }
   .stagger-delay-6 { animation-delay: 0.42s; }
 
+  /* Tutorial card — fade-up entry (desktop) */
+  @keyframes tutorial-fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .tutorial-card-enter {
+    animation: tutorial-fade-up 0.22s cubic-bezier(0, 0, 0.2, 1) forwards;
+  }
+
+  /* Tutorial bottom sheet — slide up entry (mobile) */
+  @keyframes tutorial-slide-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .tutorial-sheet-enter {
+    animation: tutorial-slide-up 0.32s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+  }
+
   /* Hero stats ticker — continuous horizontal scroll */
   .ticker-track {
     display: flex;

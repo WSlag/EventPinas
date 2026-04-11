@@ -154,7 +154,7 @@ export default function ManageDashboardPage() {
   return (
     <div className="space-y-space-4">
       {/* Draggable KPI grid */}
-      <section>
+      <section data-tutorial="kpi-tiles">
         <p className="mb-space-2 font-barlow text-[0.7rem] uppercase tracking-[0.18em] text-mgmt-dim">
           Drag tiles to reorder
         </p>
@@ -172,7 +172,7 @@ export default function ManageDashboardPage() {
       </section>
 
       {/* Seating Snapshot */}
-      <section className="space-y-space-2">
+      <section data-tutorial="seating-snapshot" className="space-y-space-2">
         <ManageSectionHeader
           title="Seating Snapshot"
           subtitle="Current table occupancy and available seats."
@@ -195,7 +195,7 @@ export default function ManageDashboardPage() {
       </section>
 
       {/* Recent Check-ins */}
-      <section className="space-y-space-2">
+      <section data-tutorial="recent-checkins" className="space-y-space-2">
         <ManageSectionHeader
           title="Recent Check-ins"
           subtitle="Latest attendance activity from the gate."
