@@ -7,6 +7,7 @@ import TopNav from '@/components/layout/TopNav'
 import BottomNav from '@/components/layout/BottomNav'
 import Footer from '@/components/layout/Footer'
 import ManageBottomNav from '@/components/layout/ManageBottomNav'
+import RouteScrollManager from '@/components/layout/RouteScrollManager'
 
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
 const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'))
@@ -84,6 +85,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <RouteScrollManager />
         <Routes>
           <Route path="/login" element={renderLazy(LoginPage)} />
           <Route path="/register" element={renderLazy(RegisterPage)} />
