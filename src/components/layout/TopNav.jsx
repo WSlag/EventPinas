@@ -121,6 +121,7 @@ export default function TopNav() {
   const styles = toneStyles[tone]
   const isHomepage = tone === 'home'
   const topRowHeightClass = isHomepage ? 'h-20' : 'h-16'
+  const logoIconClass = isHomepage ? 'h-11 w-11 md:h-12 md:w-12' : 'h-9 w-9'
   const logoTextClass = isHomepage ? 'text-display-lg md:text-display-xl' : 'text-heading-xl'
   const navTextClass = isHomepage ? 'text-heading-sm' : 'text-label-md'
   const authTextClass = isHomepage ? 'text-heading-sm' : 'text-label-md'
@@ -280,7 +281,15 @@ export default function TopNav() {
     >
       <div className={`${styles.topRow} ${styles.topRowBorder}`}>
         <div className={`mx-auto flex w-full max-w-[1680px] items-center justify-between px-space-4 md:px-space-6 ${topRowHeightClass}`}>
-          <Link to="/" className="shrink-0">
+          <Link to="/" className="flex shrink-0 items-center gap-space-2">
+            <img
+              src="/brand/eventpinas-icon-192.png"
+              alt=""
+              aria-hidden="true"
+              className={`${logoIconClass} shrink-0 object-contain`}
+              loading="eager"
+              decoding="async"
+            />
             <span className={`font-display font-extrabold tracking-tight ${styles.logo} ${logoTextClass}`}>
               eventpinas
               <span className="text-secondary-300">.</span>
