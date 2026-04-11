@@ -15,12 +15,15 @@ const firebaseConfig = {
 }
 const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY
 const appCheckDebugToken = import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN
+const forceLocalServices = import.meta.env.VITE_FORCE_LOCAL_SERVICES === 'true'
+const isVitestRuntime = Boolean(import.meta.env.VITEST)
 
 function hasRequiredFirebaseConfig(config) {
   return Boolean(config.apiKey && config.authDomain && config.projectId && config.appId)
 }
 
-export const firebaseEnabled = hasRequiredFirebaseConfig(firebaseConfig)
+const shouldEnableFirebase = !forceLocalServices && !isVitestRuntime
+export const firebaseEnabled = shouldEnableFirebase && hasRequiredFirebaseConfig(firebaseConfig)
 
 let app = null
 let auth = null

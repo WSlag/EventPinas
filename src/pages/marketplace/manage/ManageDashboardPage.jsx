@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { useSpring, useSprings, animated } from '@react-spring/web'
+import { useSpring, animated } from '@react-spring/web'
 import { useDrag } from '@use-gesture/react'
 import { LoadingState, ErrorState } from '@/components/ui/PageStates'
 import { ManageCard, ManageSectionHeader, TiltCard } from '@/components/ui/ManagePrimitives'
@@ -26,14 +26,14 @@ const TILE_H = 104  // approx height for hit-testing
 // ---------------------------------------------------------------------------
 // DraggableKpiTile — animated KPI tile with drag-to-reorder
 // ---------------------------------------------------------------------------
-function DraggableKpiTile({ label, value, index, order, onReorder }) {
+function DraggableKpiTile({ label, value, index, onReorder }) {
   const [spring, api] = useSpring(() => ({
     x: 0, y: 0, scale: 1, zIndex: 0, shadow: 0,
     config: { mass: 1, tension: 300, friction: 30 },
   }))
 
   const bind = useDrag(
-    ({ active, movement: [mx, my], xy: [cx, cy], last }) => {
+    ({ active, movement: [mx, my], last }) => {
       if (active) {
         api.start({
           x: mx, y: my, scale: 1.06, zIndex: 40, shadow: 12,
@@ -165,7 +165,6 @@ export default function ManageDashboardPage() {
               label={tile.label}
               value={tile.getValue(dashboard)}
               index={index}
-              order={tileOrder}
               onReorder={handleReorder}
             />
           ))}

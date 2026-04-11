@@ -355,14 +355,6 @@ export default function ManageGuestsPage() {
     } finally { setAssigningGuestId('') }
   }
 
-  async function onFindBestSeat(guest) {
-    if (!guest || guest.checkedInAt) { setActionTone('warning'); setActionMessage('Checked-in guests cannot be moved.'); return }
-    const suggestion = suggestionByGuestId[guest.id]?.label ?? ''
-    if (!suggestion) { setActionTone('warning'); setActionMessage('No available seats found.'); return }
-    setGuestTableDraftById((prev) => ({ ...prev, [guest.id]: suggestion }))
-    await onAssignGuestSeat(guest, suggestion)
-  }
-
   async function onBulkAssignSelected(targetLabelOverride = bulkTargetTableLabel) {
     if (!selectedEventId || selectedGuestIds.length === 0) return
     setBulkAssigning(true); setActionMessage(''); setError('')

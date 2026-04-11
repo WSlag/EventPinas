@@ -105,7 +105,7 @@ export default function HelpPage() {
         <SectionHeader title="Still need help?" />
         <SurfaceCard className="max-w-lg">
           <p className="font-body text-body-sm leading-relaxed text-neutral-700">
-            Can't find the answer you're looking for? Send us a message at{' '}
+            Can&apos;t find the answer you&apos;re looking for? Send us a message at{' '}
             <a href="mailto:support@eventpinas.com" className="text-primary-500 hover:text-primary-600">
               support@eventpinas.com
             </a>{' '}

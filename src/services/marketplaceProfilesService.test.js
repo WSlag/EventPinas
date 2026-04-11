@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   canEditProfile,
+  ensureMarketplaceProfile,
   getSupplierProfileById,
   uploadMarketplaceProfileImage,
   updateSupplierProfile,
@@ -90,5 +91,28 @@ describe('marketplaceProfilesService', () => {
     })
 
     expect(uploaded.startsWith('data:image/png;base64,')).toBe(true)
+  })
+
+  it('provisions and enforces ownership for unique marketplace profiles', async () => {
+    const provisioned = await ensureMarketplaceProfile({
+      profileType: 'supplier',
+      profileId: 'sup-user-123',
+      ownerUid: 'user-123',
+      displayName: 'Unique Supplier Owner',
+      email: 'unique-supplier@example.com',
+    })
+
+    expect(provisioned.id).toBe('sup-user-123')
+    expect(provisioned.ownerUid).toBe('user-123')
+
+    const loaded = await getSupplierProfileById('sup-user-123', { simulateLatency: false })
+    expect(loaded?.ownerUid).toBe('user-123')
+    expect(loaded?.name).toBe('Unique Supplier Owner')
+
+    await expect(ensureMarketplaceProfile({
+      profileType: 'supplier',
+      profileId: 'sup-user-123',
+      ownerUid: 'user-other',
+    })).rejects.toThrow(/already owned/i)
   })
 })

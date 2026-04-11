@@ -211,8 +211,6 @@ export default function HomePage() {
 
   const savedEvents = useMemo(() => new Set(savedMap.events ?? []), [savedMap.events])
   const featuredEvents = useMemo(() => feed?.featuredEvents?.slice(0, 3) ?? [], [feed?.featuredEvents])
-  const featuredEventIds = useMemo(() => new Set(featuredEvents.map((event) => event.id)), [featuredEvents])
-  const moreEvents = (feed?.upcomingEvents ?? []).filter((event) => !featuredEventIds.has(event.id))
 
   function onToggleSavedEvent(id) {
     const updated = toggleSavedItem('events', id)

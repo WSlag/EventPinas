@@ -8,17 +8,25 @@ import {
 } from 'firebase/auth'
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db, firebaseEnabled } from '@/lib/firebase'
+import { ensureMarketplaceProfile } from '@/services/marketplaceProfilesService'
 
 const AuthContext = createContext(null)
 const LOCAL_AUTH_KEY = 'eventpinas-local-auth'
 const LOCAL_USERS_KEY = 'eventpinas-local-users'
+const LOCAL_AUTH_FALLBACK_ENABLED = Boolean(
+  import.meta.env.VITEST
+  || import.meta.env.DEV
+  || import.meta.env.VITE_ENABLE_LOCAL_AUTH_FALLBACK === 'true',
+)
 
-function buildMarketplaceProfile(role) {
+function buildMarketplaceProfile(role, uid) {
+  const normalizedUid = String(uid ?? '').trim().replaceAll('/', '_')
+  if (!normalizedUid) return null
   if (role === 'supplier') {
-    return { type: 'supplier', profileId: 'sup-001' }
+    return { type: 'supplier', profileId: `sup-${normalizedUid}`, ownerUid: normalizedUid }
   }
   if (role === 'organizer') {
-    return { type: 'organizer', profileId: 'org-001' }
+    return { type: 'organizer', profileId: `org-${normalizedUid}`, ownerUid: normalizedUid }
   }
   return null
 }
@@ -34,6 +42,48 @@ function readLocalJSON(key, fallback) {
 
 function writeLocalJSON(key, value) {
   localStorage.setItem(key, JSON.stringify(value))
+}
+
+function getCryptoSubtle() {
+  return globalThis.crypto?.subtle ?? null
+}
+
+async function hashLocalPassword(password, salt) {
+  const subtle = getCryptoSubtle()
+  if (!subtle) {
+    throw new Error('Secure password hashing is unavailable in this environment.')
+  }
+  const payload = new TextEncoder().encode(`${salt}:${password}`)
+  const digest = await subtle.digest('SHA-256', payload)
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+async function buildLocalPasswordRecord(password) {
+  const salt = crypto.randomUUID()
+  const hash = await hashLocalPassword(password, salt)
+  return { passwordSalt: salt, passwordHash: hash }
+}
+
+async function verifyLocalPassword(candidate, password) {
+  if (typeof candidate?.password === 'string') {
+    return candidate.password === password
+  }
+  if (!candidate?.passwordSalt || !candidate?.passwordHash) {
+    return false
+  }
+  const digest = await hashLocalPassword(password, candidate.passwordSalt)
+  return digest === candidate.passwordHash
+}
+
+function toLocalStoredSession(localUser) {
+  return {
+    uid: localUser.uid,
+    email: localUser.email,
+    displayName: localUser.displayName,
+    role: localUser.role,
+    subscription: localUser.subscription ?? null,
+    marketplaceProfile: localUser.marketplaceProfile ?? null,
+  }
 }
 
 async function fetchProfile(uid) {
@@ -68,8 +118,27 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [authBusy, setAuthBusy] = useState(false)
 
+  async function provisionMarketplaceProfileForRole({ role, uid, displayName, email, marketplaceProfile }) {
+    const profile = marketplaceProfile ?? buildMarketplaceProfile(role, uid)
+    if (!profile || (profile.type !== 'supplier' && profile.type !== 'organizer')) return
+    await ensureMarketplaceProfile({
+      profileType: profile.type,
+      profileId: profile.profileId,
+      ownerUid: uid,
+      displayName,
+      email,
+      simulateLatency: false,
+    })
+  }
+
   useEffect(() => {
     if (!firebaseEnabled || !auth) {
+      if (!LOCAL_AUTH_FALLBACK_ENABLED) {
+        setUser(null)
+        setProfile(null)
+        setLoading(false)
+        return undefined
+      }
       const session = readLocalJSON(LOCAL_AUTH_KEY, null)
       if (session) {
         setUser(toLocalSession(session))
@@ -111,13 +180,35 @@ export function AuthProvider({ children }) {
 
     try {
       if (!firebaseEnabled || !auth) {
+        if (!LOCAL_AUTH_FALLBACK_ENABLED) {
+          throw new Error('Local auth fallback is disabled. Configure Firebase to continue.')
+        }
         const users = readLocalJSON(LOCAL_USERS_KEY, [])
-        const matched = users.find((candidate) => candidate.email === email && candidate.password === password)
-        if (!matched) {
+        let matchedIndex = -1
+        for (let index = 0; index < users.length; index += 1) {
+          const candidate = users[index]
+          if (candidate.email !== email) continue
+          if (await verifyLocalPassword(candidate, password)) {
+            matchedIndex = index
+            break
+          }
+        }
+
+        if (matchedIndex < 0) {
           throw new Error('Invalid email or password.')
         }
 
-        writeLocalJSON(LOCAL_AUTH_KEY, matched)
+        let matched = users[matchedIndex]
+        if (typeof matched.password === 'string') {
+          const upgradedPassword = await buildLocalPasswordRecord(password)
+          const rest = { ...matched }
+          delete rest.password
+          matched = { ...rest, ...upgradedPassword }
+          users[matchedIndex] = matched
+          writeLocalJSON(LOCAL_USERS_KEY, users)
+        }
+
+        writeLocalJSON(LOCAL_AUTH_KEY, toLocalStoredSession(matched))
         setUser(toLocalSession(matched))
         setProfile({
           role: matched.role,
@@ -143,25 +234,31 @@ export function AuthProvider({ children }) {
 
     try {
       if (!firebaseEnabled || !auth || !db) {
+        if (!LOCAL_AUTH_FALLBACK_ENABLED) {
+          throw new Error('Local auth fallback is disabled. Configure Firebase to continue.')
+        }
         const users = readLocalJSON(LOCAL_USERS_KEY, [])
         if (users.some((candidate) => candidate.email === email)) {
           throw new Error('An account with this email already exists.')
         }
 
+        const uid = crypto.randomUUID()
+        const normalizedRole = role ?? 'attendee'
+        const passwordRecord = await buildLocalPasswordRecord(password)
         const localUser = {
-          uid: crypto.randomUUID(),
+          uid,
           email,
-          password,
           displayName: displayName ?? '',
-          role: role ?? 'attendee',
-          subscription: role === 'organizer'
+          role: normalizedRole,
+          subscription: normalizedRole === 'organizer'
             ? { status: 'inactive', planId: null, expiresAt: null }
             : null,
-          marketplaceProfile: buildMarketplaceProfile(role ?? 'attendee'),
+          marketplaceProfile: buildMarketplaceProfile(normalizedRole, uid),
+          ...passwordRecord,
         }
 
         writeLocalJSON(LOCAL_USERS_KEY, [...users, localUser])
-        writeLocalJSON(LOCAL_AUTH_KEY, localUser)
+        writeLocalJSON(LOCAL_AUTH_KEY, toLocalStoredSession(localUser))
 
         setUser(toLocalSession(localUser))
         setProfile({
@@ -171,23 +268,32 @@ export function AuthProvider({ children }) {
           subscription: localUser.subscription,
           marketplaceProfile: localUser.marketplaceProfile,
         })
+        await provisionMarketplaceProfileForRole({
+          role: normalizedRole,
+          uid: localUser.uid,
+          displayName: localUser.displayName,
+          email: localUser.email,
+          marketplaceProfile: localUser.marketplaceProfile,
+        })
         return toLocalSession(localUser)
       }
 
       const credentials = await createUserWithEmailAndPassword(auth, email, password)
+      const normalizedRole = role ?? 'attendee'
+      const marketplaceProfile = buildMarketplaceProfile(normalizedRole, credentials.user.uid)
 
       if (displayName) {
         await updateProfile(credentials.user, { displayName })
       }
 
       const profilePayload = {
-        role: role ?? 'attendee',
+        role: normalizedRole,
         displayName: displayName ?? '',
         email,
-        subscription: role === 'organizer'
+        subscription: normalizedRole === 'organizer'
           ? { status: 'inactive', planId: null, expiresAt: null }
           : null,
-        marketplaceProfile: buildMarketplaceProfile(role ?? 'attendee'),
+        marketplaceProfile,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
@@ -200,6 +306,14 @@ export function AuthProvider({ children }) {
         email: profilePayload.email,
         subscription: profilePayload.subscription,
         marketplaceProfile: profilePayload.marketplaceProfile,
+      })
+
+      await provisionMarketplaceProfileForRole({
+        role: normalizedRole,
+        uid: credentials.user.uid,
+        displayName: displayName ?? '',
+        email,
+        marketplaceProfile,
       })
 
       return credentials.user
@@ -248,8 +362,15 @@ export function AuthProvider({ children }) {
           displayName: current?.displayName ?? '',
           email: current?.email ?? user.email ?? '',
           subscription,
-          marketplaceProfile: current?.marketplaceProfile ?? buildMarketplaceProfile('organizer'),
+          marketplaceProfile: current?.marketplaceProfile ?? buildMarketplaceProfile('organizer', user.uid),
         }))
+        await provisionMarketplaceProfileForRole({
+          role: 'organizer',
+          uid: user.uid,
+          displayName: profile?.displayName ?? user.displayName ?? '',
+          email: profile?.email ?? user.email ?? '',
+          marketplaceProfile: profile?.marketplaceProfile ?? buildMarketplaceProfile('organizer', user.uid),
+        })
         return subscription
       }
 
@@ -264,8 +385,15 @@ export function AuthProvider({ children }) {
         displayName: current?.displayName ?? user.displayName ?? '',
         email: current?.email ?? user.email ?? '',
         subscription,
-        marketplaceProfile: current?.marketplaceProfile ?? buildMarketplaceProfile('organizer'),
+        marketplaceProfile: current?.marketplaceProfile ?? buildMarketplaceProfile('organizer', user.uid),
       }))
+      await provisionMarketplaceProfileForRole({
+        role: 'organizer',
+        uid: user.uid,
+        displayName: profile?.displayName ?? user.displayName ?? '',
+        email: profile?.email ?? user.email ?? '',
+        marketplaceProfile: profile?.marketplaceProfile ?? buildMarketplaceProfile('organizer', user.uid),
+      })
       return subscription
     } finally {
       setAuthBusy(false)
@@ -283,7 +411,7 @@ export function AuthProvider({ children }) {
     const nextSubscription = normalizedRole === 'organizer'
       ? (profile?.subscription ?? { status: 'inactive', planId: null, expiresAt: null })
       : null
-    const nextMarketplaceProfile = buildMarketplaceProfile(normalizedRole)
+    const nextMarketplaceProfile = buildMarketplaceProfile(normalizedRole, user.uid)
 
     setAuthBusy(true)
 
@@ -320,6 +448,13 @@ export function AuthProvider({ children }) {
           subscription: nextSubscription,
           marketplaceProfile: nextMarketplaceProfile,
         }))
+        await provisionMarketplaceProfileForRole({
+          role: normalizedRole,
+          uid: user.uid,
+          displayName: user.displayName ?? '',
+          email: user.email ?? '',
+          marketplaceProfile: nextMarketplaceProfile,
+        })
         return
       }
 
@@ -338,6 +473,13 @@ export function AuthProvider({ children }) {
         subscription: nextSubscription,
         marketplaceProfile: nextMarketplaceProfile,
       }))
+      await provisionMarketplaceProfileForRole({
+        role: normalizedRole,
+        uid: user.uid,
+        displayName: user.displayName ?? '',
+        email: user.email ?? '',
+        marketplaceProfile: nextMarketplaceProfile,
+      })
     } finally {
       setAuthBusy(false)
     }

@@ -24,7 +24,7 @@ const MANAGE_NAV_ORDER_KEY = 'mgmt-nav-order-v2'
 // ---------------------------------------------------------------------------
 // DraggableNavItem — a sidebar nav item that can be dragged to reorder
 // ---------------------------------------------------------------------------
-function DraggableNavItem({ item, index, isActive, linkTo, total, onReorder }) {
+function DraggableNavItem({ item, index, isActive, linkTo, onReorder }) {
   const [spring, api] = useSpring(() => ({ y: 0, scale: 1, zIndex: 0, shadow: 0 }))
   const itemHeight = 40 // approx px height of each nav item
 
@@ -305,7 +305,6 @@ export default function OrganizerManagePage() {
                     key={item.id}
                     item={item}
                     index={index}
-                    total={orderedNavItems.length}
                     isActive={isActive}
                     linkTo={withEventSearch(item.to)}
                     onReorder={handleReorder}

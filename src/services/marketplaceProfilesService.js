@@ -336,6 +336,102 @@ async function writePersistedProfile(collectionName, bucket, id, payload) {
   writeProfileStore(local)
 }
 
+function buildNewSupplierProfile({ profileId, ownerUid, displayName, email }) {
+  return withSupplierDefaults({
+    id: profileId,
+    ownerUid,
+    status: 'active',
+    updatedAt: new Date().toISOString(),
+    name: normalizeText(displayName) || 'New Supplier Profile',
+    category: '',
+    city: '',
+    bio: '',
+    specializations: [],
+    coverageAreas: [],
+    paymentMethods: [],
+    portfolio: [],
+    imageUrl: '',
+    businessInfo: {
+      businessType: '',
+      operatingSince: '',
+      contact: '',
+      email: normalizeText(email),
+      facebook: '',
+      dtiVerified: false,
+    },
+  })
+}
+
+function buildNewOrganizerProfile({ profileId, ownerUid, displayName }) {
+  return withOrganizerDefaults({
+    id: profileId,
+    ownerUid,
+    status: 'active',
+    updatedAt: new Date().toISOString(),
+    name: normalizeText(displayName) || 'New Organizer Profile',
+    city: '',
+    specialties: [],
+    services: [],
+    coverageAreas: [],
+    bio: '',
+    avatarUrl: '',
+  })
+}
+
+export async function ensureMarketplaceProfile({
+  profileType,
+  profileId,
+  ownerUid,
+  displayName = '',
+  email = '',
+  claimUnowned = false,
+  simulateLatency = false,
+  delayMs = DEFAULT_DELAY_MS,
+}) {
+  if (simulateLatency) await wait(delayMs)
+  if (profileType !== 'supplier' && profileType !== 'organizer') {
+    throw new Error('Unsupported profile type.')
+  }
+
+  const normalizedProfileId = normalizeText(profileId, 160)
+  const normalizedOwnerUid = normalizeText(ownerUid, 160)
+  if (!normalizedProfileId) throw new Error('Profile id is required.')
+  if (!normalizedOwnerUid) throw new Error('Owner uid is required.')
+
+  const lookup = profileType === 'supplier'
+    ? await getSupplierProfileById(normalizedProfileId, { simulateLatency: false })
+    : await getOrganizerProfileById(normalizedProfileId, { simulateLatency: false })
+
+  if (lookup?.ownerUid && lookup.ownerUid !== normalizedOwnerUid) {
+    throw new Error('Profile is already owned by another account.')
+  }
+  if (lookup?.ownerUid === normalizedOwnerUid) {
+    return lookup
+  }
+  if (lookup && !lookup.ownerUid && !claimUnowned) {
+    return lookup
+  }
+
+  if (profileType === 'supplier') {
+    const payload = buildNewSupplierProfile({
+      profileId: normalizedProfileId,
+      ownerUid: normalizedOwnerUid,
+      displayName,
+      email,
+    })
+    await writePersistedProfile('supplierProfiles', 'suppliers', normalizedProfileId, payload)
+    return withComputedFields(payload, 'supplier')
+  }
+
+  const payload = buildNewOrganizerProfile({
+    profileId: normalizedProfileId,
+    ownerUid: normalizedOwnerUid,
+    displayName,
+  })
+  await writePersistedProfile('organizerProfiles', 'organizers', normalizedProfileId, payload)
+  return withComputedFields(payload, 'organizer')
+}
+
 async function ensureUploadActorAuthorized(profileType, profileId, actorUid) {
   if (!actorUid) throw new Error('Please sign in before uploading images.')
 
@@ -396,6 +492,14 @@ export function canEditProfile({
 
   if (ownerUid) return ownerUid === viewerUid
 
+  if (viewerMarketplaceProfile?.ownerUid) {
+    return (
+      viewerMarketplaceProfile.ownerUid === viewerUid
+      && viewerMarketplaceProfile.type === profileType
+      && viewerMarketplaceProfile.profileId === profileId
+    )
+  }
+
   return viewerMarketplaceProfile?.type === profileType && viewerMarketplaceProfile?.profileId === profileId
 }
 
@@ -413,10 +517,16 @@ export async function getSupplierProfileById(id, options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
 
   const seed = getSeedSupplier(id)
-  if (!seed) return null
-
   const persisted = await readPersistedProfile('supplierProfiles', id, 'suppliers')
-  const merged = withSupplierDefaults(mergeProfile(seed, persisted, 'supplier'))
+  if (!seed && !persisted) return null
+
+  const fallback = seed ?? buildNewSupplierProfile({
+    profileId: id,
+    ownerUid: null,
+    displayName: '',
+    email: '',
+  })
+  const merged = withSupplierDefaults(mergeProfile(fallback, persisted, 'supplier'))
   return withComputedFields(merged, 'supplier')
 }
 
@@ -424,10 +534,15 @@ export async function getOrganizerProfileById(id, options = {}) {
   if (options.simulateLatency !== false) await wait(options.delayMs ?? DEFAULT_DELAY_MS)
 
   const seed = getSeedOrganizer(id)
-  if (!seed) return null
-
   const persisted = await readPersistedProfile('organizerProfiles', id, 'organizers')
-  const merged = withOrganizerDefaults(mergeProfile(seed, persisted, 'organizer'))
+  if (!seed && !persisted) return null
+
+  const fallback = seed ?? buildNewOrganizerProfile({
+    profileId: id,
+    ownerUid: null,
+    displayName: '',
+  })
+  const merged = withOrganizerDefaults(mergeProfile(fallback, persisted, 'organizer'))
   return withComputedFields(merged, 'organizer')
 }
 

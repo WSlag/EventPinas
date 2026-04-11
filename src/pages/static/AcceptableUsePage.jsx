@@ -26,7 +26,7 @@ export default function AcceptableUsePage() {
         <SectionHeader title="1. Purpose" />
         <ProseCard>
           <p>
-            EventPinas exists to connect people through events. This Acceptable Use Policy ("AUP") protects our
+            EventPinas exists to connect people through events. This Acceptable Use Policy (&quot;AUP&quot;) protects our
             community — event-goers, organizers, and suppliers — by setting clear boundaries on how the Platform
             may be used. Using EventPinas means you agree to these standards.
           </p>
@@ -81,7 +81,7 @@ export default function AcceptableUsePage() {
             <li><span className="font-semibold text-neutral-900">Legal referral</span> — reporting to the appropriate Philippine government authorities where criminal activity is suspected.</li>
           </ul>
           <p>
-            Enforcement decisions are at EventPinas's sole discretion. We will make reasonable efforts to notify
+            Enforcement decisions are at EventPinas&apos;s sole discretion. We will make reasonable efforts to notify
             affected users unless doing so would compromise an investigation.
           </p>
         </ProseCard>

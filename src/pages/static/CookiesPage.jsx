@@ -54,7 +54,7 @@ export default function CookiesPage() {
         <ProseCard>
           <p>
             Cookies are small text files placed on your device when you visit a website. They allow the site to
-            remember your actions and preferences over a period of time, so you don't have to re-enter settings
+            remember your actions and preferences over a period of time, so you don&apos;t have to re-enter settings
             every time you return or navigate between pages.
           </p>
           <p>
@@ -92,7 +92,7 @@ export default function CookiesPage() {
         <ProseCard>
           <p>
             You can control non-essential cookies through your browser settings. Most browsers allow you to block or
-            delete cookies. Here's how in the most common browsers:
+            delete cookies. Here&apos;s how in the most common browsers:
           </p>
           <ul className="ml-space-4 list-disc space-y-space-1">
             <li><span className="font-semibold text-neutral-900">Chrome</span> — Settings → Privacy and security → Cookies and other site data</li>

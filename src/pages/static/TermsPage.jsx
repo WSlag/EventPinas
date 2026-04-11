@@ -26,9 +26,9 @@ export default function TermsPage() {
         <SectionHeader title="1. Acceptance of Terms" />
         <ProseCard>
           <p>
-            By accessing or using the EventPinas platform (the "Platform"), you agree to be bound by these Terms of
-            Service ("Terms"). If you do not agree, you may not use the Platform. EventPinas, Inc. ("EventPinas,"
-            "we," "us," or "our") reserves the right to update these Terms at any time with notice provided through
+            By accessing or using the EventPinas platform (the &quot;Platform&quot;), you agree to be bound by these Terms of
+            Service (&quot;Terms&quot;). If you do not agree, you may not use the Platform. EventPinas, Inc. (&quot;EventPinas,&quot;
+            &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) reserves the right to update these Terms at any time with notice provided through
             the Platform.
           </p>
         </ProseCard>
@@ -78,7 +78,7 @@ export default function TermsPage() {
           <p>
             In the event of a cancellation, postponement, or material change, organizers must update their listing
             promptly and communicate directly with registered attendees. Refund obligations are governed by the
-            organizer's stated refund policy.
+            organizer&apos;s stated refund policy.
           </p>
         </ProseCard>
       </section>
@@ -125,7 +125,7 @@ export default function TermsPage() {
             profits, data, or business opportunities.
           </p>
           <p>
-            EventPinas's total liability to you for any claim arising from these Terms shall not exceed the amount
+            EventPinas&apos;s total liability to you for any claim arising from these Terms shall not exceed the amount
             you paid to EventPinas in the twelve (12) months preceding the claim, or PHP 1,000, whichever is greater.
           </p>
         </ProseCard>

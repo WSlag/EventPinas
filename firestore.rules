@@ -33,13 +33,24 @@ service cloud.firestore {
         && request.resource.data.featuredRank == null;
     }
 
+    function organizerFeatureFlagsUnchanged() {
+      return request.resource.data.isFeatured == resource.data.isFeatured
+        && request.resource.data.featureStatus == resource.data.featureStatus
+        && request.resource.data.featuredRank == resource.data.featuredRank;
+    }
+
     function organizerMirrorUpdateAllowed() {
       return isOrganizer()
         && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == request.auth.uid
-        && request.resource.data.isFeatured == false
-        && request.resource.data.featureStatus in ['none', 'pending']
-        && request.resource.data.featuredRank == null;
+        && (
+          (
+            request.resource.data.isFeatured == false
+            && request.resource.data.featureStatus in ['none', 'pending']
+            && request.resource.data.featuredRank == null
+          )
+          || organizerFeatureFlagsUnchanged()
+        );
     }
 
     match /users/{uid} {
@@ -48,13 +59,17 @@ service cloud.firestore {
 
     match /supplierProfiles/{profileId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && userRole() == 'supplier';
       allow update, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
     match /organizerProfiles/{profileId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && userRole() == 'organizer';
       allow update, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
