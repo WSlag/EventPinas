@@ -8,19 +8,19 @@ import { getFallbackImageHandler } from '@/utils/imageFallback'
 const heroImages = [
   {
     // Concert — person raising hand, electric blue/purple stage lighting (matches events.com slide 1)
-    url: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=2400&q=90',
+    url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2200&q=80',
     label: 'Concerts & Festivals',
     position: '70% center',
   },
   {
     // Wedding — first dance with circular golden bokeh (matches events.com slide 2 vibe)
-    url: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=2400&q=90',
+    url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2200&q=80',
     label: 'Weddings',
     position: 'right center',
   },
   {
     // Debut — elegant gown, warm ballroom lights and bokeh
-    url: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=2400&q=90',
+    url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2200&q=80',
     label: 'Debut',
     position: 'right center',
   },
@@ -89,7 +89,7 @@ const whyUseCards = [
   },
   {
     num: '02',
-    title: 'Connect with 500+ verified suppliers',
+    title: 'Connect with verified suppliers',
     description: 'Find catering, photography, décor, and AV suppliers instantly. Compare, shortlist, and message them — without leaving the platform.',
     image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1400&q=85',
     alt: 'Beautiful event catering and gourmet spread',
@@ -294,16 +294,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── WHY USE ── dark premium full-bleed section */}
-      <section className="bg-[#060F2E] py-space-12 md:py-space-16 lg:py-space-16">
+      {/* ── WHY USE ── white section */}
+      <section className="bg-white py-space-12 md:py-space-16 lg:py-space-16">
         {/* Section header */}
         <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
-          <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-400">Built for practical wins</p>
+          <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-600">Built for practical wins</p>
           <div className="mt-space-3 flex flex-col gap-space-4 md:flex-row md:items-end md:justify-between">
-            <h2 className="font-display font-extrabold leading-tight text-white text-3xl sm:text-4xl md:text-5xl">
+            <h2 className="font-display font-extrabold leading-tight text-[#060F2E] text-3xl sm:text-4xl md:text-5xl">
               Why Use EventPinas
             </h2>
-            <p className="max-w-sm font-body text-white/55 text-body-sm md:text-right">
+            <p className="max-w-sm font-body text-neutral-500 text-body-sm md:text-right">
               From planning to post-event insights — everything Philippine event creators need, in one place.
             </p>
           </div>
@@ -361,16 +361,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── DISCOVER FAST ── full-bleed deep navy */}
-      <section className="bg-[#0C1D5E] py-space-10 md:py-space-14">
+      {/* ── DISCOVER FAST ── white section */}
+      <section className="bg-white py-space-10 md:py-space-14 border-t border-neutral-100">
         <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
           <div className="flex items-center justify-between gap-space-2">
-            <h2 className="font-display font-bold text-white text-xl md:text-2xl">Discover fast</h2>
-            <span className="rounded-full bg-white/15 px-space-3 py-1 font-display text-caption-lg text-white">
+            <h2 className="font-display font-bold text-[#0C1D5E] text-xl md:text-2xl">Discover fast</h2>
+            <span className="rounded-full bg-neutral-100 px-space-3 py-1 font-display text-caption-lg text-[#0C1D5E]">
               {feed?.upcomingEvents?.length ?? 0} matches
             </span>
           </div>
-          <p className="mt-space-2 font-body text-white/70 text-body-sm">
+          <p className="mt-space-2 font-body text-neutral-500 text-body-sm">
             Search events, tune category and city, then jump straight to booking-ready results.
           </p>
 
@@ -379,14 +379,14 @@ export default function HomePage() {
               value={quickQuery}
               onChange={(event) => setQuickQuery(event.target.value)}
               placeholder="Search event title, venue, tag, or city"
-              className="h-12 w-full rounded-xl border border-white/20 bg-white/10 px-space-4 font-body text-body-sm text-white placeholder:text-white/50 focus:bg-white/15 focus:outline-none focus:ring-2 focus:ring-secondary-400/60"
+              className="h-12 w-full rounded-xl border border-neutral-200 bg-white px-space-4 font-body text-body-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-secondary-400/60"
             />
 
             <div className="grid grid-cols-1 gap-space-3 sm:grid-cols-2">
               <select
                 value={activeCategory}
                 onChange={(event) => setActiveCategory(event.target.value)}
-                className="h-12 rounded-xl border border-white/20 bg-white/10 px-space-4 font-body text-body-sm text-white focus:outline-none focus:ring-2 focus:ring-secondary-400/60 [color-scheme:dark]"
+                className="h-12 rounded-xl border border-neutral-200 bg-white px-space-4 font-body text-body-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-400/60"
               >
                 {filterOptions.categories.map((item) => (
                   <option key={item} value={item}>{item}</option>
@@ -396,7 +396,7 @@ export default function HomePage() {
               <select
                 value={quickCity}
                 onChange={(event) => setQuickCity(event.target.value)}
-                className="h-12 rounded-xl border border-white/20 bg-white/10 px-space-4 font-body text-body-sm text-white focus:outline-none focus:ring-2 focus:ring-secondary-400/60 [color-scheme:dark]"
+                className="h-12 rounded-xl border border-neutral-200 bg-white px-space-4 font-body text-body-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-400/60"
               >
                 <option value="All">All cities</option>
                 {filterOptions.cities.map((item) => (
@@ -414,7 +414,7 @@ export default function HomePage() {
               </button>
               <Link
                 to={toDiscoverPath('/suppliers')}
-                className="inline-flex h-12 min-w-[160px] items-center justify-center rounded-full border border-white/30 bg-white/10 px-space-5 font-display text-label-md text-white transition-colors duration-fast hover:bg-white/20"
+                className="inline-flex h-12 min-w-[160px] items-center justify-center rounded-full border border-neutral-300 bg-white px-space-5 font-display text-label-md text-[#0C1D5E] transition-colors duration-fast hover:bg-neutral-50"
               >
                 Find vendors
               </Link>
@@ -556,17 +556,17 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── FEATURED SUPPLIERS ── dark premium section */}
+      {/* ── FEATURED SUPPLIERS ── white section */}
       {!loading && !error && (feed?.featuredSuppliers?.length ?? 0) > 0 && (
-        <section className="bg-[#060F2E] py-space-10 md:py-space-12">
+        <section className="bg-white py-space-10 md:py-space-12 border-t border-neutral-100">
           <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
             <div className="flex items-end justify-between gap-space-3">
               <div>
-                <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-400">Trusted partners</p>
-                <h2 className="mt-space-1 font-display font-bold text-white text-2xl md:text-3xl">Featured Suppliers</h2>
-                <p className="mt-space-1 font-body text-white/50 text-body-sm">Verified businesses ready to make your event unforgettable</p>
+                <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-600">Trusted partners</p>
+                <h2 className="mt-space-1 font-display font-bold text-[#060F2E] text-2xl md:text-3xl">Featured Suppliers</h2>
+                <p className="mt-space-1 font-body text-neutral-500 text-body-sm">Verified businesses ready to make your event unforgettable</p>
               </div>
-              <Link to="/suppliers" className="shrink-0 font-display text-label-md text-secondary-400 hover:text-secondary-300">
+              <Link to="/suppliers" className="shrink-0 font-display text-label-md text-secondary-600 hover:text-secondary-700">
                 Browse all
               </Link>
             </div>
@@ -609,20 +609,20 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ── BUSINESS CTA ── full-bleed dark navy with rings + stats */}
-      <section className="relative overflow-hidden bg-[#0C1D5E] w-full">
+      {/* ── BUSINESS CTA ── white section with rings + stats */}
+      <section className="relative overflow-hidden bg-white w-full border-t border-neutral-100">
         {/* Decorative concentric rings (right side) */}
-        <div className="pointer-events-none absolute -right-40 top-1/2 h-[600px] w-[600px] -translate-y-1/2 rounded-full border border-white/8" />
-        <div className="pointer-events-none absolute -right-24 top-1/2 h-[420px] w-[420px] -translate-y-1/2 rounded-full border border-white/12" />
-        <div className="pointer-events-none absolute right-4 top-1/2 h-[260px] w-[260px] -translate-y-1/2 rounded-full border border-white/18" />
+        <div className="pointer-events-none absolute -right-40 top-1/2 h-[600px] w-[600px] -translate-y-1/2 rounded-full border border-[#0C1D5E]/8" />
+        <div className="pointer-events-none absolute -right-24 top-1/2 h-[420px] w-[420px] -translate-y-1/2 rounded-full border border-[#0C1D5E]/12" />
+        <div className="pointer-events-none absolute right-4 top-1/2 h-[260px] w-[260px] -translate-y-1/2 rounded-full border border-[#0C1D5E]/18" />
 
         <div className="relative mx-auto max-w-[1280px] px-space-4 py-space-12 md:px-space-6 md:py-space-16">
           <div className="max-w-2xl">
-            <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-400">For Businesses</p>
-            <h2 className="mt-space-3 font-display font-extrabold leading-tight text-white text-3xl sm:text-4xl md:text-5xl">
+            <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-600">For Businesses</p>
+            <h2 className="mt-space-3 font-display font-extrabold leading-tight text-[#0C1D5E] text-3xl sm:text-4xl md:text-5xl">
               Grow your events business with EventPinas
             </h2>
-            <p className="mt-space-4 max-w-lg font-body text-white/70 text-body-md">
+            <p className="mt-space-4 max-w-lg font-body text-neutral-600 text-body-md">
               List your services and get discovered by thousands of event organizers across the Philippines. Join the marketplace that powers Philippine events.
             </p>
 
@@ -633,11 +633,11 @@ export default function HomePage() {
                 { value: '2,000+', label: 'Event organizers' },
                 { value: '₱0', label: 'Listing fee', highlight: true },
               ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-white/15 bg-white/8 px-space-4 py-space-3">
-                  <p className={`font-display font-extrabold text-xl ${stat.highlight ? 'text-secondary-400' : 'text-white'}`}>
+                <div key={stat.label} className="rounded-2xl border border-neutral-200 bg-neutral-50 px-space-4 py-space-3">
+                  <p className={`font-display font-extrabold text-xl ${stat.highlight ? 'text-secondary-600' : 'text-[#0C1D5E]'}`}>
                     {stat.value}
                   </p>
-                  <p className="font-body text-caption-lg text-white/55">{stat.label}</p>
+                  <p className="font-body text-caption-lg text-neutral-500">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -710,13 +710,13 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ── CATEGORIES ── dark premium with vibrant circle images */}
-      <section className="bg-[#060F2E] py-space-10 md:py-space-14">
+      {/* ── CATEGORIES ── light surface with vibrant circle images */}
+      <section className="bg-white py-space-10 md:py-space-14">
         <div className="mx-auto max-w-[1280px] px-space-4 md:px-space-6">
           <p className="font-display text-overline uppercase tracking-[0.15em] text-secondary-400">Explore by type</p>
           <div className="mt-space-1 flex items-end justify-between gap-space-3">
-            <h2 className="font-display font-bold text-white text-2xl md:text-3xl">Browse by Category</h2>
-            <p className="hidden font-body text-body-sm text-white/45 md:block">Filter events and suppliers by what you need</p>
+            <h2 className="font-display font-bold text-[#0C1D5E] text-2xl md:text-3xl">Browse by Category</h2>
+            <p className="hidden font-body text-body-sm text-neutral-500 md:block">Filter events and suppliers by what you need</p>
           </div>
 
           <div className="mt-space-8 grid grid-cols-3 gap-x-space-4 gap-y-space-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7">
@@ -732,11 +732,11 @@ export default function HomePage() {
                   <span className={`inline-flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 transition-all duration-fast sm:h-28 sm:w-28 md:h-32 md:w-32 ${
                     active
                       ? 'border-secondary-500 shadow-lg shadow-secondary-500/30 scale-105'
-                      : 'border-white/20 group-hover:border-white/50'
+                      : 'border-neutral-200 group-hover:border-[#0C1D5E]/45'
                   }`}>
                     <img src={item.image} alt={item.label} className="h-full w-full object-cover transition-transform duration-slow group-hover:scale-[1.08]" />
                   </span>
-                  <span className={`font-display text-label-sm font-semibold transition-colors duration-fast ${active ? 'text-secondary-400' : 'text-white/65 group-hover:text-white'}`}>
+                  <span className={`font-display text-label-sm font-semibold transition-colors duration-fast ${active ? 'text-secondary-600' : 'text-[#0C1D5E]/70 group-hover:text-[#0C1D5E]'}`}>
                     {item.label}
                   </span>
                 </button>
@@ -751,7 +751,7 @@ export default function HomePage() {
               className={`rounded-full border px-space-3 py-space-1 font-display text-label-sm transition-colors duration-fast ${
                 activeCategory === 'All'
                   ? 'border-secondary-500 bg-secondary-500 text-white'
-                  : 'border-white/20 text-white/65 hover:border-white/40 hover:text-white'
+                  : 'border-neutral-200 text-[#0C1D5E]/70 hover:border-[#0C1D5E]/40 hover:text-[#0C1D5E]'
               }`}
             >
               All
@@ -764,7 +764,7 @@ export default function HomePage() {
                 className={`rounded-full border px-space-3 py-space-1 font-display text-label-sm transition-colors duration-fast ${
                   activeCategory === category
                     ? 'border-secondary-500 bg-secondary-500 text-white'
-                    : 'border-white/20 text-white/65 hover:border-white/40 hover:text-white'
+                    : 'border-neutral-200 text-[#0C1D5E]/70 hover:border-[#0C1D5E]/40 hover:text-[#0C1D5E]'
                 }`}
               >
                 {category}
@@ -777,3 +777,4 @@ export default function HomePage() {
     </div>
   )
 }
+
