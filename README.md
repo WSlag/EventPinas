@@ -1,4 +1,4 @@
-# 🎉 EventPinas – Event Marketplace Platform
+# 🎉 EventPinas – Event Discovery & Booking Platform
 
 ## 🚀 In Development Platform
 
